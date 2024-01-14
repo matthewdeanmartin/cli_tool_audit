@@ -1,3 +1,6 @@
+"""
+Stress test for the cli_tool_audit package using venv as source data.
+"""
 import concurrent
 import glob
 import os
@@ -5,17 +8,21 @@ import pathlib
 import sys
 from concurrent.futures import ThreadPoolExecutor
 
+# pylint: disable=no-name-in-module
 from whichcraft import which
 
-from cli_tool_audit.views import check_tool_wrapper
+from cli_tool_audit.views import check_tool_wrapper, pretty_print_results
 
 
-def get_executables_in_venv(venv_path):
+def get_executables_in_venv(venv_path: str) -> list[str]:
     """
     Get a list of executable commands in a Python virtual environment.
 
-    :param venv_path: Path to the virtual environment.
-    :return: List of executable command names.
+    Args:
+        venv_path (str): The path to the virtual environment.
+
+    Returns:
+        list[str]: A list of executable commands in the virtual environment.
     """
     # Determine the correct directory for executables based on the OS
     if sys.platform == "win32":
@@ -30,7 +37,10 @@ def get_executables_in_venv(venv_path):
     return executables
 
 
-def report_for_venv_tools():
+def report_for_venv_tools() -> None:
+    """
+    Report on the compatibility of the tools installed in the virtual environment.
+    """
     python_path = which("python")
     venv_dir = pathlib.Path(python_path).parent.parent
     cli_tools = {}
@@ -43,27 +53,12 @@ def report_for_venv_tools():
     with ThreadPoolExecutor(max_workers=num_cpus) as executor:
         # Submit tasks to the executor
         futures = [executor.submit(check_tool_wrapper, (tool, config)) for tool, config in cli_tools.items()]
-
+        results = []
         # Process the results as they are completed
         for future in concurrent.futures.as_completed(futures):
-            tool, desired_version, is_available, version, compatible, is_broken = future.result()
-            if is_broken:
-                pass
-                # print(f"{tool}: raises errors on execution")
-            elif compatible != "Compatible":
-                print(
-                    f"{tool}: {'Available' if is_available else 'Not Available'} "
-                    f"- Found Version:\n{version if version else 'N/A'}"
-                    f"- Desired Version: {desired_version}"
-                    f"- Compatibility: {compatible}"
-                )
-            else:
-                print(
-                    f"{tool}: {'Available' if is_available else 'Not Available'} "
-                    f"- Found Version:\n{version if version else 'N/A'}"
-                    f"- Desired Version: {desired_version}"
-                    f"- Compatibility: {compatible}"
-                )
+            result = future.result()
+            results.append(result)
+        pretty_print_results(results)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,3 @@
+__version__: str
+
+# def which(cmd:str, mode=os.F_OK | os.X_OK, path=None):...

@@ -12,15 +12,20 @@ Possible things that could happen
 
 import logging
 import subprocess  # nosec
+from dataclasses import dataclass
 from typing import Optional
 
 import toml
+
+# pylint: disable=no-name-in-module
 from whichcraft import which
+
+from cli_tool_audit.known_swtiches import KNOWN_SWITCHES
 
 logger = logging.getLogger(__name__)
 
 
-def read_cli_tools_from_pyproject(file_path: str) -> dict[str, dict[str, str]]:
+def read_config(file_path: str) -> dict[str, dict[str, str]]:
     """
     Read the cli-tools section from a pyproject.toml file.
 
@@ -41,44 +46,54 @@ def read_cli_tools_from_pyproject(file_path: str) -> dict[str, dict[str, str]]:
         return {}
 
 
-def check_tool_availability(tool_name: str, version_switch: Optional[str] = None):
+@dataclass
+class ToolAvailabilityResult:
+    is_available: bool
+    is_broken: bool
+    version: Optional[str]
+
+
+def check_tool_availability(tool_name: str, version_switch: str = "--version") -> ToolAvailabilityResult:
     """
     Check if a tool is available in the system's PATH.
 
     Args:
         tool_name (str): The name of the tool to check.
-        version_switch (Optional[str]): The switch to get the tool version. Defaults to None.
+        version_switch (str): The switch to get the tool version. Defaults to '--version'.
 
     Returns:
-        Tuple[bool, Optional[str]]: A tuple with the first element being True if the tool is available, False otherwise.
-            The second element is the tool version if version_switch is provided, None otherwise.
+        ToolAvailabilityResult: An object containing the availability and version of the tool.
     """
     # Check if the tool is in the system's PATH
     is_broken = True
     if not which(tool_name):
-        return False, True, None
+        return ToolAvailabilityResult(False, True, None)
 
-    # If version_switch is provided, try to get the version
+    if version_switch is None or version_switch == "--version":
+        # override default.
+        # Could be a problem if KNOWN_SWITCHES was ever wrong.
+        version_switch = KNOWN_SWITCHES.get(tool_name, "--version")
+
     version = None
-    if version_switch:
-        # pylint: disable=broad-exception-caught
-        try:
-            result = subprocess.run(
-                [tool_name, version_switch], capture_output=True, text=True, timeout=5, shell=False, check=True
-            )  # nosec
-            out = result.stdout.strip()
-            if "\n" in out:
-                version = out.split("\n")[0]
-            else:
-                version = result.stdout.strip()
-            is_broken = False
-        except BaseException as exception:
-            is_broken = True
-            # TODO: run help and parse that?
-            # logger.error(exception)
-            print(exception)
 
-    return True, is_broken, version
+    # pylint: disable=broad-exception-caught
+    try:
+        result = subprocess.run(
+            [tool_name, version_switch], capture_output=True, text=True, timeout=5, shell=False, check=True
+        )  # nosec
+        out = result.stdout.strip()
+        if "\n" in out:
+            version = out.split("\n")[0]
+        else:
+            version = result.stdout.strip()
+        is_broken = False
+    except BaseException as exception:
+        is_broken = True
+        # TODO: run help and parse that?
+        # logger.error(exception)
+        print(exception)
+
+    return ToolAvailabilityResult(True, is_broken, version)
 
 
 if __name__ == "__main__":
@@ -86,13 +101,14 @@ if __name__ == "__main__":
     def run() -> None:
         """Example"""
         # Example usage
-        file_path = "../pyproject.toml"  # Replace with the path to your pyproject.toml
-        cli_tools = read_cli_tools_from_pyproject(file_path)
+        file_path = "../pyproject.toml"
+        cli_tools = read_config(file_path)
 
         for tool, config in cli_tools.items():
-            is_available, is_broken, version = check_tool_availability(tool, config.get("version_switch"))
+            result = check_tool_availability(tool, config.get("version_switch", "--version"))
             print(
-                f"{tool}: {'Available' if is_available else 'Not Available'} - Version:\n{version if version else 'N/A'}"
+                f"{tool}: {'Available' if result.is_available else 'Not Available'}"
+                f" - Version:\n{result.version if result.version else 'N/A'}"
             )
 
     run()

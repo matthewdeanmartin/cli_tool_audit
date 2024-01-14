@@ -7,7 +7,27 @@ import semver
 from semver import Version
 
 
-def extract_first_two_part_version(input_string):
+def extract_first_two_part_version(input_string: str) -> Optional[str]:
+    """
+    Extract the first 2 part version from a string.
+    Args:
+        input_string (str): The string to parse.
+
+    Returns:
+        Optional[str]: The first 2 part version if found, None otherwise.
+
+    Examples:
+        >>> extract_first_two_part_version("1.2.3")
+        '1.2'
+        >>> extract_first_two_part_version("1.2")
+        '1.2'
+        >>> extract_first_two_part_version("1") is None
+        True
+        >>> extract_first_two_part_version("1.2.3a1")
+        '1.2'
+        >>> extract_first_two_part_version("1.2.3a1.post1")
+        '1.2'
+    """
     # Regular expression for 2 part version
     semver_regex = r"\d+\.\d+"
 
@@ -18,7 +38,26 @@ def extract_first_two_part_version(input_string):
     return matches[0] if matches else None
 
 
-def extract_first_semver_version(input_string):
+def extract_first_semver_version(input_string: str) -> Optional[str]:
+    """
+    Extract the first semver version from a string.
+    Args:
+        input_string (str): The string to parse.
+
+    Returns:
+        Optional[str]: The first semver version if found, None otherwise.
+
+    Examples:
+        >>> extract_first_semver_version("1.2.3")
+        '1.2.3'
+        >>> extract_first_semver_version("1.2") is None
+        True
+        >>> extract_first_semver_version("1.2.3a1")
+        '1.2.3'
+        >>> extract_first_semver_version("1.2.3a1.post1")
+        '1.2.3'
+
+    """
     # Regular expression for semver version
     semver_regex = r"\d+\.\d+\.\d+"
 
@@ -52,6 +91,29 @@ def convert2semver(ver: packaging.version.Version) -> semver.Version:
 
 
 def two_pass_semver_parse(input_string: str) -> Optional[Version]:
+    """
+    Parse a string into a semver version. This function will attempt to parse the string twice.
+    The first pass will attempt to parse the string as a semver version. If that fails, the second pass will attempt to
+    parse the string as a PyPI version. If that fails, the third pass will attempt to parse the string as a 2 part
+    version. If that fails, the fourth pass will attempt to parse the string as a 1 part version. If that fails, None
+    is returned.
+
+    Args:
+        input_string (str): The string to parse.
+
+    Returns:
+        Optional[Version]: A semver version if the string can be parsed, None otherwise.
+
+    Examples:
+        >>> two_pass_semver_parse("1.2.3")
+        Version(major=1, minor=2, patch=3, prerelease=None, build=None)
+        >>> two_pass_semver_parse("1.2")
+        Version(major=1, minor=2, patch=0, prerelease=None, build=None)
+        >>> two_pass_semver_parse("1.2.3a1")
+        Version(major=1, minor=2, patch=3, prerelease='a1', build=None)
+        >>> two_pass_semver_parse("1.2.3a1.post1")
+        Version(major=1, minor=2, patch=3, prerelease=None, build=None)
+    """
     # empty never works
     if not input_string:
         return None

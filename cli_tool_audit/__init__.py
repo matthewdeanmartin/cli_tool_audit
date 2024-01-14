@@ -1,4 +1,8 @@
-__all__ = ["read_cli_tools_from_pyproject", "check_tool_availability", "__version__"]
+"""
+Audit CLI tool version numbers.
+"""
+__all__ = ["validate", "read_config", "check_tool_availability", "__version__"]
 
 from cli_tool_audit._version import __version__
-from cli_tool_audit.cli_availability import check_tool_availability, read_cli_tools_from_pyproject
+from cli_tool_audit.cli_availability import check_tool_availability, read_config
+from cli_tool_audit.views import validate

@@ -1,5 +1,8 @@
+"""
+Functions for checking compatibility between versions.
+"""
 import re
-from typing import Any
+from typing import Any, Optional
 
 from cli_tool_audit.version_parsing import two_pass_semver_parse
 
@@ -45,7 +48,32 @@ def split_version_match_pattern(pattern: str) -> tuple[str | Any, ...]:
     return None, None
 
 
-def check_compatibility(desired_version: str, found_version: str) -> str:
+CANT_TELL = "Can't tell"
+
+
+def check_compatibility(desired_version: str, found_version: Optional[str]) -> str:
+    """
+    Check if a found version is compatible with a desired version. Uses semantic versioning.
+    When a version isn't semver, we attempt to convert it to semver.
+
+    Args:
+        desired_version (str): The desired version.
+        found_version (str): The found version.
+
+    Returns:
+        str: A string indicating if the versions are compatible or not.
+
+    Examples:
+        >>> check_compatibility(">=1.1.1", "1.1.1")
+        'Compatible'
+        >>> check_compatibility(">=1.1.1", "1.1.0")
+        '>=1.1.1 != 1.1.0'
+        >>> check_compatibility(">=1.1.1", "1.1.2")
+        'Compatible'
+    """
+    if not found_version:
+        return CANT_TELL
+
     # desired is a match expression, e.g. >=1.1.1
 
     # Handle non-semver match patterns
@@ -57,13 +85,13 @@ def check_compatibility(desired_version: str, found_version: str) -> str:
     try:
         found_semversion = two_pass_semver_parse(found_version)
         if found_semversion is None:
-            is_compatible = f"Can't tell {found_version}"
+            is_compatible = CANT_TELL
         elif found_semversion.match(desired_version):
             is_compatible = "Compatible"
         else:
             is_compatible = f"{desired_version} != {found_semversion}"
     except ValueError:
-        is_compatible = "Can't tell"
+        is_compatible = CANT_TELL
     except TypeError:
-        is_compatible = "Can't tell"
+        is_compatible = CANT_TELL
     return is_compatible

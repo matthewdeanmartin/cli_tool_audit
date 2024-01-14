@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "cli_tool_audit"
-version = "1.0.0"
+version = "1.0.1"
 description = "Audit for existance and vesion number of cli tools."
 authors = ["Matthew Martin <matthewdeanmartin@gmail.com>"]
 keywords = ["cli tooling", "version numbers", ]
@@ -137,7 +137,7 @@ select = ["E", "F",
 ignore = [
     "E722",
     # only track structural problems with docstrings, not whitespace, nor missing
-    "D200", "D212", "D415","D411", "D205","D102", "D103", "D100","D107","D101","D104","D105",
+    "D200", "D212", "D415", "D411", "D205", "D102", "D103", "D100", "D107", "D101", "D104", "D105",
     "UP007", "UP038", # Not sure if | is well supported in lowever versions of python
 ]
 
@@ -193,6 +193,9 @@ strict_optional = true
 warn_redundant_casts = true
 warn_no_return = true
 
+mypy_path = [".", "$MYPY_CONFIG_FILE_DIR/typings", "typings"]
+files = ["cli_tool_audit", "typings"]
+
 [mypy.pygount]
 ignore_missing_imports = true
 
@@ -206,32 +209,29 @@ exclude_also = [
     # Don't complain about missing debug-only code:
     "def __repr__",
     "if self\\.debug",
-
     # Don't complain if tests don't hit defensive assertion code:
     "raise AssertionError",
     "raise NotImplementedError",
-
     # Don't complain if non-runnable code isn't run:
     "if 0:",
     "if __name__ == .__main__.:",
-
     # Don't complain about abstract methods, they aren't run:
     "@(abc\\.)?abstractmethod",
-    ]
+]
 
 [tool.cli-tools]
-pipx = { description = "Python package installer for applications", version = ">=1.0.0", version_switch = "--version" }
-mypy = { description = "Python Type Checker", version = ">=1.0.0", version_switch = "--version" }
-pylint = { description = "Python Linter", version = ">=1.0.0", version_switch = "--version" }
-black = { description = "Python formatter", version = ">=1.0.0", version_switch = "--version" }
-pygount = { description = "Python lines of code counter", version = ">=1.6.0", version_switch = "--version" }
-ruff = { description = "Python linter and formatter", version = ">=0.1.13", version_switch = "--version" }
-vulture = {  version = ">=1.0.0", version_switch = "--version" }
+pipx = {  version = ">=1.0.0", version_switch = "--version" }
+mypy = {  version = ">=1.0.0" }
+pylint = {  version = ">=1.0.0" }
+black = {  version = ">=1.0.0" }
+pygount = { version = ">=1.6.0" }
+ruff = {  version = ">=0.1.13" }
+vulture = { version = ">=1.0.0" }
 
 #cat = {  version = ">=8.32", version_switch = "--version" }
 #bash = {  version = ">=5.2.12", version_switch = "--version" }
-make ={  version = ">=3.81", version_switch = "--version" }
+make = { version = ">=3.81" }
 
-python ={  version = ">=3.11.1", version_switch = "--version" }
-terraform ={  version = ">=1.2.9", version_switch = "--version" }
-java ={  version = ">=17.0.6", version_switch = "--version" }
+python = { version = ">=3.11.1" }
+terraform = { version = ">=1.2.9" }
+java = { version = ">=17.0.6" }
