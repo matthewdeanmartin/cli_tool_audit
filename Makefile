@@ -101,7 +101,7 @@ docker:
 	docker build -t cli_tool_audit -f Dockerfile .
 
 check_docs:
-	interrogate cli_tool_audit
+	interrogate cli_tool_audit --verbose
 	pydoctest --config .pydoctest.json | grep -v "__init__" | grep -v "__main__" | grep -v "Unable to parse"
 
 make_docs:

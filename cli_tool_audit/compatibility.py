@@ -1,10 +1,13 @@
 """
 Functions for checking compatibility between versions.
 """
+import logging
 import re
 from typing import Any, Optional
 
 from cli_tool_audit.version_parsing import two_pass_semver_parse
+
+logger = logging.getLogger(__name__)
 
 
 def split_version_match_pattern(pattern: str) -> tuple[str | Any, ...]:
@@ -72,6 +75,7 @@ def check_compatibility(desired_version: str, found_version: Optional[str]) -> s
         'Compatible'
     """
     if not found_version:
+        logger.info(f"Tool provided no versions, so can't tell. {desired_version}/{found_version}")
         return CANT_TELL
 
     # desired is a match expression, e.g. >=1.1.1
@@ -85,13 +89,16 @@ def check_compatibility(desired_version: str, found_version: Optional[str]) -> s
     try:
         found_semversion = two_pass_semver_parse(found_version)
         if found_semversion is None:
+            logger.warning(f"SemVer failed to parse {desired_version}/{found_version}")
             is_compatible = CANT_TELL
         elif found_semversion.match(desired_version):
             is_compatible = "Compatible"
         else:
             is_compatible = f"{desired_version} != {found_semversion}"
-    except ValueError:
+    except ValueError as ve:
+        logger.warning(f"Can't tell {desired_version}/{found_version}: {ve}")
         is_compatible = CANT_TELL
-    except TypeError:
+    except TypeError as te:
+        logger.warning(f"Can't tell {desired_version}/{found_version}: {te}")
         is_compatible = CANT_TELL
     return is_compatible

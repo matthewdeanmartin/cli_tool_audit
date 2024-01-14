@@ -2,16 +2,23 @@
 Main output view for cli_tool_audit assuming tool list is in config.
 """
 import concurrent
+import logging
 import os
 import sys
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, cast
 
+import colorama
 from prettytable import PrettyTable
+from prettytable.colortable import ColorTable, Themes
 
-import cli_tool_audit.cli_availability as cli_availability
+import cli_tool_audit.call_tools as cli_availability
 from cli_tool_audit.compatibility import check_compatibility
+
+colorama.init(convert=True)
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -35,9 +42,14 @@ def check_tool_wrapper(tool_info: tuple[str, dict[str, str]]) -> ToolCheckResult
         ToolCheckResult: A ToolCheckResult object.
     """
     tool, config = tool_info
-    result = cli_availability.check_tool_availability(tool, config.get("version_switch", "--version"))
-    desired_version = config["version"]
-    is_compatible = check_compatibility(desired_version, found_version=result.version)
+    result = cli_availability.check_tool_availability(
+        tool, config.get("version_switch", "--version"), cast(bool, config.get("only_check_existence", False))
+    )
+    desired_version = config.get("version", "0.0.0")
+    if config.get("only_check_existence", False) and result.is_available:
+        is_compatible = "Compatible"
+    else:
+        is_compatible = check_compatibility(desired_version, found_version=result.version)
 
     return ToolCheckResult(
         tool=tool,
@@ -76,6 +88,13 @@ def validate(file_path: str = "pyproject.toml") -> list[ToolCheckResult]:
 
 
 def report_from_pyproject_toml(file_path: str = "pyproject.toml", exit_code_on_failure: bool = True):
+    """
+    Report on the compatibility of the tools in the pyproject.toml file.
+
+    Args:
+        file_path (str, optional): The path to the pyproject.toml file. Defaults to "pyproject.toml".
+        exit_code_on_failure (bool, optional): If True, exit with return value of 1 if validation fails. Defaults to True.
+    """
     if not os.path.exists(file_path):
         one_up = os.path.join("..", file_path)
         if os.path.exists(one_up):
@@ -85,18 +104,32 @@ def report_from_pyproject_toml(file_path: str = "pyproject.toml", exit_code_on_f
 
     failed = pretty_print_results(results)
     if failed and exit_code_on_failure:
+        print("Did not pass validation, failing with return value of 1.")
         sys.exit(1)
 
 
 def pretty_print_results(results: list[ToolCheckResult]) -> bool:
+    """
+    Pretty print the results of the validation.
+
+    Args:
+        results (list[ToolCheckResult]): A list of ToolCheckResult objects.
+
+    Returns:
+        bool: True if any of the tools failed validation, False otherwise.
+    """
     # TODO separate out failed logic
-    table = PrettyTable()
+
+    if os.environ.get("NO_COLOR"):
+        table = PrettyTable()
+    else:
+        table = ColorTable(theme=Themes.OCEAN)
     table.field_names = ["Tool", "Found Version", "Desired Version", "Compatible", "Status"]
     # Process the results as they are completed
     failed = False
     for result in results:
         if result.is_broken:
-            status = "Error on execution"
+            status = "Can't run"
             failed = True
         elif not result.is_available:
             status = "Not available"
@@ -106,17 +139,25 @@ def pretty_print_results(results: list[ToolCheckResult]) -> bool:
         if not result.is_compatible:
             failed = True
 
-        table.add_row(
-            [
-                result.tool,
-                result.found_version[0:50] if result.found_version else "N/A",
-                result.desired_version,
-                "Yes" if result.is_compatible == "Compatible" else "No",
-                status,
-            ]
-        )
+        row_data = [
+            result.tool,
+            result.found_version[0:50] if result.found_version else "N/A",
+            result.desired_version,
+            "Yes" if result.is_compatible == "Compatible" else result.is_compatible,
+            status,
+        ]
+        row_transformed = []
+        for datum in row_data:
+            if result.is_compatible != "Compatible" or not result.is_available:
+                transformed = f"{colorama.Fore.RED}{datum}{colorama.Style.RESET_ALL}"
+            else:
+                transformed = datum
+            row_transformed.append(transformed)
+        table.add_row(row_transformed)
+
     # Print the table
     print(table)
+
     return failed
 
 

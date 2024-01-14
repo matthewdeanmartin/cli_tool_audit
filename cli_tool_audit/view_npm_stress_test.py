@@ -6,8 +6,13 @@ from concurrent.futures import ThreadPoolExecutor
 from cli_tool_audit.views import check_tool_wrapper, pretty_print_results
 
 
-def list_global_npm_executables():
-    # try:
+def list_global_npm_executables() -> list[str]:
+    """
+    List the executables in the global node_modules path.
+
+    Returns:
+        list[str]: A list of the executables in the global node_modules path.
+    """
     # Get the global node_modules path
     env = os.environ.copy()
     if os.name == "nt":
@@ -20,15 +25,6 @@ def list_global_npm_executables():
     # List the executables in the bin directory
     executables = os.listdir(node_modules_path)
     return executables
-    # except subprocess.CalledProcessError as e:
-    #     print(f"Error occurred: {e}")
-    #     return []
-    # except FileNotFoundError:
-    #     print("npm is not installed or not found in PATH.")
-    #     return []
-    # except OSError as e:
-    #     print(f"Error reading the bin directory: {e}")
-    #     return []
 
 
 def report_for_npm_tools() -> None:
@@ -61,6 +57,3 @@ def report_for_npm_tools() -> None:
 
 if __name__ == "__main__":
     report_for_npm_tools()
-    # # Example usage
-    # executables = list_global_npm_executables()
-    # print("Global npm executables:", executables)

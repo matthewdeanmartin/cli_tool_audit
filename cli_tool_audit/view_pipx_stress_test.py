@@ -51,11 +51,14 @@ def report_for_pipx_tools() -> None:
     pipx_data = get_pipx_list()
     apps_dict = extract_apps(pipx_data)
 
-    for app, version in apps_dict.items():
-        print(f"{app}: {version}")
+    # for app, version in apps_dict.items():
+    #     print(f"{app}: {version}")
 
     cli_tools = {}
     for app, expected_version in apps_dict.items():
+        if app in ("yated.exe", "calcure.exe", "yated", "calcure", "dedlin.exe", "dedlin"):
+            # These launch interactive process & then time out.
+            continue
         cli_tools[app] = {"version_switch": "--version", "version": f">={expected_version}"}
 
     # Determine the number of available CPUs

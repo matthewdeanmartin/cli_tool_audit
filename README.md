@@ -14,6 +14,19 @@ or can't be determined.
 There is no universal method for getting a version number from a CLI tool, nor is there a universal orderable 
 version number system, so the outcome of many check may be limited to an existence check or exact version number check.
 
+Here is an example run.
+```
+❯ cli_tool_audit
++-----------+-------------------------------------+-----------------+------------+-----------+
+|    Tool   |            Found Version            | Desired Version | Compatible |   Status  |
++-----------+-------------------------------------+-----------------+------------+-----------+
+|   python  |            Python 3.11.1            |     >=3.11.1    |    Yes     | Available |
+|    java   | openjdk version "17.0.6" 2023-01-17 |     >=17.0.6    |    Yes     | Available |
+|           |            OpenJDK Runtim           |                 |            |           |
+|    make   |            GNU Make 3.81            |      >=3.81     |    Yes     | Available |
++-----------+-------------------------------------+-----------------+------------+-----------+
+```
+
 ## Installation
 
 You will need to install it to your virtual environment if tools you are looking for are in your virtual environment.
@@ -45,6 +58,17 @@ pylint = {  version = "^1.0.0", version_switch = "--version" }
 black = {  version = "^1.0.0", version_switch = "--version" }
 pygount = { version = "^1.0.0", version_switch = "--version" }
 ruff = { version = "^1.0.0", version_switch = "--version" }
+```
+
+Demos will discover a bunch of executables as installed in the local virtual environment, installed by pipx or 
+installed by npm. It will then assume that we want the current or any version and run an audit. Since we know these 
+files already exist, the failures are centered on failing to execute, failing to guess the version switch, failure 
+to parse the switch or the 
+tool's version switch returning a version incompatible to what the package manager reports.
+```bash
+cli_tool_audit --demo=pipx --verbose
+cli_tool_audit --demo=venv --verbose
+cli_tool_audit --demo=npm --verbose
 ```
 
 ## Testing

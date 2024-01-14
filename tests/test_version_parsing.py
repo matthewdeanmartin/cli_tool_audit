@@ -20,6 +20,10 @@ Python 3.11.1 (tags/v3.11.1:a7a450f, Dec  6 2022, 19:58:39) [MSC v.1934 64 bit (
 
                     VERSION 5.13.2"""
     assert extract_first_semver_version(example) == "5.13.2"
+    example = """openjdk 17.0.6 2023-01-17
+OpenJDK Runtime Environment Temurin-17.0.6+10 (build 17.0.6+10)
+OpenJDK 64-Bit Server VM Temurin-17.0.6+10 (build 17.0.6+10, mixed mode, sharing)"""
+    assert extract_first_semver_version(example) == "17.0.6"
 
 
 def test_simple_extraction():

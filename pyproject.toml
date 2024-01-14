@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "cli_tool_audit"
-version = "1.0.1"
+version = "1.0.2"
 description = "Audit for existance and vesion number of cli tools."
 authors = ["Matthew Martin <matthewdeanmartin@gmail.com>"]
 keywords = ["cli tooling", "version numbers", ]
@@ -44,6 +44,8 @@ python = ">=3.8"
 whichcraft = ">=0.6.1"
 semver = ">=3.0.2"
 prettytable = ">=3.9.0"
+colorama = "*"
+colorlog = "*"
 
 [tool.poetry.dev-dependencies]
 
@@ -235,3 +237,7 @@ make = { version = ">=3.81" }
 python = { version = ">=3.11.1" }
 terraform = { version = ">=1.2.9" }
 java = { version = ">=17.0.6" }
+# demo of files that don't exist
+doesnotexist = { version = ">=1.0.0" }
+# Just check existence
+notepad = { only_check_existence = true }
