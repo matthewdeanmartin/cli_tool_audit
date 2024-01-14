@@ -1,3 +1,4 @@
+"""Windows specific functions for cli_tool_audit"""
 import winreg
 
 
