@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "cli_tool_audit"
-version = "1.0.2"
+version = "1.0.3"
 description = "Audit for existance and vesion number of cli tools."
 authors = ["Matthew Martin <matthewdeanmartin@gmail.com>"]
 keywords = ["cli tooling", "version numbers", ]
@@ -227,8 +227,8 @@ mypy = {  version = ">=1.0.0" }
 pylint = {  version = ">=1.0.0" }
 black = {  version = ">=1.0.0" }
 pygount = { version = ">=1.6.0" }
-ruff = {  version = ">=0.1.13" }
-vulture = { version = ">=1.0.0" }
+ruff = {  version = "0.*" }
+vulture = { version = "*" }
 
 #cat = {  version = ">=8.32", version_switch = "--version" }
 #bash = {  version = ">=5.2.12", version_switch = "--version" }
@@ -241,3 +241,14 @@ java = { version = ">=17.0.6" }
 doesnotexist = { version = ">=1.0.0" }
 # Just check existence
 notepad = { only_check_existence = true }
+
+rustc = { version = ">=1.67.0" }
+
+"yes.exe" = { version = ">=1.0.0" }
+"yes" = { version = "~1.0.0" }
+podman = { version = "^4.6.0" }
+tesseract = { version = ">=5.1.0.20220510" }
+pandoc = { version = ">=2.7.3" }
+nano = { version = ">=7.1" }
+shellcheck = { version = ">=0.8.0" }
+choco = { version = ">=0.10.13" }

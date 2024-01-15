@@ -6,19 +6,19 @@ def test_not_compatible():
 
 
 def test_compatible():
-    assert check_compatibility(">1.0", "2.0") == "Compatible"
-    assert check_compatibility(">1.0.0", "2.0") == "Compatible"
-    assert check_compatibility(">=2.10", "2.10") == "Compatible"
+    assert check_compatibility(">1.0", "2.0")[0] == "Compatible"
+    assert check_compatibility(">1.0.0", "2.0")[0] == "Compatible"
+    assert check_compatibility(">=2.10", "2.10")[0] == "Compatible"
 
-    assert check_compatibility(">=2.10", "2.10") == "Compatible"
-    assert check_compatibility(">=2.10", "vulture 2.10") == "Compatible"
+    assert check_compatibility(">=2.10", "2.10")[0] == "Compatible"
+    assert check_compatibility(">=2.10", "vulture 2.10")[0] == "Compatible"
 
 
 def test_multiline():
     example = """openjdk 17.0.6 2023-01-17
     OpenJDK Runtime Environment Temurin-17.0.6+10 (build 17.0.6+10)
     OpenJDK 64-Bit Server VM Temurin-17.0.6+10 (build 17.0.6+10, mixed mode, sharing)"""
-    assert check_compatibility(">=17.0.6", example) == "Compatible"
+    assert check_compatibility(">=17.0.6", example)[0] == "Compatible"
 
 
 def test_ascii_art():
@@ -32,4 +32,4 @@ def test_ascii_art():
       isort your imports, so you don't have to.
 
                     VERSION 5.13.2"""
-    assert check_compatibility(">=5.13.2", example) == "Compatible"
+    assert check_compatibility(">=5.13.2", example)[0] == "Compatible"

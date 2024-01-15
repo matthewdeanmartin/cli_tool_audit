@@ -41,6 +41,7 @@ from typing import Optional, cast
 import colorama
 from prettytable import PrettyTable
 from prettytable.colortable import ColorTable, Themes
+from semver import Version
 
 import cli_tool_audit.call_tools as cli_availability
 from cli_tool_audit.compatibility import check_compatibility
@@ -56,6 +57,7 @@ class ToolCheckResult:
     desired_version: str
     is_available: bool
     found_version: Optional[str]
+    parsed_version: Optional[Version]
     is_compatible: str
     is_broken: bool
 
@@ -75,16 +77,18 @@ def check_tool_wrapper(tool_info: tuple[str, dict[str, str]]) -&gt; ToolCheckRes
         tool, config.get(&#34;version_switch&#34;, &#34;--version&#34;), cast(bool, config.get(&#34;only_check_existence&#34;, False))
     )
     desired_version = config.get(&#34;version&#34;, &#34;0.0.0&#34;)
+    parsed_version = None
     if config.get(&#34;only_check_existence&#34;, False) and result.is_available:
         is_compatible = &#34;Compatible&#34;
     else:
-        is_compatible = check_compatibility(desired_version, found_version=result.version)
+        is_compatible, parsed_version = check_compatibility(desired_version, found_version=result.version)
 
     return ToolCheckResult(
         tool=tool,
         desired_version=desired_version,
         is_available=result.is_available,
         found_version=result.version,
+        parsed_version=parsed_version,
         is_compatible=is_compatible,
         is_broken=result.is_broken,
     )
@@ -143,6 +147,7 @@ def pretty_print_results(results: list[ToolCheckResult]) -&gt; bool:
 
     Args:
         results (list[ToolCheckResult]): A list of ToolCheckResult objects.
+
     Returns:
         bool: True if any of the tools failed validation, False otherwise.
     &#34;&#34;&#34;
@@ -152,9 +157,10 @@ def pretty_print_results(results: list[ToolCheckResult]) -&gt; bool:
         table = PrettyTable()
     else:
         table = ColorTable(theme=Themes.OCEAN)
-    table.field_names = [&#34;Tool&#34;, &#34;Found Version&#34;, &#34;Desired Version&#34;, &#34;Compatible&#34;, &#34;Status&#34;]
+    table.field_names = [&#34;Tool&#34;, &#34;Found&#34;, &#34;Parsed&#34;, &#34;Desired Version&#34;, &#34;Compatible&#34;, &#34;Status&#34;]
     # Process the results as they are completed
     failed = False
+    all_rows: list[list[str]] = []
     for result in results:
         if result.is_broken:
             status = &#34;Can&#39;t run&#34;
@@ -169,7 +175,8 @@ def pretty_print_results(results: list[ToolCheckResult]) -&gt; bool:
 
         row_data = [
             result.tool,
-            result.found_version[0:50] if result.found_version else &#34;N/A&#34;,
+            result.found_version[0:35].strip() if result.found_version else &#34;N/A&#34;,
+            result.parsed_version,
             result.desired_version,
             &#34;Yes&#34; if result.is_compatible == &#34;Compatible&#34; else result.is_compatible,
             status,
@@ -179,9 +186,11 @@ def pretty_print_results(results: list[ToolCheckResult]) -&gt; bool:
             if result.is_compatible != &#34;Compatible&#34; or not result.is_available:
                 transformed = f&#34;{colorama.Fore.RED}{datum}{colorama.Style.RESET_ALL}&#34;
             else:
-                transformed = datum
+                transformed = str(datum)
             row_transformed.append(transformed)
-        table.add_row(row_transformed)
+        all_rows.append(row_transformed)
+
+    table.add_rows(sorted(all_rows, key=lambda x: x[0]))
 
     # Print the table
     print(table)
@@ -234,16 +243,18 @@ if __name__ == &#34;__main__&#34;:
         tool, config.get(&#34;version_switch&#34;, &#34;--version&#34;), cast(bool, config.get(&#34;only_check_existence&#34;, False))
     )
     desired_version = config.get(&#34;version&#34;, &#34;0.0.0&#34;)
+    parsed_version = None
     if config.get(&#34;only_check_existence&#34;, False) and result.is_available:
         is_compatible = &#34;Compatible&#34;
     else:
-        is_compatible = check_compatibility(desired_version, found_version=result.version)
+        is_compatible, parsed_version = check_compatibility(desired_version, found_version=result.version)
 
     return ToolCheckResult(
         tool=tool,
         desired_version=desired_version,
         is_available=result.is_available,
         found_version=result.version,
+        parsed_version=parsed_version,
         is_compatible=is_compatible,
         is_broken=result.is_broken,
     )</code></pre>
@@ -274,6 +285,7 @@ if __name__ == &#34;__main__&#34;:
 
     Args:
         results (list[ToolCheckResult]): A list of ToolCheckResult objects.
+
     Returns:
         bool: True if any of the tools failed validation, False otherwise.
     &#34;&#34;&#34;
@@ -283,9 +295,10 @@ if __name__ == &#34;__main__&#34;:
         table = PrettyTable()
     else:
         table = ColorTable(theme=Themes.OCEAN)
-    table.field_names = [&#34;Tool&#34;, &#34;Found Version&#34;, &#34;Desired Version&#34;, &#34;Compatible&#34;, &#34;Status&#34;]
+    table.field_names = [&#34;Tool&#34;, &#34;Found&#34;, &#34;Parsed&#34;, &#34;Desired Version&#34;, &#34;Compatible&#34;, &#34;Status&#34;]
     # Process the results as they are completed
     failed = False
+    all_rows: list[list[str]] = []
     for result in results:
         if result.is_broken:
             status = &#34;Can&#39;t run&#34;
@@ -300,7 +313,8 @@ if __name__ == &#34;__main__&#34;:
 
         row_data = [
             result.tool,
-            result.found_version[0:50] if result.found_version else &#34;N/A&#34;,
+            result.found_version[0:35].strip() if result.found_version else &#34;N/A&#34;,
+            result.parsed_version,
             result.desired_version,
             &#34;Yes&#34; if result.is_compatible == &#34;Compatible&#34; else result.is_compatible,
             status,
@@ -310,9 +324,11 @@ if __name__ == &#34;__main__&#34;:
             if result.is_compatible != &#34;Compatible&#34; or not result.is_available:
                 transformed = f&#34;{colorama.Fore.RED}{datum}{colorama.Style.RESET_ALL}&#34;
             else:
-                transformed = datum
+                transformed = str(datum)
             row_transformed.append(transformed)
-        table.add_row(row_transformed)
+        all_rows.append(row_transformed)
+
+    table.add_rows(sorted(all_rows, key=lambda x: x[0]))
 
     # Print the table
     print(table)
@@ -409,10 +425,10 @@ if __name__ == &#34;__main__&#34;:
 <dl>
 <dt id="cli_tool_audit.views.ToolCheckResult"><code class="flex name class">
 <span>class <span class="ident">ToolCheckResult</span></span>
-<span>(</span><span>tool: str, desired_version: str, is_available: bool, found_version: Optional[str], is_compatible: str, is_broken: bool)</span>
+<span>(</span><span>tool: str, desired_version: str, is_available: bool, found_version: Optional[str], parsed_version: Optional[semver.version.Version], is_compatible: str, is_broken: bool)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>ToolCheckResult(tool: str, desired_version: str, is_available: bool, found_version: Optional[str], is_compatible: str, is_broken: bool)</p></div>
+<div class="desc"><p>ToolCheckResult(tool: str, desired_version: str, is_available: bool, found_version: Optional[str], parsed_version: Optional[semver.version.Version], is_compatible: str, is_broken: bool)</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
@@ -423,6 +439,7 @@ class ToolCheckResult:
     desired_version: str
     is_available: bool
     found_version: Optional[str]
+    parsed_version: Optional[Version]
     is_compatible: str
     is_broken: bool</code></pre>
 </details>
@@ -445,6 +462,10 @@ class ToolCheckResult:
 <div class="desc"></div>
 </dd>
 <dt id="cli_tool_audit.views.ToolCheckResult.is_compatible"><code class="name">var <span class="ident">is_compatible</span> : str</code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="cli_tool_audit.views.ToolCheckResult.parsed_version"><code class="name">var <span class="ident">parsed_version</span> : Optional[semver.version.Version]</code></dt>
 <dd>
 <div class="desc"></div>
 </dd>
@@ -486,6 +507,7 @@ class ToolCheckResult:
 <li><code><a title="cli_tool_audit.views.ToolCheckResult.is_available" href="#cli_tool_audit.views.ToolCheckResult.is_available">is_available</a></code></li>
 <li><code><a title="cli_tool_audit.views.ToolCheckResult.is_broken" href="#cli_tool_audit.views.ToolCheckResult.is_broken">is_broken</a></code></li>
 <li><code><a title="cli_tool_audit.views.ToolCheckResult.is_compatible" href="#cli_tool_audit.views.ToolCheckResult.is_compatible">is_compatible</a></code></li>
+<li><code><a title="cli_tool_audit.views.ToolCheckResult.parsed_version" href="#cli_tool_audit.views.ToolCheckResult.parsed_version">parsed_version</a></code></li>
 <li><code><a title="cli_tool_audit.views.ToolCheckResult.tool" href="#cli_tool_audit.views.ToolCheckResult.tool">tool</a></code></li>
 </ul>
 </li>

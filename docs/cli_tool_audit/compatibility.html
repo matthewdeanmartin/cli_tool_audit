@@ -34,6 +34,9 @@ import logging
 import re
 from typing import Any, Optional
 
+from semver import Version
+
+from cli_tool_audit.compatibility_complex import check_range_compatibility
 from cli_tool_audit.version_parsing import two_pass_semver_parse
 
 logger = logging.getLogger(__name__)
@@ -54,7 +57,7 @@ def split_version_match_pattern(pattern: str) -&gt; tuple[str | Any, ...]:
         &gt;&gt;&gt; split_version_match_pattern(&#34;&gt;=1.1.1&#34;)
         (&#39;&gt;=&#39;, &#39;1.1.1&#39;)
         &gt;&gt;&gt; split_version_match_pattern(&#34;1.1.1&#34;)
-        (None, &#39;1.1.1&#39;)
+        (&#39;&#39;, &#39;1.1.1&#39;)
         &gt;&gt;&gt; split_version_match_pattern(&#34;==1.1.1&#34;)
         (&#39;==&#39;, &#39;1.1.1&#39;)
         &gt;&gt;&gt; split_version_match_pattern(&#34;~=1.1.1&#34;)
@@ -69,7 +72,7 @@ def split_version_match_pattern(pattern: str) -&gt; tuple[str | Any, ...]:
         (&#39;&gt;&#39;, &#39;1.1.1&#39;)
     &#34;&#34;&#34;
     # Regular expression for version match pattern
-    match_pattern_regex = r&#34;(&gt;=|&lt;=|!=|&gt;|&lt;|==|~=)?(.*)&#34;
+    match_pattern_regex = r&#34;(&gt;=|&lt;=|!=|&gt;|&lt;|==|~=|~|^)?(.*)&#34;
 
     # Search for the pattern
     match = re.match(match_pattern_regex, pattern)
@@ -83,7 +86,7 @@ def split_version_match_pattern(pattern: str) -&gt; tuple[str | Any, ...]:
 CANT_TELL = &#34;Can&#39;t tell&#34;
 
 
-def check_compatibility(desired_version: str, found_version: Optional[str]) -&gt; str:
+def check_compatibility(desired_version: str, found_version: Optional[str]) -&gt; tuple[str, Version | None]:
     &#34;&#34;&#34;
     Check if a found version is compatible with a desired version. Uses semantic versioning.
     When a version isn&#39;t semver, we attempt to convert it to semver.
@@ -94,18 +97,19 @@ def check_compatibility(desired_version: str, found_version: Optional[str]) -&gt
 
     Returns:
         str: A string indicating if the versions are compatible or not.
+        Version: The parsed version if found.
 
     Examples:
         &gt;&gt;&gt; check_compatibility(&#34;&gt;=1.1.1&#34;, &#34;1.1.1&#34;)
-        &#39;Compatible&#39;
+        (&#39;Compatible&#39;, Version(major=1, minor=1, patch=1, prerelease=None, build=None))
         &gt;&gt;&gt; check_compatibility(&#34;&gt;=1.1.1&#34;, &#34;1.1.0&#34;)
-        &#39;&gt;=1.1.1 != 1.1.0&#39;
+        (&#39;&gt;=1.1.1 != 1.1.0&#39;, Version(major=1, minor=1, patch=0, prerelease=None, build=None))
         &gt;&gt;&gt; check_compatibility(&#34;&gt;=1.1.1&#34;, &#34;1.1.2&#34;)
-        &#39;Compatible&#39;
+        (&#39;Compatible&#39;, Version(major=1, minor=1, patch=2, prerelease=None, build=None))
     &#34;&#34;&#34;
     if not found_version:
         logger.info(f&#34;Tool provided no versions, so can&#39;t tell. {desired_version}/{found_version}&#34;)
-        return CANT_TELL
+        return CANT_TELL, None
 
     # desired is a match expression, e.g. &gt;=1.1.1
 
@@ -115,11 +119,14 @@ def check_compatibility(desired_version: str, found_version: Optional[str]) -&gt
     if clean_desired_version:
         desired_version = f&#34;{symbols}{clean_desired_version}&#34;
 
+    found_semversion = None
     try:
         found_semversion = two_pass_semver_parse(found_version)
         if found_semversion is None:
             logger.warning(f&#34;SemVer failed to parse {desired_version}/{found_version}&#34;)
             is_compatible = CANT_TELL
+        elif desired_version.startswith(&#34;^&#34;) or desired_version.startswith(&#34;~&#34;):
+            is_compatible = check_range_compatibility(desired_version, found_semversion)
         elif found_semversion.match(desired_version):
             is_compatible = &#34;Compatible&#34;
         else:
@@ -130,7 +137,11 @@ def check_compatibility(desired_version: str, found_version: Optional[str]) -&gt
     except TypeError as te:
         logger.warning(f&#34;Can&#39;t tell {desired_version}/{found_version}: {te}&#34;)
         is_compatible = CANT_TELL
-    return is_compatible</code></pre>
+    return is_compatible, found_semversion
+
+
+if __name__ == &#34;__main__&#34;:
+    print(check_compatibility(&#34;^1.0.0&#34;, &#34;8.2.3&#34;))</code></pre>
 </details>
 </section>
 <section>
@@ -141,7 +152,7 @@ def check_compatibility(desired_version: str, found_version: Optional[str]) -&gt
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
 <dt id="cli_tool_audit.compatibility.check_compatibility"><code class="name flex">
-<span>def <span class="ident">check_compatibility</span></span>(<span>desired_version: str, found_version: Optional[str]) ‑> str</span>
+<span>def <span class="ident">check_compatibility</span></span>(<span>desired_version: str, found_version: Optional[str]) ‑> tuple[str, semver.version.Version | None]</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Check if a found version is compatible with a desired version. Uses semantic versioning.
@@ -157,20 +168,22 @@ When a version isn't semver, we attempt to convert it to semver.</p>
 <dl>
 <dt><code>str</code></dt>
 <dd>A string indicating if the versions are compatible or not.</dd>
+<dt><code>Version</code></dt>
+<dd>The parsed version if found.</dd>
 </dl>
 <h2 id="examples">Examples</h2>
 <pre><code class="language-python-repl">&gt;&gt;&gt; check_compatibility(&quot;&gt;=1.1.1&quot;, &quot;1.1.1&quot;)
-'Compatible'
+('Compatible', Version(major=1, minor=1, patch=1, prerelease=None, build=None))
 &gt;&gt;&gt; check_compatibility(&quot;&gt;=1.1.1&quot;, &quot;1.1.0&quot;)
-'&gt;=1.1.1 != 1.1.0'
+('&gt;=1.1.1 != 1.1.0', Version(major=1, minor=1, patch=0, prerelease=None, build=None))
 &gt;&gt;&gt; check_compatibility(&quot;&gt;=1.1.1&quot;, &quot;1.1.2&quot;)
-'Compatible'
+('Compatible', Version(major=1, minor=1, patch=2, prerelease=None, build=None))
 </code></pre></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def check_compatibility(desired_version: str, found_version: Optional[str]) -&gt; str:
+<pre><code class="python">def check_compatibility(desired_version: str, found_version: Optional[str]) -&gt; tuple[str, Version | None]:
     &#34;&#34;&#34;
     Check if a found version is compatible with a desired version. Uses semantic versioning.
     When a version isn&#39;t semver, we attempt to convert it to semver.
@@ -181,18 +194,19 @@ When a version isn't semver, we attempt to convert it to semver.</p>
 
     Returns:
         str: A string indicating if the versions are compatible or not.
+        Version: The parsed version if found.
 
     Examples:
         &gt;&gt;&gt; check_compatibility(&#34;&gt;=1.1.1&#34;, &#34;1.1.1&#34;)
-        &#39;Compatible&#39;
+        (&#39;Compatible&#39;, Version(major=1, minor=1, patch=1, prerelease=None, build=None))
         &gt;&gt;&gt; check_compatibility(&#34;&gt;=1.1.1&#34;, &#34;1.1.0&#34;)
-        &#39;&gt;=1.1.1 != 1.1.0&#39;
+        (&#39;&gt;=1.1.1 != 1.1.0&#39;, Version(major=1, minor=1, patch=0, prerelease=None, build=None))
         &gt;&gt;&gt; check_compatibility(&#34;&gt;=1.1.1&#34;, &#34;1.1.2&#34;)
-        &#39;Compatible&#39;
+        (&#39;Compatible&#39;, Version(major=1, minor=1, patch=2, prerelease=None, build=None))
     &#34;&#34;&#34;
     if not found_version:
         logger.info(f&#34;Tool provided no versions, so can&#39;t tell. {desired_version}/{found_version}&#34;)
-        return CANT_TELL
+        return CANT_TELL, None
 
     # desired is a match expression, e.g. &gt;=1.1.1
 
@@ -202,11 +216,14 @@ When a version isn't semver, we attempt to convert it to semver.</p>
     if clean_desired_version:
         desired_version = f&#34;{symbols}{clean_desired_version}&#34;
 
+    found_semversion = None
     try:
         found_semversion = two_pass_semver_parse(found_version)
         if found_semversion is None:
             logger.warning(f&#34;SemVer failed to parse {desired_version}/{found_version}&#34;)
             is_compatible = CANT_TELL
+        elif desired_version.startswith(&#34;^&#34;) or desired_version.startswith(&#34;~&#34;):
+            is_compatible = check_range_compatibility(desired_version, found_semversion)
         elif found_semversion.match(desired_version):
             is_compatible = &#34;Compatible&#34;
         else:
@@ -217,7 +234,7 @@ When a version isn't semver, we attempt to convert it to semver.</p>
     except TypeError as te:
         logger.warning(f&#34;Can&#39;t tell {desired_version}/{found_version}: {te}&#34;)
         is_compatible = CANT_TELL
-    return is_compatible</code></pre>
+    return is_compatible, found_semversion</code></pre>
 </details>
 </dd>
 <dt id="cli_tool_audit.compatibility.split_version_match_pattern"><code class="name flex">
@@ -240,7 +257,7 @@ being the version number.</dd>
 <pre><code class="language-python-repl">&gt;&gt;&gt; split_version_match_pattern(&quot;&gt;=1.1.1&quot;)
 ('&gt;=', '1.1.1')
 &gt;&gt;&gt; split_version_match_pattern(&quot;1.1.1&quot;)
-(None, '1.1.1')
+('', '1.1.1')
 &gt;&gt;&gt; split_version_match_pattern(&quot;==1.1.1&quot;)
 ('==', '1.1.1')
 &gt;&gt;&gt; split_version_match_pattern(&quot;~=1.1.1&quot;)
@@ -273,7 +290,7 @@ being the version number.</dd>
         &gt;&gt;&gt; split_version_match_pattern(&#34;&gt;=1.1.1&#34;)
         (&#39;&gt;=&#39;, &#39;1.1.1&#39;)
         &gt;&gt;&gt; split_version_match_pattern(&#34;1.1.1&#34;)
-        (None, &#39;1.1.1&#39;)
+        (&#39;&#39;, &#39;1.1.1&#39;)
         &gt;&gt;&gt; split_version_match_pattern(&#34;==1.1.1&#34;)
         (&#39;==&#39;, &#39;1.1.1&#39;)
         &gt;&gt;&gt; split_version_match_pattern(&#34;~=1.1.1&#34;)
@@ -288,7 +305,7 @@ being the version number.</dd>
         (&#39;&gt;&#39;, &#39;1.1.1&#39;)
     &#34;&#34;&#34;
     # Regular expression for version match pattern
-    match_pattern_regex = r&#34;(&gt;=|&lt;=|!=|&gt;|&lt;|==|~=)?(.*)&#34;
+    match_pattern_regex = r&#34;(&gt;=|&lt;=|!=|&gt;|&lt;|==|~=|~|^)?(.*)&#34;
 
     # Search for the pattern
     match = re.match(match_pattern_regex, pattern)

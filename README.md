@@ -39,8 +39,18 @@ pipx install cli-tool-audit
 ## Usage
 
 CLI usage
-```shell
-cli-tool-audit [--config=pyproject.toml]
+```
+❯ cli_tool_audit --help
+usage: cli_tool_audit [-h] [--version] [--config CONFIG] [--verbose] [--demo DEMO]
+
+Audit version numbers of CLI tools.
+
+options:
+  -h, --help       show this help message and exit
+  --version        Show program's version number and exit.
+  --config CONFIG  Path to the configuration file in TOML format.
+  --verbose        verbose output
+  --demo DEMO      Demo for values of npm, pipx or venv
 ```
 
 ```python
@@ -52,7 +62,7 @@ print(cli_tool_audit.validate(config="pyproject.toml"))
 The configuration file lists the tools you expect how hints on how detect the version.
 ```toml
 [tool.cli-tools]
-pipx = { description = "Python package installer for applications", version = "^1.0.0", version_switch = "--version" }
+pipx = { version = "^1.0.0", version_switch = "--version" }
 mypy = { version = "^1.0.0", version_switch = "--version" }
 pylint = {  version = "^1.0.0", version_switch = "--version" }
 black = {  version = "^1.0.0", version_switch = "--version" }
@@ -71,32 +81,33 @@ cli_tool_audit --demo=venv --verbose
 cli_tool_audit --demo=npm --verbose
 ```
 
-## Testing
+## How does this relate to package managers, e.g. apt, pipx, npm, choco, etc.
 
-You can check that all pipx installed tools are compatible with the package-declared version. Sometimes they are not,
-sometimes the tool fails to run, sometimes the tool doesn't support any known `--version` switch.
+Package managers do far more than check for the existence of a tool. They will install it, at the desired version 
+and make sure that tools and their transitive dependencies are compatible.
 
-```bash
-python -m cli_tool_audit.pipx_stress_test
+What they can't do is verify what other package managers have done.
+
+This captures your desired tools, versions and guarantees you have them by installing them.
+```shell
+# list everything available on one machine
+pip freeze>requirements.txt
+# install it on another.
+pip install -r requirements.txt
 ```
 
-You can check that all tools in the current virtual environment are at least version 0.0.0.
-
-```bash
-python -m cli_tool_audit.venv_stress_test
+This is the same thing, but for windows and .net centric apps.
+```shell
+choco export requirements.txt
+choco install -y requirements.txt
 ```
 
-Just running the file will check anything configured in `pyproject.toml`
+There are similar patterns, for apt, brew, npm, and so on.
 
-```bash
-python -m cli_tool_audit
-```
+It would be foolish to try to create a package manager that supports other package managers, so features in that 
+vein are out of scope.
 
 ## Prior Art
-
-If your cli tools are all installed by a package manager, you could use the package manager's manifest, e.g. 
-pyproject.toml for poetry. If your CLI tools are installed by a variety of package managers, or not installed but 
-just copied to a location on the PATH, then this may not help.
 
 - [tool-audit](https://github.com/jstutters/toolaudit)
 - [dotnet-tool-list](https://learn.microsoft.com/en-us/dotnet/core/tools/dotnet-tool-list)

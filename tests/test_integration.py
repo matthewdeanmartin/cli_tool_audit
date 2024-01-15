@@ -8,5 +8,8 @@ def test_with_live_tools() -> None:
     cli_tools = cli_tool_audit.read_config(file_path)
 
     for tool, config in cli_tools.items():
-        is_available, is_broken, version = cli_tool_audit.check_tool_availability(tool, config.get("version_switch"))
-        print(f"{tool}: {'Available' if is_available else 'Not Available'} - Version: {version if version else 'N/A'}")
+        result = cli_tool_audit.check_tool_availability(tool, config.get("version_switch"))
+        print(
+            f"{tool}: {'Available' if result.is_available else 'Not Available'}"
+            f" - Version: { result.version if  result.version else 'N/A'}"
+        )

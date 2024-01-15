@@ -12,6 +12,7 @@ from typing import Optional, cast
 import colorama
 from prettytable import PrettyTable
 from prettytable.colortable import ColorTable, Themes
+from semver import Version
 
 import cli_tool_audit.call_tools as cli_availability
 from cli_tool_audit.compatibility import check_compatibility
@@ -27,6 +28,7 @@ class ToolCheckResult:
     desired_version: str
     is_available: bool
     found_version: Optional[str]
+    parsed_version: Optional[Version]
     is_compatible: str
     is_broken: bool
 
@@ -46,16 +48,18 @@ def check_tool_wrapper(tool_info: tuple[str, dict[str, str]]) -> ToolCheckResult
         tool, config.get("version_switch", "--version"), cast(bool, config.get("only_check_existence", False))
     )
     desired_version = config.get("version", "0.0.0")
+    parsed_version = None
     if config.get("only_check_existence", False) and result.is_available:
         is_compatible = "Compatible"
     else:
-        is_compatible = check_compatibility(desired_version, found_version=result.version)
+        is_compatible, parsed_version = check_compatibility(desired_version, found_version=result.version)
 
     return ToolCheckResult(
         tool=tool,
         desired_version=desired_version,
         is_available=result.is_available,
         found_version=result.version,
+        parsed_version=parsed_version,
         is_compatible=is_compatible,
         is_broken=result.is_broken,
     )
@@ -124,9 +128,10 @@ def pretty_print_results(results: list[ToolCheckResult]) -> bool:
         table = PrettyTable()
     else:
         table = ColorTable(theme=Themes.OCEAN)
-    table.field_names = ["Tool", "Found Version", "Desired Version", "Compatible", "Status"]
+    table.field_names = ["Tool", "Found", "Parsed", "Desired Version", "Compatible", "Status"]
     # Process the results as they are completed
     failed = False
+    all_rows: list[list[str]] = []
     for result in results:
         if result.is_broken:
             status = "Can't run"
@@ -141,7 +146,8 @@ def pretty_print_results(results: list[ToolCheckResult]) -> bool:
 
         row_data = [
             result.tool,
-            result.found_version[0:50] if result.found_version else "N/A",
+            result.found_version[0:35].strip() if result.found_version else "N/A",
+            result.parsed_version,
             result.desired_version,
             "Yes" if result.is_compatible == "Compatible" else result.is_compatible,
             status,
@@ -151,9 +157,11 @@ def pretty_print_results(results: list[ToolCheckResult]) -> bool:
             if result.is_compatible != "Compatible" or not result.is_available:
                 transformed = f"{colorama.Fore.RED}{datum}{colorama.Style.RESET_ALL}"
             else:
-                transformed = datum
+                transformed = str(datum)
             row_transformed.append(transformed)
-        table.add_row(row_transformed)
+        all_rows.append(row_transformed)
+
+    table.add_rows(sorted(all_rows, key=lambda x: x[0]))
 
     # Print the table
     print(table)
