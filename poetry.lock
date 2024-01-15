@@ -1100,6 +1100,17 @@ files = [
 ]
 
 [[package]]
+name = "types-colorama"
+version = "0.4.15.20240106"
+description = "Typing stubs for colorama"
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "types-colorama-0.4.15.20240106.tar.gz", hash = "sha256:49096b4c4cbfcaa11699a0470c36e4f5631f193fb980188e013ea64445d35656"},
+    {file = "types_colorama-0.4.15.20240106-py3-none-any.whl", hash = "sha256:18294bc18f60dc0b4895de8119964a5d895f5e180c2d1308fdd33009c0fa0f38"},
+]
+
+[[package]]
 name = "types-toml"
 version = "0.10.8.7"
 description = "Typing stubs for toml"
@@ -1197,4 +1208,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.8"
-content-hash = "91a66ffdae3cf9d603af9b4648ac32fe12201ccf9b3555c0236f953dcd910756"
+content-hash = "a06c08259c9cb44b50af8cf9d87ac1d5ad38ca72bfedc9476f9824ec9d029f69"

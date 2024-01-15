@@ -48,6 +48,7 @@ colorama = "*"
 colorlog = "*"
 
 [tool.poetry.dev-dependencies]
+tomlkit = "*"
 
 # build tools
 black = ">=23.11.0"
@@ -59,6 +60,7 @@ ruff = ">=0.1.9"
 # types
 mypy = ">=1.8.0"
 types-toml = "*"
+types-colorama ="*"
 
 # more testing
 # pytest-snapshot = ">=0.9.0"
@@ -233,7 +235,6 @@ vulture = { version = "*" }
 #cat = {  version = ">=8.32", version_switch = "--version" }
 #bash = {  version = ">=5.2.12", version_switch = "--version" }
 make = { version = ">=3.81" }
-
 python = { version = ">=3.11.1" }
 terraform = { version = ">=1.2.9" }
 java = { version = ">=17.0.6" }
@@ -241,9 +242,7 @@ java = { version = ">=17.0.6" }
 doesnotexist = { version = ">=1.0.0" }
 # Just check existence
 notepad = { only_check_existence = true }
-
 rustc = { version = ">=1.67.0" }
-
 "yes.exe" = { version = ">=1.0.0" }
 "yes" = { version = "~1.0.0" }
 podman = { version = "^4.6.0" }
@@ -252,3 +251,16 @@ pandoc = { version = ">=2.7.3" }
 nano = { version = ">=7.1" }
 shellcheck = { version = ">=0.8.0" }
 choco = { version = ">=0.10.13" }
+
+
+
+#[tool.cli-tools]
+#foobar = {  version = ">=1.0.0"}
+#foo = {  version = ">=1.0.0", version_switch = "version" }
+#bar = {  version = ">=1.0.0", version_switch = "-v" }
+#notepad = { only_check_existence = true }
+#tesseract = { version = ">=5.1.0.20220510", schema="fourpart" }
+#winver = { version = ">=1.0.0", if_os="win" }
+#blerg = { version_stamp = "blerg v1-2 (Jan 2024) 64bit", if_os="win" }
+#winapp = {version =">=1.2.3.4", schema="dotnet", if_os="win", source="registry"}
+#winthing = {version =">=1.2.3", schema="semver", if_os="win", source="fileversioninfo"}
