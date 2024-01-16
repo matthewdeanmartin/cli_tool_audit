@@ -103,8 +103,18 @@ docker:
 	docker build -t cli_tool_audit -f Dockerfile .
 
 check_docs:
-	interrogate cli_tool_audit --verbose
-	pydoctest --config .pydoctest.json | grep -v "__init__" | grep -v "__main__" | grep -v "Unable to parse"
+	$(VENV) interrogate cli_tool_audit --verbose
+	$(VENV) pydoctest --config .pydoctest.json | grep -v "__init__" | grep -v "__main__" | grep -v "Unable to parse"
 
 make_docs:
 	pdoc cli_tool_audit --html -o docs --force
+
+check_md:
+	$(VENV) mdformat README.md docs/*.md
+	# $(VENV) linkcheckMarkdown README.md # it is attempting to validate ssl certs
+	$(VENV) markdownlint README.md --config .markdownlintrc
+
+check_spelling:
+	$(VENV) pylint cli_tool_audit --enable C0402 --rcfile=.pylintrc_spell
+	$(VENV) codespell README.md --ignore-words=private_dictionary.txt
+	$(VENV) codespell cli_tool_audit --ignore-words=private_dictionary.txt

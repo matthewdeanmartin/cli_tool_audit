@@ -20,7 +20,7 @@ from typing import Optional
 # pylint: disable=no-name-in-module
 from whichcraft import which
 
-from cli_tool_audit.known_swtiches import KNOWN_SWITCHES
+from cli_tool_audit.known_switches import KNOWN_SWITCHES
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +38,13 @@ class ToolAvailabilityResult:
 
 
 def get_command_last_modified_date(tool_name: str) -> Optional[datetime.datetime]:
+    """
+    Get the last modified date of a command's executable.
+    Args:
+        tool_name (str): The name of the command.
+    Returns:
+        Optional[datetime.datetime]: The last modified date of the command's executable.
+    """
     # Find the path of the command's executable
     result = which(tool_name)
     if result is None:

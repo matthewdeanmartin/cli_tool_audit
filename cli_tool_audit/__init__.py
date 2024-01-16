@@ -1,5 +1,7 @@
 """
 Audit CLI tool version numbers.
+
+.. include:: ../README.md
 """
 __all__ = ["validate", "read_config", "check_tool_availability", "__version__"]
 

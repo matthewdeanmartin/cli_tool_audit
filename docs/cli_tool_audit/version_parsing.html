@@ -97,25 +97,30 @@ def extract_first_semver_version(input_string: str) -&gt; Optional[str]:
 
 
 # packaging.version.Version
-def convert2semver(ver: packaging.version.Version) -&gt; semver.Version:
+def convert2semver(version: packaging.version.Version) -&gt; semver.Version:
     &#34;&#34;&#34;Converts a PyPI version into a semver version
 
-    :param ver: the PyPI version
-    :return: a semver version
-    :raises ValueError: if epoch or post parts are used
+    Args:
+        version (packaging.version.Version): the PyPI version
+
+    Returns:
+        semver.Version: the semver version
+
+    Raises:
+        ValueError: if epoch or post parts are used
     &#34;&#34;&#34;
-    if ver.epoch:
+    if version.epoch:
         raise ValueError(&#34;Can&#39;t convert an epoch to semver&#34;)
-    if ver.post:
+    if version.post:
         raise ValueError(&#34;Can&#39;t convert a post part to semver&#34;)
 
-    pre = None if not ver.pre else &#34;&#34;.join([str(i) for i in ver.pre])
+    pre = None if not version.pre else &#34;&#34;.join([str(i) for i in version.pre])
 
-    if len(ver.release) == 3:
-        major, minor, patch = ver.release
-        return semver.Version(major, minor, patch, prerelease=pre, build=ver.dev)
-    major, minor = ver.release
-    return semver.Version(major, minor, prerelease=pre, build=ver.dev)
+    if len(version.release) == 3:
+        major, minor, patch = version.release
+        return semver.Version(major, minor, patch, prerelease=pre, build=version.dev)
+    major, minor = version.release
+    return semver.Version(major, minor, prerelease=pre, build=version.dev)
 
 
 def two_pass_semver_parse(input_string: str) -&gt; Optional[Version]:
@@ -204,36 +209,53 @@ if __name__ == &#34;__main__&#34;:
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
 <dt id="cli_tool_audit.version_parsing.convert2semver"><code class="name flex">
-<span>def <span class="ident">convert2semver</span></span>(<span>ver: packaging.version.Version) ‑> semver.version.Version</span>
+<span>def <span class="ident">convert2semver</span></span>(<span>version: packaging.version.Version) ‑> semver.version.Version</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Converts a PyPI version into a semver version</p>
-<p>:param ver: the PyPI version
-:return: a semver version
-:raises ValueError: if epoch or post parts are used</p></div>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>version</code></strong> :&ensp;<code>packaging.version.Version</code></dt>
+<dd>the PyPI version</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code>semver.Version</code></dt>
+<dd>the semver version</dd>
+</dl>
+<h2 id="raises">Raises</h2>
+<dl>
+<dt><code>ValueError</code></dt>
+<dd>if epoch or post parts are used</dd>
+</dl></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def convert2semver(ver: packaging.version.Version) -&gt; semver.Version:
+<pre><code class="python">def convert2semver(version: packaging.version.Version) -&gt; semver.Version:
     &#34;&#34;&#34;Converts a PyPI version into a semver version
 
-    :param ver: the PyPI version
-    :return: a semver version
-    :raises ValueError: if epoch or post parts are used
+    Args:
+        version (packaging.version.Version): the PyPI version
+
+    Returns:
+        semver.Version: the semver version
+
+    Raises:
+        ValueError: if epoch or post parts are used
     &#34;&#34;&#34;
-    if ver.epoch:
+    if version.epoch:
         raise ValueError(&#34;Can&#39;t convert an epoch to semver&#34;)
-    if ver.post:
+    if version.post:
         raise ValueError(&#34;Can&#39;t convert a post part to semver&#34;)
 
-    pre = None if not ver.pre else &#34;&#34;.join([str(i) for i in ver.pre])
+    pre = None if not version.pre else &#34;&#34;.join([str(i) for i in version.pre])
 
-    if len(ver.release) == 3:
-        major, minor, patch = ver.release
-        return semver.Version(major, minor, patch, prerelease=pre, build=ver.dev)
-    major, minor = ver.release
-    return semver.Version(major, minor, prerelease=pre, build=ver.dev)</code></pre>
+    if len(version.release) == 3:
+        major, minor, patch = version.release
+        return semver.Version(major, minor, patch, prerelease=pre, build=version.dev)
+    major, minor = version.release
+    return semver.Version(major, minor, prerelease=pre, build=version.dev)</code></pre>
 </details>
 </dd>
 <dt id="cli_tool_audit.version_parsing.extract_first_semver_version"><code class="name flex">

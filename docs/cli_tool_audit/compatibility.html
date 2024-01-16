@@ -134,11 +134,11 @@ def check_compatibility(desired_version: str, found_version: Optional[str]) -&gt
             is_compatible = &#34;Compatible&#34;
         else:
             is_compatible = f&#34;{desired_version} != {found_semversion}&#34;
-    except ValueError as ve:
-        logger.warning(f&#34;Can&#39;t tell {desired_version}/{found_version}: {ve}&#34;)
+    except ValueError as value_error:
+        logger.warning(f&#34;Can&#39;t tell {desired_version}/{found_version}: {value_error}&#34;)
         is_compatible = CANT_TELL
-    except TypeError as te:
-        logger.warning(f&#34;Can&#39;t tell {desired_version}/{found_version}: {te}&#34;)
+    except TypeError as type_error:
+        logger.warning(f&#34;Can&#39;t tell {desired_version}/{found_version}: {type_error}&#34;)
         is_compatible = CANT_TELL
     return is_compatible, found_semversion
 
@@ -234,11 +234,11 @@ When a version isn't semver, we attempt to convert it to semver.</p>
             is_compatible = &#34;Compatible&#34;
         else:
             is_compatible = f&#34;{desired_version} != {found_semversion}&#34;
-    except ValueError as ve:
-        logger.warning(f&#34;Can&#39;t tell {desired_version}/{found_version}: {ve}&#34;)
+    except ValueError as value_error:
+        logger.warning(f&#34;Can&#39;t tell {desired_version}/{found_version}: {value_error}&#34;)
         is_compatible = CANT_TELL
-    except TypeError as te:
-        logger.warning(f&#34;Can&#39;t tell {desired_version}/{found_version}: {te}&#34;)
+    except TypeError as type_error:
+        logger.warning(f&#34;Can&#39;t tell {desired_version}/{found_version}: {type_error}&#34;)
         is_compatible = CANT_TELL
     return is_compatible, found_semversion</code></pre>
 </details>

@@ -17,7 +17,7 @@ def read_config(file_path: str) -> dict[str, CliToolConfig]:
         file_path (str): The path to the pyproject.toml file.
 
     Returns:
-        dict[str, dict[str, str]]: A dictionary with the cli-tools section.
+        dict[str, CliToolConfig]: A dictionary with the cli-tools section.
     """
     # pylint: disable=broad-exception-caught
     try:

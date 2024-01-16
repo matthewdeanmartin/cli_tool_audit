@@ -26,7 +26,8 @@
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">import os
+<pre><code class="python">import copy
+import os
 from dataclasses import dataclass
 from typing import Any, Optional, cast
 
@@ -62,6 +63,9 @@ class ConfigManager:
     def read_config(self) -&gt; bool:
         &#34;&#34;&#34;
         Read the cli-tools section from a toml file.
+
+        Returns:
+            bool: True if the cli-tools section exists, False otherwise.
         &#34;&#34;&#34;
         if os.path.exists(self.config_path):
             with open(self.config_path, encoding=&#34;utf-8&#34;) as file:
@@ -74,9 +78,13 @@ class ConfigManager:
     def create_tool_config(self, tool_name: str, config: dict) -&gt; None:
         &#34;&#34;&#34;
         Create a new tool config.
+
         Args:
             tool_name (str): The name of the tool.
             config (dict): The config for the tool.
+
+        Raises:
+            ValueError: If the tool already exists.
         &#34;&#34;&#34;
         if not self.tools:
             self.read_config()
@@ -91,6 +99,9 @@ class ConfigManager:
         Args:
             tool_name (str): The name of the tool.
             config (dict): The config for the tool.
+
+        Raises:
+            ValueError: If the tool does not exist.
         &#34;&#34;&#34;
         if not self.tools:
             self.read_config()
@@ -125,7 +136,7 @@ class ConfigManager:
         if not self.tools:
             self.read_config()
         if tool_name not in self.tools:
-            raise ValueError(f&#34;Tool {tool_name} does not exist&#34;)
+            return
         del self.tools[tool_name]
         self._save_config()
 
@@ -157,6 +168,11 @@ class ConfigManager:
                     else:
                         inline_table[key] = value
             cast(Any, cast(Any, config[&#34;tool&#34;])[&#34;cli-tools&#34;])[tool_name] = inline_table
+
+        # Handle deletes
+        for tool in copy.deepcopy(cast(Any, cast(Any, config[&#34;tool&#34;])[&#34;cli-tools&#34;])):
+            if tool not in self.tools:
+                del cast(Any, cast(Any, config[&#34;tool&#34;])[&#34;cli-tools&#34;])[tool]
 
         # Write the entire config back to the file
         with open(self.config_path, &#34;w&#34;, encoding=&#34;utf-8&#34;) as file:
@@ -267,6 +283,9 @@ class CliToolConfig:
     def read_config(self) -&gt; bool:
         &#34;&#34;&#34;
         Read the cli-tools section from a toml file.
+
+        Returns:
+            bool: True if the cli-tools section exists, False otherwise.
         &#34;&#34;&#34;
         if os.path.exists(self.config_path):
             with open(self.config_path, encoding=&#34;utf-8&#34;) as file:
@@ -279,9 +298,13 @@ class CliToolConfig:
     def create_tool_config(self, tool_name: str, config: dict) -&gt; None:
         &#34;&#34;&#34;
         Create a new tool config.
+
         Args:
             tool_name (str): The name of the tool.
             config (dict): The config for the tool.
+
+        Raises:
+            ValueError: If the tool already exists.
         &#34;&#34;&#34;
         if not self.tools:
             self.read_config()
@@ -296,6 +319,9 @@ class CliToolConfig:
         Args:
             tool_name (str): The name of the tool.
             config (dict): The config for the tool.
+
+        Raises:
+            ValueError: If the tool does not exist.
         &#34;&#34;&#34;
         if not self.tools:
             self.read_config()
@@ -330,7 +356,7 @@ class CliToolConfig:
         if not self.tools:
             self.read_config()
         if tool_name not in self.tools:
-            raise ValueError(f&#34;Tool {tool_name} does not exist&#34;)
+            return
         del self.tools[tool_name]
         self._save_config()
 
@@ -363,6 +389,11 @@ class CliToolConfig:
                         inline_table[key] = value
             cast(Any, cast(Any, config[&#34;tool&#34;])[&#34;cli-tools&#34;])[tool_name] = inline_table
 
+        # Handle deletes
+        for tool in copy.deepcopy(cast(Any, cast(Any, config[&#34;tool&#34;])[&#34;cli-tools&#34;])):
+            if tool not in self.tools:
+                del cast(Any, cast(Any, config[&#34;tool&#34;])[&#34;cli-tools&#34;])[tool]
+
         # Write the entire config back to the file
         with open(self.config_path, &#34;w&#34;, encoding=&#34;utf-8&#34;) as file:
             file.write(tomlkit.dumps(config))</code></pre>
@@ -380,6 +411,11 @@ class CliToolConfig:
 <dd>The name of the tool.</dd>
 <dt><strong><code>config</code></strong> :&ensp;<code>dict</code></dt>
 <dd>The config for the tool.</dd>
+</dl>
+<h2 id="raises">Raises</h2>
+<dl>
+<dt><code>ValueError</code></dt>
+<dd>If the tool already exists.</dd>
 </dl></div>
 <details class="source">
 <summary>
@@ -388,9 +424,13 @@ class CliToolConfig:
 <pre><code class="python">def create_tool_config(self, tool_name: str, config: dict) -&gt; None:
     &#34;&#34;&#34;
     Create a new tool config.
+
     Args:
         tool_name (str): The name of the tool.
         config (dict): The config for the tool.
+
+    Raises:
+        ValueError: If the tool already exists.
     &#34;&#34;&#34;
     if not self.tools:
         self.read_config()
@@ -456,7 +496,7 @@ class CliToolConfig:
     if not self.tools:
         self.read_config()
     if tool_name not in self.tools:
-        raise ValueError(f&#34;Tool {tool_name} does not exist&#34;)
+        return
     del self.tools[tool_name]
     self._save_config()</code></pre>
 </details>
@@ -465,7 +505,12 @@ class CliToolConfig:
 <span>def <span class="ident">read_config</span></span>(<span>self) ‑> bool</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Read the cli-tools section from a toml file.</p></div>
+<div class="desc"><p>Read the cli-tools section from a toml file.</p>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code>bool</code></dt>
+<dd>True if the cli-tools section exists, False otherwise.</dd>
+</dl></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
@@ -473,6 +518,9 @@ class CliToolConfig:
 <pre><code class="python">def read_config(self) -&gt; bool:
     &#34;&#34;&#34;
     Read the cli-tools section from a toml file.
+
+    Returns:
+        bool: True if the cli-tools section exists, False otherwise.
     &#34;&#34;&#34;
     if os.path.exists(self.config_path):
         with open(self.config_path, encoding=&#34;utf-8&#34;) as file:
@@ -494,6 +542,11 @@ class CliToolConfig:
 <dd>The name of the tool.</dd>
 <dt><strong><code>config</code></strong> :&ensp;<code>dict</code></dt>
 <dd>The config for the tool.</dd>
+</dl>
+<h2 id="raises">Raises</h2>
+<dl>
+<dt><code>ValueError</code></dt>
+<dd>If the tool does not exist.</dd>
 </dl></div>
 <details class="source">
 <summary>
@@ -505,6 +558,9 @@ class CliToolConfig:
     Args:
         tool_name (str): The name of the tool.
         config (dict): The config for the tool.
+
+    Raises:
+        ValueError: If the tool does not exist.
     &#34;&#34;&#34;
     if not self.tools:
         self.read_config()

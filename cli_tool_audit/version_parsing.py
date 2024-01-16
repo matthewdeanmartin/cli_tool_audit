@@ -69,25 +69,30 @@ def extract_first_semver_version(input_string: str) -> Optional[str]:
 
 
 # packaging.version.Version
-def convert2semver(ver: packaging.version.Version) -> semver.Version:
+def convert2semver(version: packaging.version.Version) -> semver.Version:
     """Converts a PyPI version into a semver version
 
-    :param ver: the PyPI version
-    :return: a semver version
-    :raises ValueError: if epoch or post parts are used
+    Args:
+        version (packaging.version.Version): the PyPI version
+
+    Returns:
+        semver.Version: the semver version
+
+    Raises:
+        ValueError: if epoch or post parts are used
     """
-    if ver.epoch:
+    if version.epoch:
         raise ValueError("Can't convert an epoch to semver")
-    if ver.post:
+    if version.post:
         raise ValueError("Can't convert a post part to semver")
 
-    pre = None if not ver.pre else "".join([str(i) for i in ver.pre])
+    pre = None if not version.pre else "".join([str(i) for i in version.pre])
 
-    if len(ver.release) == 3:
-        major, minor, patch = ver.release
-        return semver.Version(major, minor, patch, prerelease=pre, build=ver.dev)
-    major, minor = ver.release
-    return semver.Version(major, minor, prerelease=pre, build=ver.dev)
+    if len(version.release) == 3:
+        major, minor, patch = version.release
+        return semver.Version(major, minor, patch, prerelease=pre, build=version.dev)
+    major, minor = version.release
+    return semver.Version(major, minor, prerelease=pre, build=version.dev)
 
 
 def two_pass_semver_parse(input_string: str) -> Optional[Version]:

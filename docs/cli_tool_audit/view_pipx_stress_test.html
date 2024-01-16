@@ -44,6 +44,9 @@ from cli_tool_audit.views import check_tool_wrapper, pretty_print_results
 def get_pipx_list() -&gt; Any:
     &#34;&#34;&#34;
     Get the output of &#39;pipx list --json&#39; as a dict.
+
+    Returns:
+        Any: The output of &#39;pipx list --json&#39; as a dict or None if it fails.
     &#34;&#34;&#34;
     try:
         result = subprocess.run(
@@ -163,7 +166,12 @@ if __name__ == &#34;__main__&#34;:
 <span>def <span class="ident">get_pipx_list</span></span>(<span>) ‑> Any</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Get the output of 'pipx list &ndash;json' as a dict.</p></div>
+<div class="desc"><p>Get the output of 'pipx list &ndash;json' as a dict.</p>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code>Any</code></dt>
+<dd>The output of 'pipx list &ndash;json' as a dict or None if it fails.</dd>
+</dl></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
@@ -171,6 +179,9 @@ if __name__ == &#34;__main__&#34;:
 <pre><code class="python">def get_pipx_list() -&gt; Any:
     &#34;&#34;&#34;
     Get the output of &#39;pipx list --json&#39; as a dict.
+
+    Returns:
+        Any: The output of &#39;pipx list --json&#39; as a dict or None if it fails.
     &#34;&#34;&#34;
     try:
         result = subprocess.run(

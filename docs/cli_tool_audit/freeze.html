@@ -46,7 +46,7 @@ def freeze_requirements(tool_names: list[str]) -&gt; dict[str, ToolAvailabilityR
         tool_names (list[str]): A list of tool names.
 
     Returns:
-        dict[str, str]: A dictionary of tool names and versions.
+        dict[str, ToolAvailabilityResult]: A dictionary of tool names and versions.
     &#34;&#34;&#34;
     results = {}
     for tool_name in tool_names:
@@ -92,10 +92,11 @@ def freeze_to_screen(tool_names: list[str]) -&gt; None:
                 config_manager.create_update_tool_config(tool_name, {&#34;version_snapshot&#34;: result.version})
 
         # Save the config
+        # pylint: disable=protected-access
         config_manager._save_config()
 
         # Read and print the content of the config file
-        with open(temp_config_path) as file:
+        with open(temp_config_path, encoding=&#34;utf-8&#34;) as file:
             config_content = file.read()
             print(config_content)
 
@@ -123,7 +124,7 @@ if __name__ == &#34;__main__&#34;:
 </dl>
 <h2 id="returns">Returns</h2>
 <dl>
-<dt><code>dict[str, str]</code></dt>
+<dt><code>dict[str, ToolAvailabilityResult]</code></dt>
 <dd>A dictionary of tool names and versions.</dd>
 </dl></div>
 <details class="source">
@@ -138,7 +139,7 @@ if __name__ == &#34;__main__&#34;:
         tool_names (list[str]): A list of tool names.
 
     Returns:
-        dict[str, str]: A dictionary of tool names and versions.
+        dict[str, ToolAvailabilityResult]: A dictionary of tool names and versions.
     &#34;&#34;&#34;
     results = {}
     for tool_name in tool_names:
@@ -215,10 +216,11 @@ and print the 'cli-tools' section of the config.</p>
                 config_manager.create_update_tool_config(tool_name, {&#34;version_snapshot&#34;: result.version})
 
         # Save the config
+        # pylint: disable=protected-access
         config_manager._save_config()
 
         # Read and print the content of the config file
-        with open(temp_config_path) as file:
+        with open(temp_config_path, encoding=&#34;utf-8&#34;) as file:
             config_content = file.read()
             print(config_content)</code></pre>
 </details>

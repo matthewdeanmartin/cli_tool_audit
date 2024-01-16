@@ -17,7 +17,7 @@ def freeze_requirements(tool_names: list[str]) -> dict[str, ToolAvailabilityResu
         tool_names (list[str]): A list of tool names.
 
     Returns:
-        dict[str, str]: A dictionary of tool names and versions.
+        dict[str, ToolAvailabilityResult]: A dictionary of tool names and versions.
     """
     results = {}
     for tool_name in tool_names:
@@ -63,10 +63,11 @@ def freeze_to_screen(tool_names: list[str]) -> None:
                 config_manager.create_update_tool_config(tool_name, {"version_snapshot": result.version})
 
         # Save the config
+        # pylint: disable=protected-access
         config_manager._save_config()
 
         # Read and print the content of the config file
-        with open(temp_config_path) as file:
+        with open(temp_config_path, encoding="utf-8") as file:
             config_content = file.read()
             print(config_content)
 

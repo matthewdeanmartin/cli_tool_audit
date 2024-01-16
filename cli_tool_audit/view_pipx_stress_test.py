@@ -15,6 +15,9 @@ from cli_tool_audit.views import check_tool_wrapper, pretty_print_results
 def get_pipx_list() -> Any:
     """
     Get the output of 'pipx list --json' as a dict.
+
+    Returns:
+        Any: The output of 'pipx list --json' as a dict or None if it fails.
     """
     try:
         result = subprocess.run(

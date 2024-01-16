@@ -35,6 +35,9 @@ class ConfigManager:
     def read_config(self) -> bool:
         """
         Read the cli-tools section from a toml file.
+
+        Returns:
+            bool: True if the cli-tools section exists, False otherwise.
         """
         if os.path.exists(self.config_path):
             with open(self.config_path, encoding="utf-8") as file:
@@ -47,9 +50,13 @@ class ConfigManager:
     def create_tool_config(self, tool_name: str, config: dict) -> None:
         """
         Create a new tool config.
+
         Args:
             tool_name (str): The name of the tool.
             config (dict): The config for the tool.
+
+        Raises:
+            ValueError: If the tool already exists.
         """
         if not self.tools:
             self.read_config()
@@ -64,6 +71,9 @@ class ConfigManager:
         Args:
             tool_name (str): The name of the tool.
             config (dict): The config for the tool.
+
+        Raises:
+            ValueError: If the tool does not exist.
         """
         if not self.tools:
             self.read_config()
@@ -98,7 +108,7 @@ class ConfigManager:
         if not self.tools:
             self.read_config()
         if tool_name not in self.tools:
-            raise ValueError(f"Tool {tool_name} does not exist")
+            return
         del self.tools[tool_name]
         self._save_config()
 

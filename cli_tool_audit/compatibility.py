@@ -105,11 +105,11 @@ def check_compatibility(desired_version: str, found_version: Optional[str]) -> t
             is_compatible = "Compatible"
         else:
             is_compatible = f"{desired_version} != {found_semversion}"
-    except ValueError as ve:
-        logger.warning(f"Can't tell {desired_version}/{found_version}: {ve}")
+    except ValueError as value_error:
+        logger.warning(f"Can't tell {desired_version}/{found_version}: {value_error}")
         is_compatible = CANT_TELL
-    except TypeError as te:
-        logger.warning(f"Can't tell {desired_version}/{found_version}: {te}")
+    except TypeError as type_error:
+        logger.warning(f"Can't tell {desired_version}/{found_version}: {type_error}")
         is_compatible = CANT_TELL
     return is_compatible, found_semversion
 

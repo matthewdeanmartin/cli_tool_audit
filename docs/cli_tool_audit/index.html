@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
 <meta name="generator" content="pdoc 0.10.0" />
 <title>cli_tool_audit API documentation</title>
-<meta name="description" content="Audit CLI tool version numbers." />
+<meta name="description" content="Audit CLI tool version numbers …" />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
 <link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin>
@@ -23,12 +23,127 @@
 </header>
 <section id="section-intro">
 <p>Audit CLI tool version numbers.</p>
+<h1 id="cli_tool_audit">cli_tool_audit</h1>
+<p>Verify that a list of cli tools are available. Like a requirements.txt for cli tools, but without an installer
+component. Intended to work with cli tools regardless to how they were installed, e.g. via pipx, npm, etc.</p>
+<h2 id="how-it-works">How it works</h2>
+<p>You declare a list of cli commands and version ranges.</p>
+<p>The tool will run <code>tool --version</code> for each tool and make best efforts to parse the result and compare it to the
+desired version range.</p>
+<p>The tool then can either output a report with warnings or signal failure if something is missing, the wrong version
+or can't be determined.</p>
+<p>There is no universal method for getting a version number from a CLI tool, nor is there a universal orderable
+version number system, so the outcome of many check may be limited to an existence check or exact version number check.</p>
+<p>Here is an example run.</p>
+<pre><code class="language-text">❯ cli_tool_audit
++-----------+-------------------------------------+-----------------+------------+-----------+
+|    Tool   |            Found Version            | Desired Version | Compatible |   Status  |
++-----------+-------------------------------------+-----------------+------------+-----------+
+|   python  |            Python 3.11.1            |     &gt;=3.11.1    |    Yes     | Available |
+|    java   | openjdk version &quot;17.0.6&quot; 2023-01-17 |     &gt;=17.0.6    |    Yes     | Available |
+|           |            OpenJDK Runtim           |                 |            |           |
+|    make   |            GNU Make 3.81            |      &gt;=3.81     |    Yes     | Available |
++-----------+-------------------------------------+-----------------+------------+-----------+
+</code></pre>
+<h2 id="installation">Installation</h2>
+<p>You will need to install it to your virtual environment if tools you are looking for are in your virtual environment.
+If all the tools are global then you can pipx install.</p>
+<pre><code class="language-shell">pipx install cli-tool-audit
+</code></pre>
+<h2 id="usage">Usage</h2>
+<p>CLI usage</p>
+<pre><code class="language-text">❯ cli_tool_audit --help
+usage: cli_tool_audit [-h] [--version] [--config CONFIG] [--verbose] [--demo DEMO] {read,create,update,delete,freeze} ...
+
+Audit version numbers of CLI tools.
+
+positional arguments:
+  {read,create,update,delete,freeze}
+                        commands
+    read                Read and list all tool configurations
+    create              Create a new tool configuration
+    update              Update an existing tool configuration
+    delete              Delete a tool configuration
+    freeze              Freeze the versions of specified tools
+
+options:
+  -h, --help            show this help message and exit
+  --version             Show program's version number and exit.
+  --config CONFIG       Path to the configuration file in TOML format.
+  --verbose             verbose output
+  --demo DEMO           Demo for values of npm, pipx or venv
+</code></pre>
+<p>Note. If you use the create/update commands and specify the <code>--version</code> switch, it must have an equal sign.</p>
+<p>Here is how to generate a freeze, a list of current versions by snapshot, for a lis tof tools. All tools will be
+check with <code>--version</code> unless they are well known.</p>
+<pre><code class="language-shell">cli_tool_audit freeze python java make rustc
+</code></pre>
+<p>This is for programmatic usage.</p>
+<pre><code class="language-python">import cli_tool_audit
+
+print(cli_tool_audit.validate(file_path=&quot;pyproject.toml&quot;))
+</code></pre>
+<p>The configuration file lists the tools you expect how hints on how detect the version.</p>
+<pre><code class="language-toml">[tool.cli-tools]
+# Typical example
+pipx = { version = &quot;&gt;=1.0.0&quot;, version_switch = &quot;--version&quot; }
+# Restrict to specific OS
+brew = { version = &quot;&gt;=0.1.0&quot;, if_os=&quot;darwin&quot; }
+# Pin to a snapshot of the output of `poetry --version`
+poetry = {version_snapshot = &quot;Poetry (version 1.5.1)&quot;}
+# Don't attempt to run `notepad --version`, just check if it is on the path
+notepad = { only_check_existence = true }
+# Any version.
+vulture = { version = &quot;*&quot; }
+# Supports ^ and ~ version ranges.
+shellcheck = { version = &quot;^0.8.0&quot; }
+# Uses semver's compatibility logic, which is not the same as an exact match.
+rustc = { version = &quot;1.67.0&quot; }
+</code></pre>
+<p>See <a href="https://python-semver.readthedocs.io/en/latest/usage/check-compatible-semver-version.html">semver3</a> for
+compatibility logic for versions without operators/symbols.</p>
+<p>See <a href="https://python-poetry.org/docs/dependency-specification/">poetry</a> for version range specifiers.</p>
+<p>See <a href="https://stackoverflow.com/a/13874620/33264">stackoverflow</a> for os names.</p>
+<h2 id="demos">Demos</h2>
+<p>Demos will discover a bunch of executables as installed in the local virtual environment, installed by pipx or
+installed by npm. It will then assume that we want the current or any version and run an audit. Since we know these
+files already exist, the failures are centered on failing to execute, failing to guess the version switch, failure
+to parse the switch or the
+tool's version switch returning a version incompatible to what the package manager reports.</p>
+<pre><code class="language-bash">cli_tool_audit --demo=pipx --verbose
+cli_tool_audit --demo=venv --verbose
+cli_tool_audit --demo=npm --verbose
+</code></pre>
+<h2 id="how-does-this-relate-to-package-managers-eg-apt-pipx-npm-choco-etc">How does this relate to package managers, e.g. apt, pipx, npm, choco, etc.</h2>
+<p>Package managers do far more than check for the existence of a tool. They will install it, at the desired version
+and make sure that tools and their transitive dependencies are compatible.</p>
+<p>What they can't do is verify what other package managers have done.</p>
+<p>This captures your desired tools, versions and guarantees you have them by installing them.</p>
+<pre><code class="language-shell"># list everything available on one machine
+pip freeze&gt;requirements.txt
+# install it on another.
+pip install -r requirements.txt
+</code></pre>
+<p>This is the same thing, but for windows and .net centric apps.</p>
+<pre><code class="language-shell">choco export requirements.txt
+choco install -y requirements.txt
+</code></pre>
+<p>There are similar patterns, for apt, brew, npm, and so on.</p>
+<p>It would be foolish to try to create a package manager that supports other package managers, so features in that
+vein are out of scope.</p>
+<h2 id="prior-art">Prior Art</h2>
+<ul>
+<li><a href="https://github.com/jstutters/toolaudit">tool-audit</a></li>
+<li><a href="https://learn.microsoft.com/en-us/dotnet/core/tools/dotnet-tool-list">dotnet-tool-list</a></li>
+</ul>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;
 Audit CLI tool version numbers.
+
+.. include:: ../README.md
 &#34;&#34;&#34;
 __all__ = [&#34;validate&#34;, &#34;read_config&#34;, &#34;check_tool_availability&#34;, &#34;__version__&#34;]
 
@@ -69,7 +184,7 @@ from cli_tool_audit.views import validate</code></pre>
 <dd>
 <div class="desc"><p>Capture current version of a list of tools.</p></div>
 </dd>
-<dt><code class="name"><a title="cli_tool_audit.known_swtiches" href="known_swtiches.html">cli_tool_audit.known_swtiches</a></code></dt>
+<dt><code class="name"><a title="cli_tool_audit.known_switches" href="known_switches.html">cli_tool_audit.known_switches</a></code></dt>
 <dd>
 <div class="desc"><p>This file contains a dictionary of known switches for various CLI tools.</p></div>
 </dd>
@@ -192,7 +307,7 @@ from cli_tool_audit.views import validate</code></pre>
 </dl>
 <h2 id="returns">Returns</h2>
 <dl>
-<dt><code>dict[str, dict[str, str]]</code></dt>
+<dt><code>dict[str, CliToolConfig]</code></dt>
 <dd>A dictionary with the cli-tools section.</dd>
 </dl></div>
 <details class="source">
@@ -207,7 +322,7 @@ from cli_tool_audit.views import validate</code></pre>
         file_path (str): The path to the pyproject.toml file.
 
     Returns:
-        dict[str, dict[str, str]]: A dictionary with the cli-tools section.
+        dict[str, CliToolConfig]: A dictionary with the cli-tools section.
     &#34;&#34;&#34;
     # pylint: disable=broad-exception-caught
     try:
@@ -276,7 +391,17 @@ from cli_tool_audit.views import validate</code></pre>
 <nav id="sidebar">
 <h1>Index</h1>
 <div class="toc">
-<ul></ul>
+<ul>
+<li><a href="#cli_tool_audit">cli_tool_audit</a><ul>
+<li><a href="#how-it-works">How it works</a></li>
+<li><a href="#installation">Installation</a></li>
+<li><a href="#usage">Usage</a></li>
+<li><a href="#demos">Demos</a></li>
+<li><a href="#how-does-this-relate-to-package-managers-eg-apt-pipx-npm-choco-etc">How does this relate to package managers, e.g. apt, pipx, npm, choco, etc.</a></li>
+<li><a href="#prior-art">Prior Art</a></li>
+</ul>
+</li>
+</ul>
 </div>
 <ul id="index">
 <li><h3><a href="#header-submodules">Sub-modules</a></h3>
@@ -288,7 +413,7 @@ from cli_tool_audit.views import validate</code></pre>
 <li><code><a title="cli_tool_audit.config_manager" href="config_manager.html">cli_tool_audit.config_manager</a></code></li>
 <li><code><a title="cli_tool_audit.config_reader" href="config_reader.html">cli_tool_audit.config_reader</a></code></li>
 <li><code><a title="cli_tool_audit.freeze" href="freeze.html">cli_tool_audit.freeze</a></code></li>
-<li><code><a title="cli_tool_audit.known_swtiches" href="known_swtiches.html">cli_tool_audit.known_swtiches</a></code></li>
+<li><code><a title="cli_tool_audit.known_switches" href="known_switches.html">cli_tool_audit.known_switches</a></code></li>
 <li><code><a title="cli_tool_audit.version_parsing" href="version_parsing.html">cli_tool_audit.version_parsing</a></code></li>
 <li><code><a title="cli_tool_audit.view_npm_stress_test" href="view_npm_stress_test.html">cli_tool_audit.view_npm_stress_test</a></code></li>
 <li><code><a title="cli_tool_audit.view_pipx_stress_test" href="view_pipx_stress_test.html">cli_tool_audit.view_pipx_stress_test</a></code></li>
