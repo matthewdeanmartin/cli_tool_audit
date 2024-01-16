@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "cli_tool_audit"
-version = "1.0.4"
+version = "1.0.5"
 description = "Audit for existance and vesion number of cli tools."
 authors = ["Matthew Martin <matthewdeanmartin@gmail.com>"]
 keywords = ["cli tooling", "version numbers", ]
@@ -47,6 +47,7 @@ whichcraft = ">=0.6.1"
 
 # version parsing
 semver = ">=3.0.2"
+packaging = ">=23.2"
 
 # UI
 prettytable = ">=3.9.0"
