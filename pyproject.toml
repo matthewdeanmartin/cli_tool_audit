@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "cli_tool_audit"
-version = "1.0.5"
+version = "1.0.6"
 description = "Audit for existance and vesion number of cli tools."
 authors = ["Matthew Martin <matthewdeanmartin@gmail.com>"]
 keywords = ["cli tooling", "version numbers", ]
@@ -235,34 +235,34 @@ exclude_also = [
 ]
 
 [tool.cli-tools]
-pipx = {  version = ">=1.0.0", version_switch = "--version" }
-mypy = {  version = ">=1.0.0" }
-pylint = {  version = ">=1.0.0" }
-black = {  version = ">=1.0.0" }
-pygount = { version = ">=1.6.0" }
-ruff = {  version = "0.*" }
-vulture = { version = "*" }
+pipx = {version = ">=1.0.0", version_switch = "--version"}
+mypy = {version = ">=1.0.0"}
+pylint = {version = ">=1.0.0"}
+black = {version = ">=1.0.0"}
+pygount = {version = ">=1.6.0"}
+ruff = {version = "0.*"}
+vulture = {version = "*"}
 
 #cat = {  version = ">=8.32", version_switch = "--version" }
 #bash = {  version = ">=5.2.12", version_switch = "--version" }
-make = { version = ">=3.81" }
-python = { version = ">=3.11.1" }
-terraform = { version = ">=1.2.9" }
-java = { version = ">=17.0.6" }
+make = {version = ">=3.81"}
+python = {version = ">=3.11.1"}
+terraform = {version = ">=1.2.9"}
+java = {version = ">=17.0.6"}
 # demo of files that don't exist
-doesnotexist = { version = ">=1.0.0" }
+doesnotexist = {version = ">=1.0.0"}
 # Just check existence
-notepad = { only_check_existence = true }
-rustc = { version = ">=1.67.0" }
-"yes.exe" = { version = ">=1.0.0" }
-"yes" = { version = "~1.0.0" }
-podman = { version = "^4.6.0" }
-tesseract = { version = ">=5.1.0.20220510" }
-pandoc = { version = ">=2.7.3" }
-nano = { version = ">=7.1" }
-shellcheck = { version = ">=0.8.0" }
-choco = { version = ">=0.10.13" }
-brew = { version = ">=0.0.0", if_os="darwin" }
+notepad = {only_check_existence = true}
+rustc = {version = ">=1.67.0"}
+"yes.exe" = {version = ">=1.0.0"}
+"yes" = {version = "~1.0.0"}
+podman = {version = "^4.6.0"}
+tesseract = {version = ">=5.1.0.20220510"}
+pandoc = {version = ">=2.7.3"}
+nano = {version = ">=7.1"}
+shellcheck = {version = ">=0.8.0"}
+choco = {version = ">=0.10.13"}
+brew = {version = ">=0.0.0", if_os = "darwin"}
 poetry = {version_snapshot = "Poetry (version 1.5.1)"}
 
 

@@ -1,3 +1,4 @@
+import copy
 import os
 from dataclasses import dataclass
 from typing import Any, Optional, cast
@@ -129,6 +130,11 @@ class ConfigManager:
                     else:
                         inline_table[key] = value
             cast(Any, cast(Any, config["tool"])["cli-tools"])[tool_name] = inline_table
+
+        # Handle deletes
+        for tool in copy.deepcopy(cast(Any, cast(Any, config["tool"])["cli-tools"])):
+            if tool not in self.tools:
+                del cast(Any, cast(Any, config["tool"])["cli-tools"])[tool]
 
         # Write the entire config back to the file
         with open(self.config_path, "w", encoding="utf-8") as file:

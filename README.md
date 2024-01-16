@@ -61,7 +61,7 @@ options:
   --verbose             verbose output
   --demo DEMO           Demo for values of npm, pipx or venv
 ```
-Note. If you use the create/update commands and specify the `--vesion` switch, it must have an equal sign.
+Note. If you use the create/update commands and specify the `--version` switch, it must have an equal sign.
 
 Here is how to generate a freeze, a list of current versions by snapshot, for a lis tof tools. All tools will be 
 check with `--version` unless they are well known.
@@ -69,11 +69,11 @@ check with `--version` unless they are well known.
 cli_tool_audit freeze python java make rustc
 ```
 
-
+This is for programatic usage.
 ```python
 import cli_tool_audit
 
-print(cli_tool_audit.validate(config="pyproject.toml"))
+print(cli_tool_audit.validate(file_path="pyproject.toml"))
 ```
 
 The configuration file lists the tools you expect how hints on how detect the version.

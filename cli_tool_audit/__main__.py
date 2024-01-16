@@ -24,26 +24,36 @@ def handle_read(args):
     config_manager = ConfigManager(args.config)
     config_manager.read_config()
     for tool, config in config_manager.tools.items():
-        print(f"{tool}: {config}")
+        print(f"{tool}")
+        for key, value in vars(config).items():
+            if key == "only_check_existence" and value is False:
+                pass
+            elif value is not None:
+                print(f"  {key}: {value}")
 
 
 def handle_create(args):
-    kwargs = {}
-    args_dict = vars(args)
-    cli_tool_fields = {f.name for f in fields(CliToolConfig)}
-
-    for key, value in args_dict.items():
-        if key in cli_tool_fields:
-            kwargs[key] = value
+    kwargs = reduce_args_tool_cli_tool_config_args(args)
 
     config_manager = ConfigManager(args.config)
     config_manager.create_tool_config(args.tool, kwargs)
     print(f"Tool {args.tool} created.")
 
 
+def reduce_args_tool_cli_tool_config_args(args):
+    kwargs = {}
+    args_dict = vars(args)
+    cli_tool_fields = {f.name for f in fields(CliToolConfig)}
+    for key, value in args_dict.items():
+        if key in cli_tool_fields:
+            kwargs[key] = value
+    return kwargs
+
+
 def handle_update(args):
+    kwargs = reduce_args_tool_cli_tool_config_args(args)
     config_manager = ConfigManager(args.config)
-    config_manager.update_tool_config(args.tool, {k: v for k, v in vars(args).items() if k != "tool"})
+    config_manager.update_tool_config(args.tool, {k: v for k, v in kwargs.items() if k != "tool"})
     print(f"Tool {args.tool} updated.")
 
 
@@ -63,6 +73,7 @@ def main() -> None:
     parser.add_argument(
         "--config", default="pyproject.toml", type=str, help="Path to the configuration file in TOML format."
     )
+    parser.add_argument("--never_fail", action="store_true", help="Never return a non-zero exit code")
     parser.add_argument("--verbose", action="store_true", help="verbose output")
 
     parser.add_argument("--demo", type=str, help="Demo for values of npm, pipx or venv")
@@ -89,10 +100,18 @@ def main() -> None:
     update_parser.add_argument("tool", help="Name of the tool")
     update_parser.add_argument("--version", help="Version of the tool")
     update_parser.add_argument("--version_switch", help="Version switch for the tool")
+    update_parser.add_argument("--version_snapshot", help="Entire capture of version is version string.")
+    update_parser.add_argument("--if_os", help="Check only on this os.")
     update_parser.add_argument(
         "--only_check_existence", action="store_true", help="Check only the existence of the tool"
     )
-    # ... add other arguments as needed
+
+    # TODO:
+    # schema: Optional[str] = None
+    # if_os: Optional[str] = None
+    # version_stamp: Optional[str] = None
+    # source: Optional[str] = None
+
     update_parser.set_defaults(func=handle_update)
 
     # Delete command
@@ -162,16 +181,16 @@ def main() -> None:
     #     parser.print_help()
 
     # Namespace doesn't have word "freeze" in it.
-    if args.tools:
+    if hasattr(args, "tools") and args.tools:
         freeze_to_screen(args.tools)
         sys.exit()
 
     # Default behavior
     # Handle the configuration file argument
     if args.config:
-        report_from_pyproject_toml(args.config)
+        report_from_pyproject_toml(args.config, exit_code_on_failure=not args.never_fail)
     else:
-        report_from_pyproject_toml()
+        report_from_pyproject_toml(exit_code_on_failure=not args.never_fail)
 
 
 if __name__ == "__main__":
