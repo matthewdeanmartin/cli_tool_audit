@@ -14,27 +14,15 @@ import datetime
 import logging
 import os
 import subprocess  # nosec
-from dataclasses import dataclass
 from typing import Optional
 
 # pylint: disable=no-name-in-module
 from whichcraft import which
 
 from cli_tool_audit.known_switches import KNOWN_SWITCHES
+from cli_tool_audit.models import ToolAvailabilityResult
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass
-class ToolAvailabilityResult:
-    """
-    Dataclass for the result of checking tool availability.
-    """
-
-    is_available: bool
-    is_broken: bool
-    version: Optional[str]
-    last_modified: Optional[datetime.datetime]
 
 
 def get_command_last_modified_date(tool_name: str) -> Optional[datetime.datetime]:
@@ -42,6 +30,7 @@ def get_command_last_modified_date(tool_name: str) -> Optional[datetime.datetime
     Get the last modified date of a command's executable.
     Args:
         tool_name (str): The name of the command.
+
     Returns:
         Optional[datetime.datetime]: The last modified date of the command's executable.
     """

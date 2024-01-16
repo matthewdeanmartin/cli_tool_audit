@@ -3,8 +3,8 @@ import os
 import subprocess  # nosec
 from concurrent.futures import ThreadPoolExecutor
 
-from cli_tool_audit.config_manager import CliToolConfig
-from cli_tool_audit.views import check_tool_wrapper, pretty_print_results
+import cli_tool_audit.views as views
+from cli_tool_audit.models import CliToolConfig
 
 
 def list_global_npm_executables() -> list[str]:
@@ -28,13 +28,16 @@ def list_global_npm_executables() -> list[str]:
     return executables
 
 
-def report_for_npm_tools() -> None:
+def report_for_npm_tools(max_count: int = -1) -> None:
     """
     Report on the compatibility of the tools installed with pipx.
+    Args:
+        max_count (int, optional): The maximum number of tools to report on. Defaults to -1.
     """
     apps = list_global_npm_executables()
 
     cli_tools = {}
+    count = 0
     for app in apps:
         if os.name == "nt":
             # I think this is a windows only thing?
@@ -45,6 +48,9 @@ def report_for_npm_tools() -> None:
         config.version_switch = "--version"
         config.version = ">=0.0.0"
         cli_tools[app_cmd] = config
+        count += 1
+        if 0 < count >= max_count:
+            break
 
     # Determine the number of available CPUs
     num_cpus = os.cpu_count()
@@ -52,7 +58,7 @@ def report_for_npm_tools() -> None:
     # Create a ThreadPoolExecutor with one thread per CPU
     with ThreadPoolExecutor(max_workers=num_cpus) as executor:
         # Submit tasks to the executor
-        futures = [executor.submit(check_tool_wrapper, (tool, config)) for tool, config in cli_tools.items()]
+        futures = [executor.submit(views.check_tool_wrapper, (tool, config)) for tool, config in cli_tools.items()]
 
         results = []
         # Process the results as they are completed
@@ -60,7 +66,7 @@ def report_for_npm_tools() -> None:
             result = future.result()
             results.append(result)
 
-        pretty_print_results(results)
+        views.pretty_print_results(results)
 
 
 if __name__ == "__main__":

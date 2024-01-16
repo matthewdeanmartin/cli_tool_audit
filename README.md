@@ -45,25 +45,34 @@ CLI usage
 
 ```text
 ❯ cli_tool_audit --help
-usage: cli_tool_audit [-h] [--version] [--config CONFIG] [--verbose] [--demo DEMO] {read,create,update,delete,freeze} ...
+usage: cli-tool-audit [-h] [-V] [-c CONFIG] [-ff {json,json-compact,xml,table,csv}] [-nf] [--verbose] [--demo {pipx,venv,npm}]
+                      {interactive,read,create,update,delete,freeze,audit} ...
 
 Audit version numbers of CLI tools.
 
 positional arguments:
-  {read,create,update,delete,freeze}
-                        commands
+  {interactive,read,create,update,delete,freeze,audit}
+                        Edit configuration from terminal.
+    interactive         Interactively edit configuration
     read                Read and list all tool configurations
     create              Create a new tool configuration
     update              Update an existing tool configuration
     delete              Delete a tool configuration
     freeze              Freeze the versions of specified tools
+    audit               Audit environment with current configuration (default)
 
 options:
   -h, --help            show this help message and exit
-  --version             Show program's version number and exit.
-  --config CONFIG       Path to the configuration file in TOML format.
+  -V, --version         Show program's version number and exit.
+  -c CONFIG, --config CONFIG
+                        Path to the configuration file in TOML format. (default is pyproject.toml)
+  -ff {json,json-compact,xml,table,csv}, --file-format {json,json-compact,xml,table,csv}, --file_format {json,json-compact,xml,table,csv}
+                        Output results in the specified format. (default is table)
+  -nf, --never-fail, --never_fail
+                        Never return a non-zero exit code
   --verbose             verbose output
-  --demo DEMO           Demo for values of npm, pipx or venv
+  --demo {pipx,venv,npm}
+                        Demo for values of npm, pipx or venv
 ```
 
 Note. If you use the create/update commands and specify the `--version` switch, it must have an equal sign.

@@ -1,22 +1,11 @@
 import copy
 import os
-from dataclasses import dataclass
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 import toml
 import tomlkit
 
-
-@dataclass
-class CliToolConfig:
-    version: Optional[str] = None
-    version_snapshot: Optional[str] = None
-    version_switch: Optional[str] = None
-    only_check_existence: Optional[bool] = False
-    schema: Optional[str] = None
-    if_os: Optional[str] = None
-    version_stamp: Optional[str] = None
-    source: Optional[str] = None
+from cli_tool_audit.models import CliToolConfig
 
 
 class ConfigManager:
@@ -124,7 +113,6 @@ class ConfigManager:
             config = tomlkit.document()
 
         # Access or create the 'cli-tools' section
-        # tools_section = config.get('tool', {}).get('cli-tools', {})
         if "tool" not in config:
             config["tool"] = tomlkit.table()
         if "cli-tools" not in cast(Any, config.get("tool")):

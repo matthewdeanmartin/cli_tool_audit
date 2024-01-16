@@ -4,7 +4,7 @@ import cli_tool_audit
 def test_with_live_tools() -> None:
     """Example"""
     # Example usage
-    file_path = "../pyproject.toml"  # Replace with the path to your pyproject.toml
+    file_path = "../pyproject.toml"
     cli_tools = cli_tool_audit.read_config(file_path)
 
     for tool, config in cli_tools.items():

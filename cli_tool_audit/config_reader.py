@@ -4,7 +4,8 @@ Read list of tools from config.
 
 import logging
 
-from cli_tool_audit.config_manager import CliToolConfig, ConfigManager
+from cli_tool_audit.config_manager import ConfigManager
+from cli_tool_audit.models import CliToolConfig
 
 logger = logging.getLogger(__name__)
 

@@ -49,27 +49,15 @@ import datetime
 import logging
 import os
 import subprocess  # nosec
-from dataclasses import dataclass
 from typing import Optional
 
 # pylint: disable=no-name-in-module
 from whichcraft import which
 
 from cli_tool_audit.known_switches import KNOWN_SWITCHES
+from cli_tool_audit.models import ToolAvailabilityResult
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass
-class ToolAvailabilityResult:
-    &#34;&#34;&#34;
-    Dataclass for the result of checking tool availability.
-    &#34;&#34;&#34;
-
-    is_available: bool
-    is_broken: bool
-    version: Optional[str]
-    last_modified: Optional[datetime.datetime]
 
 
 def get_command_last_modified_date(tool_name: str) -&gt; Optional[datetime.datetime]:
@@ -77,6 +65,7 @@ def get_command_last_modified_date(tool_name: str) -&gt; Optional[datetime.datet
     Get the last modified date of a command&#39;s executable.
     Args:
         tool_name (str): The name of the command.
+
     Returns:
         Optional[datetime.datetime]: The last modified date of the command&#39;s executable.
     &#34;&#34;&#34;
@@ -177,7 +166,7 @@ if __name__ == &#34;__main__&#34;:
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
 <dt id="cli_tool_audit.call_tools.check_tool_availability"><code class="name flex">
-<span>def <span class="ident">check_tool_availability</span></span>(<span>tool_name: str, version_switch: str = '--version', only_check_existence: bool = False) ‑> <a title="cli_tool_audit.call_tools.ToolAvailabilityResult" href="#cli_tool_audit.call_tools.ToolAvailabilityResult">ToolAvailabilityResult</a></span>
+<span>def <span class="ident">check_tool_availability</span></span>(<span>tool_name: str, version_switch: str = '--version', only_check_existence: bool = False) ‑> <a title="cli_tool_audit.models.ToolAvailabilityResult" href="models.html#cli_tool_audit.models.ToolAvailabilityResult">ToolAvailabilityResult</a></span>
 </code></dt>
 <dd>
 <div class="desc"><p>Check if a tool is available in the system's PATH and if possible, determine a version number.</p>
@@ -192,7 +181,7 @@ if __name__ == &#34;__main__&#34;:
 </dl>
 <h2 id="returns">Returns</h2>
 <dl>
-<dt><code><a title="cli_tool_audit.call_tools.ToolAvailabilityResult" href="#cli_tool_audit.call_tools.ToolAvailabilityResult">ToolAvailabilityResult</a></code></dt>
+<dt><code>ToolAvailabilityResult</code></dt>
 <dd>An object containing the availability and version of the tool.</dd>
 </dl></div>
 <details class="source">
@@ -280,6 +269,7 @@ if __name__ == &#34;__main__&#34;:
     Get the last modified date of a command&#39;s executable.
     Args:
         tool_name (str): The name of the command.
+
     Returns:
         Optional[datetime.datetime]: The last modified date of the command&#39;s executable.
     &#34;&#34;&#34;
@@ -298,50 +288,6 @@ if __name__ == &#34;__main__&#34;:
 </dl>
 </section>
 <section>
-<h2 class="section-title" id="header-classes">Classes</h2>
-<dl>
-<dt id="cli_tool_audit.call_tools.ToolAvailabilityResult"><code class="flex name class">
-<span>class <span class="ident">ToolAvailabilityResult</span></span>
-<span>(</span><span>is_available: bool, is_broken: bool, version: Optional[str], last_modified: Optional[datetime.datetime])</span>
-</code></dt>
-<dd>
-<div class="desc"><p>Dataclass for the result of checking tool availability.</p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">@dataclass
-class ToolAvailabilityResult:
-    &#34;&#34;&#34;
-    Dataclass for the result of checking tool availability.
-    &#34;&#34;&#34;
-
-    is_available: bool
-    is_broken: bool
-    version: Optional[str]
-    last_modified: Optional[datetime.datetime]</code></pre>
-</details>
-<h3>Class variables</h3>
-<dl>
-<dt id="cli_tool_audit.call_tools.ToolAvailabilityResult.is_available"><code class="name">var <span class="ident">is_available</span> : bool</code></dt>
-<dd>
-<div class="desc"></div>
-</dd>
-<dt id="cli_tool_audit.call_tools.ToolAvailabilityResult.is_broken"><code class="name">var <span class="ident">is_broken</span> : bool</code></dt>
-<dd>
-<div class="desc"></div>
-</dd>
-<dt id="cli_tool_audit.call_tools.ToolAvailabilityResult.last_modified"><code class="name">var <span class="ident">last_modified</span> : Optional[datetime.datetime]</code></dt>
-<dd>
-<div class="desc"></div>
-</dd>
-<dt id="cli_tool_audit.call_tools.ToolAvailabilityResult.version"><code class="name">var <span class="ident">version</span> : Optional[str]</code></dt>
-<dd>
-<div class="desc"></div>
-</dd>
-</dl>
-</dd>
-</dl>
 </section>
 </article>
 <nav id="sidebar">
@@ -359,19 +305,6 @@ class ToolAvailabilityResult:
 <ul class="">
 <li><code><a title="cli_tool_audit.call_tools.check_tool_availability" href="#cli_tool_audit.call_tools.check_tool_availability">check_tool_availability</a></code></li>
 <li><code><a title="cli_tool_audit.call_tools.get_command_last_modified_date" href="#cli_tool_audit.call_tools.get_command_last_modified_date">get_command_last_modified_date</a></code></li>
-</ul>
-</li>
-<li><h3><a href="#header-classes">Classes</a></h3>
-<ul>
-<li>
-<h4><code><a title="cli_tool_audit.call_tools.ToolAvailabilityResult" href="#cli_tool_audit.call_tools.ToolAvailabilityResult">ToolAvailabilityResult</a></code></h4>
-<ul class="">
-<li><code><a title="cli_tool_audit.call_tools.ToolAvailabilityResult.is_available" href="#cli_tool_audit.call_tools.ToolAvailabilityResult.is_available">is_available</a></code></li>
-<li><code><a title="cli_tool_audit.call_tools.ToolAvailabilityResult.is_broken" href="#cli_tool_audit.call_tools.ToolAvailabilityResult.is_broken">is_broken</a></code></li>
-<li><code><a title="cli_tool_audit.call_tools.ToolAvailabilityResult.last_modified" href="#cli_tool_audit.call_tools.ToolAvailabilityResult.last_modified">last_modified</a></code></li>
-<li><code><a title="cli_tool_audit.call_tools.ToolAvailabilityResult.version" href="#cli_tool_audit.call_tools.ToolAvailabilityResult.version">version</a></code></li>
-</ul>
-</li>
 </ul>
 </li>
 </ul>

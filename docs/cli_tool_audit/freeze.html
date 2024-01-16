@@ -33,12 +33,11 @@ Capture current version of a list of tools.
 import os
 import tempfile
 
-from cli_tool_audit import check_tool_availability
-from cli_tool_audit.call_tools import ToolAvailabilityResult
+import cli_tool_audit.call_tools as call_tools
 from cli_tool_audit.config_manager import ConfigManager
 
 
-def freeze_requirements(tool_names: list[str]) -&gt; dict[str, ToolAvailabilityResult]:
+def freeze_requirements(tool_names: list[str]) -&gt; dict[str, call_tools.ToolAvailabilityResult]:
     &#34;&#34;&#34;
     Capture the current version of a list of tools.
 
@@ -46,11 +45,11 @@ def freeze_requirements(tool_names: list[str]) -&gt; dict[str, ToolAvailabilityR
         tool_names (list[str]): A list of tool names.
 
     Returns:
-        dict[str, ToolAvailabilityResult]: A dictionary of tool names and versions.
+        dict[str, call_tools.ToolAvailabilityResult]: A dictionary of tool names and versions.
     &#34;&#34;&#34;
     results = {}
     for tool_name in tool_names:
-        result = check_tool_availability(tool_name, &#34;--version&#34;)
+        result = call_tools.check_tool_availability(tool_name, &#34;--version&#34;)
         results[tool_name] = result
     return results
 
@@ -113,7 +112,7 @@ if __name__ == &#34;__main__&#34;:
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
 <dt id="cli_tool_audit.freeze.freeze_requirements"><code class="name flex">
-<span>def <span class="ident">freeze_requirements</span></span>(<span>tool_names: list[str]) ‑> dict[str, <a title="cli_tool_audit.call_tools.ToolAvailabilityResult" href="call_tools.html#cli_tool_audit.call_tools.ToolAvailabilityResult">ToolAvailabilityResult</a>]</span>
+<span>def <span class="ident">freeze_requirements</span></span>(<span>tool_names: list[str]) ‑> dict[str, <a title="cli_tool_audit.models.ToolAvailabilityResult" href="models.html#cli_tool_audit.models.ToolAvailabilityResult">ToolAvailabilityResult</a>]</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Capture the current version of a list of tools.</p>
@@ -124,14 +123,14 @@ if __name__ == &#34;__main__&#34;:
 </dl>
 <h2 id="returns">Returns</h2>
 <dl>
-<dt><code>dict[str, ToolAvailabilityResult]</code></dt>
+<dt><code>dict[str, call_tools.ToolAvailabilityResult]</code></dt>
 <dd>A dictionary of tool names and versions.</dd>
 </dl></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def freeze_requirements(tool_names: list[str]) -&gt; dict[str, ToolAvailabilityResult]:
+<pre><code class="python">def freeze_requirements(tool_names: list[str]) -&gt; dict[str, call_tools.ToolAvailabilityResult]:
     &#34;&#34;&#34;
     Capture the current version of a list of tools.
 
@@ -139,11 +138,11 @@ if __name__ == &#34;__main__&#34;:
         tool_names (list[str]): A list of tool names.
 
     Returns:
-        dict[str, ToolAvailabilityResult]: A dictionary of tool names and versions.
+        dict[str, call_tools.ToolAvailabilityResult]: A dictionary of tool names and versions.
     &#34;&#34;&#34;
     results = {}
     for tool_name in tool_names:
-        result = check_tool_availability(tool_name, &#34;--version&#34;)
+        result = call_tools.check_tool_availability(tool_name, &#34;--version&#34;)
         results[tool_name] = result
     return results</code></pre>
 </details>

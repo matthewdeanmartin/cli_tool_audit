@@ -8,8 +8,8 @@ import subprocess  # nosec
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
-from cli_tool_audit.config_manager import CliToolConfig
-from cli_tool_audit.views import check_tool_wrapper, pretty_print_results
+import cli_tool_audit.views as views
+from cli_tool_audit.models import CliToolConfig
 
 
 def get_pipx_list() -> Any:
@@ -48,16 +48,18 @@ def extract_apps(pipx_data: dict[str, Any]) -> dict[str, Any]:
     return apps_dict
 
 
-def report_for_pipx_tools() -> None:
+def report_for_pipx_tools(max_count: int = -1) -> None:
     """
     Report on the compatibility of the tools installed with pipx.
+    Args:
+        max_count (int, optional): The maximum number of tools to report on. Defaults to -1.
     """
     pipx_data = get_pipx_list()
     apps_dict = extract_apps(pipx_data)
 
     # for app, version in apps_dict.items():
     #     print(f"{app}: {version}")
-
+    count = 0
     cli_tools = {}
     for app, expected_version in apps_dict.items():
         if app in ("yated.exe", "calcure.exe", "yated", "calcure", "dedlin.exe", "dedlin"):
@@ -67,6 +69,9 @@ def report_for_pipx_tools() -> None:
         config.version_switch = "--version"
         config.version = f">={expected_version}"
         cli_tools[app] = config
+        count += 1
+        if count >= max_count > 0:
+            break
 
     # Determine the number of available CPUs
     num_cpus = os.cpu_count()
@@ -74,14 +79,14 @@ def report_for_pipx_tools() -> None:
     # Create a ThreadPoolExecutor with one thread per CPU
     with ThreadPoolExecutor(max_workers=num_cpus) as executor:
         # Submit tasks to the executor
-        futures = [executor.submit(check_tool_wrapper, (tool, config)) for tool, config in cli_tools.items()]
+        futures = [executor.submit(views.check_tool_wrapper, (tool, config)) for tool, config in cli_tools.items()]
 
         results = []
         # Process the results as they are completed
         for future in concurrent.futures.as_completed(futures):
             result = future.result()
             results.append(result)
-        pretty_print_results(results)
+        views.pretty_print_results(results)
 
 
 if __name__ == "__main__":

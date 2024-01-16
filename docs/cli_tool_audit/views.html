@@ -31,17 +31,19 @@
 Main output view for cli_tool_audit assuming tool list is in config.
 &#34;&#34;&#34;
 import concurrent
+import json
 import logging
 import os
-import sys
 from concurrent.futures import ThreadPoolExecutor
+from datetime import date, datetime
 
 import colorama
 from prettytable import PrettyTable
 from prettytable.colortable import ColorTable, Themes
 
+import cli_tool_audit.config_reader as config_reader
+import cli_tool_audit.policy as policy
 from cli_tool_audit.call_and_compatible import ToolCheckResult, check_tool_wrapper
-from cli_tool_audit.config_reader import read_config
 
 colorama.init(convert=True)
 
@@ -58,7 +60,7 @@ def validate(file_path: str = &#34;pyproject.toml&#34;) -&gt; list[ToolCheckResu
     Returns:
         list[ToolCheckResult]: A list of ToolCheckResult objects.
     &#34;&#34;&#34;
-    cli_tools = read_config(file_path)
+    cli_tools = config_reader.read_config(file_path)
 
     # Determine the number of available CPUs
     num_cpus = os.cpu_count()
@@ -74,14 +76,40 @@ def validate(file_path: str = &#34;pyproject.toml&#34;) -&gt; list[ToolCheckResu
     return results
 
 
-def report_from_pyproject_toml(file_path: str = &#34;pyproject.toml&#34;, exit_code_on_failure: bool = True):
+def custom_json_serializer(o):
+    &#34;&#34;&#34;
+    Custom JSON serializer for objects not serializable by default json code.
+
+    Args:
+        o (object): The object to serialize.
+
+    Returns:
+        str: A JSON serializable representation of the object.
+    &#34;&#34;&#34;
+    if isinstance(o, (date, datetime)):
+        return o.isoformat()
+    return str(o)
+
+
+def report_from_pyproject_toml(
+    file_path: str = &#34;pyproject.toml&#34;,
+    exit_code_on_failure: bool = True,
+    file_format: str = &#34;table&#34;,
+) -&gt; int:
     &#34;&#34;&#34;
     Report on the compatibility of the tools in the pyproject.toml file.
 
     Args:
         file_path (str, optional): The path to the pyproject.toml file. Defaults to &#34;pyproject.toml&#34;.
         exit_code_on_failure (bool, optional): If True, exit with return value of 1 if validation fails. Defaults to True.
+        file_format (str, optional): The format of the output. Defaults to &#34;table&#34;.
+
+    Returns:
+        int: The exit code.
     &#34;&#34;&#34;
+    if not file_format:
+        file_format = &#34;table&#34;
+
     if not os.path.exists(file_path):
         one_up = os.path.join(&#34;..&#34;, file_path)
         if os.path.exists(one_up):
@@ -89,43 +117,62 @@ def report_from_pyproject_toml(file_path: str = &#34;pyproject.toml&#34;, exit_c
 
     results = validate(file_path)
 
-    failed = pretty_print_results(results)
-    if failed and exit_code_on_failure:
+    failed = policy.apply_policy(results)
+    if file_format == &#34;json&#34;:
+        print(json.dumps([result.__dict__ for result in results], indent=4, default=custom_json_serializer))
+    elif file_format == &#34;json-compact&#34;:
+        print(json.dumps([result.__dict__ for result in results], default=custom_json_serializer))
+    elif file_format == &#34;xml&#34;:
+        print(&#34;&lt;results&gt;&#34;)
+        for result in results:
+            print(&#34;  &lt;result&gt;&#34;)
+            for key, value in result.__dict__.items():
+                print(f&#34;    &lt;{key}&gt;{value}&lt;/{key}&gt;&#34;)
+            print(&#34;  &lt;/result&gt;&#34;)
+        print(&#34;&lt;/results&gt;&#34;)
+    elif file_format == &#34;table&#34;:
+        pretty_print_results(results)
+    elif file_format == &#34;csv&#34;:
+        print(
+            &#34;tool,desired_version,is_available,is_snapshot,found_version,parsed_version,is_compatible,is_broken,last_modified&#34;
+        )
+        for result in results:
+            print(
+                f&#34;{result.tool},{result.desired_version},{result.is_available},{result.is_snapshot},{result.found_version},{result.parsed_version},{result.is_compatible},{result.is_broken},{result.last_modified}&#34;
+            )
+    else:
+        print(
+            f&#34;Unknown file format: {file_format}, defaulting to table output. Supported formats: json, json-compact, xml, table, csv.&#34;
+        )
+        pretty_print_results(results)
+
+    if failed and exit_code_on_failure and file_format == &#34;table&#34;:
         print(&#34;Did not pass validation, failing with return value of 1.&#34;)
-        sys.exit(1)
+        return 1
+    return 0
 
 
-def pretty_print_results(results: list[ToolCheckResult]) -&gt; bool:
+def pretty_print_results(results: list[ToolCheckResult]) -&gt; None:
     &#34;&#34;&#34;
     Pretty print the results of the validation.
 
     Args:
         results (list[ToolCheckResult]): A list of ToolCheckResult objects.
-
-    Returns:
-        bool: True if any of the tools failed validation, False otherwise.
     &#34;&#34;&#34;
-    # TODO separate out failed logic
-
     if os.environ.get(&#34;NO_COLOR&#34;):
         table = PrettyTable()
     else:
         table = ColorTable(theme=Themes.OCEAN)
     table.field_names = [&#34;Tool&#34;, &#34;Found&#34;, &#34;Parsed&#34;, &#34;Desired&#34;, &#34;Compatible&#34;, &#34;Status&#34;, &#34;Modified&#34;]
-    # Process the results as they are completed
-    failed = False
+
     all_rows: list[list[str]] = []
     for result in results:
         if result.is_broken:
             status = &#34;Can&#39;t run&#34;
-            failed = True
         elif not result.is_available:
             status = &#34;Not available&#34;
-            failed = True
         else:
             status = &#34;Available&#34;
-        if not result.is_compatible:
-            failed = True
 
         row_data = [
             result.tool,
@@ -149,8 +196,6 @@ def pretty_print_results(results: list[ToolCheckResult]) -&gt; bool:
 
     # Print the table
     print(table)
-
-    return failed
 
 
 if __name__ == &#34;__main__&#34;:
@@ -164,8 +209,42 @@ if __name__ == &#34;__main__&#34;:
 <section>
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
+<dt id="cli_tool_audit.views.custom_json_serializer"><code class="name flex">
+<span>def <span class="ident">custom_json_serializer</span></span>(<span>o)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Custom JSON serializer for objects not serializable by default json code.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>o</code></strong> :&ensp;<code>object</code></dt>
+<dd>The object to serialize.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code>str</code></dt>
+<dd>A JSON serializable representation of the object.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def custom_json_serializer(o):
+    &#34;&#34;&#34;
+    Custom JSON serializer for objects not serializable by default json code.
+
+    Args:
+        o (object): The object to serialize.
+
+    Returns:
+        str: A JSON serializable representation of the object.
+    &#34;&#34;&#34;
+    if isinstance(o, (date, datetime)):
+        return o.isoformat()
+    return str(o)</code></pre>
+</details>
+</dd>
 <dt id="cli_tool_audit.views.pretty_print_results"><code class="name flex">
-<span>def <span class="ident">pretty_print_results</span></span>(<span>results: list[<a title="cli_tool_audit.call_and_compatible.ToolCheckResult" href="call_and_compatible.html#cli_tool_audit.call_and_compatible.ToolCheckResult">ToolCheckResult</a>]) ‑> bool</span>
+<span>def <span class="ident">pretty_print_results</span></span>(<span>results: list[<a title="cli_tool_audit.models.ToolCheckResult" href="models.html#cli_tool_audit.models.ToolCheckResult">ToolCheckResult</a>]) ‑> None</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Pretty print the results of the validation.</p>
@@ -173,47 +252,32 @@ if __name__ == &#34;__main__&#34;:
 <dl>
 <dt><strong><code>results</code></strong> :&ensp;<code>list[ToolCheckResult]</code></dt>
 <dd>A list of ToolCheckResult objects.</dd>
-</dl>
-<h2 id="returns">Returns</h2>
-<dl>
-<dt><code>bool</code></dt>
-<dd>True if any of the tools failed validation, False otherwise.</dd>
 </dl></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def pretty_print_results(results: list[ToolCheckResult]) -&gt; bool:
+<pre><code class="python">def pretty_print_results(results: list[ToolCheckResult]) -&gt; None:
     &#34;&#34;&#34;
     Pretty print the results of the validation.
 
     Args:
         results (list[ToolCheckResult]): A list of ToolCheckResult objects.
-
-    Returns:
-        bool: True if any of the tools failed validation, False otherwise.
     &#34;&#34;&#34;
-    # TODO separate out failed logic
-
     if os.environ.get(&#34;NO_COLOR&#34;):
         table = PrettyTable()
     else:
         table = ColorTable(theme=Themes.OCEAN)
     table.field_names = [&#34;Tool&#34;, &#34;Found&#34;, &#34;Parsed&#34;, &#34;Desired&#34;, &#34;Compatible&#34;, &#34;Status&#34;, &#34;Modified&#34;]
-    # Process the results as they are completed
-    failed = False
+
     all_rows: list[list[str]] = []
     for result in results:
         if result.is_broken:
             status = &#34;Can&#39;t run&#34;
-            failed = True
         elif not result.is_available:
             status = &#34;Not available&#34;
-            failed = True
         else:
             status = &#34;Available&#34;
-        if not result.is_compatible:
-            failed = True
 
         row_data = [
             result.tool,
@@ -236,13 +300,11 @@ if __name__ == &#34;__main__&#34;:
     table.add_rows(sorted(all_rows, key=lambda x: x[0]))
 
     # Print the table
-    print(table)
-
-    return failed</code></pre>
+    print(table)</code></pre>
 </details>
 </dd>
 <dt id="cli_tool_audit.views.report_from_pyproject_toml"><code class="name flex">
-<span>def <span class="ident">report_from_pyproject_toml</span></span>(<span>file_path: str = 'pyproject.toml', exit_code_on_failure: bool = True)</span>
+<span>def <span class="ident">report_from_pyproject_toml</span></span>(<span>file_path: str = 'pyproject.toml', exit_code_on_failure: bool = True, file_format: str = 'table') ‑> int</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Report on the compatibility of the tools in the pyproject.toml file.</p>
@@ -252,19 +314,37 @@ if __name__ == &#34;__main__&#34;:
 <dd>The path to the pyproject.toml file. Defaults to "pyproject.toml".</dd>
 <dt><strong><code>exit_code_on_failure</code></strong> :&ensp;<code>bool</code>, optional</dt>
 <dd>If True, exit with return value of 1 if validation fails. Defaults to True.</dd>
+<dt><strong><code>file_format</code></strong> :&ensp;<code>str</code>, optional</dt>
+<dd>The format of the output. Defaults to "table".</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code>int</code></dt>
+<dd>The exit code.</dd>
 </dl></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def report_from_pyproject_toml(file_path: str = &#34;pyproject.toml&#34;, exit_code_on_failure: bool = True):
+<pre><code class="python">def report_from_pyproject_toml(
+    file_path: str = &#34;pyproject.toml&#34;,
+    exit_code_on_failure: bool = True,
+    file_format: str = &#34;table&#34;,
+) -&gt; int:
     &#34;&#34;&#34;
     Report on the compatibility of the tools in the pyproject.toml file.
 
     Args:
         file_path (str, optional): The path to the pyproject.toml file. Defaults to &#34;pyproject.toml&#34;.
         exit_code_on_failure (bool, optional): If True, exit with return value of 1 if validation fails. Defaults to True.
+        file_format (str, optional): The format of the output. Defaults to &#34;table&#34;.
+
+    Returns:
+        int: The exit code.
     &#34;&#34;&#34;
+    if not file_format:
+        file_format = &#34;table&#34;
+
     if not os.path.exists(file_path):
         one_up = os.path.join(&#34;..&#34;, file_path)
         if os.path.exists(one_up):
@@ -272,14 +352,43 @@ if __name__ == &#34;__main__&#34;:
 
     results = validate(file_path)
 
-    failed = pretty_print_results(results)
-    if failed and exit_code_on_failure:
+    failed = policy.apply_policy(results)
+    if file_format == &#34;json&#34;:
+        print(json.dumps([result.__dict__ for result in results], indent=4, default=custom_json_serializer))
+    elif file_format == &#34;json-compact&#34;:
+        print(json.dumps([result.__dict__ for result in results], default=custom_json_serializer))
+    elif file_format == &#34;xml&#34;:
+        print(&#34;&lt;results&gt;&#34;)
+        for result in results:
+            print(&#34;  &lt;result&gt;&#34;)
+            for key, value in result.__dict__.items():
+                print(f&#34;    &lt;{key}&gt;{value}&lt;/{key}&gt;&#34;)
+            print(&#34;  &lt;/result&gt;&#34;)
+        print(&#34;&lt;/results&gt;&#34;)
+    elif file_format == &#34;table&#34;:
+        pretty_print_results(results)
+    elif file_format == &#34;csv&#34;:
+        print(
+            &#34;tool,desired_version,is_available,is_snapshot,found_version,parsed_version,is_compatible,is_broken,last_modified&#34;
+        )
+        for result in results:
+            print(
+                f&#34;{result.tool},{result.desired_version},{result.is_available},{result.is_snapshot},{result.found_version},{result.parsed_version},{result.is_compatible},{result.is_broken},{result.last_modified}&#34;
+            )
+    else:
+        print(
+            f&#34;Unknown file format: {file_format}, defaulting to table output. Supported formats: json, json-compact, xml, table, csv.&#34;
+        )
+        pretty_print_results(results)
+
+    if failed and exit_code_on_failure and file_format == &#34;table&#34;:
         print(&#34;Did not pass validation, failing with return value of 1.&#34;)
-        sys.exit(1)</code></pre>
+        return 1
+    return 0</code></pre>
 </details>
 </dd>
 <dt id="cli_tool_audit.views.validate"><code class="name flex">
-<span>def <span class="ident">validate</span></span>(<span>file_path: str = 'pyproject.toml') ‑> list[<a title="cli_tool_audit.call_and_compatible.ToolCheckResult" href="call_and_compatible.html#cli_tool_audit.call_and_compatible.ToolCheckResult">ToolCheckResult</a>]</span>
+<span>def <span class="ident">validate</span></span>(<span>file_path: str = 'pyproject.toml') ‑> list[<a title="cli_tool_audit.models.ToolCheckResult" href="models.html#cli_tool_audit.models.ToolCheckResult">ToolCheckResult</a>]</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Validate the tools in the pyproject.toml file.</p>
@@ -307,7 +416,7 @@ if __name__ == &#34;__main__&#34;:
     Returns:
         list[ToolCheckResult]: A list of ToolCheckResult objects.
     &#34;&#34;&#34;
-    cli_tools = read_config(file_path)
+    cli_tools = config_reader.read_config(file_path)
 
     # Determine the number of available CPUs
     num_cpus = os.cpu_count()
@@ -341,6 +450,7 @@ if __name__ == &#34;__main__&#34;:
 </li>
 <li><h3><a href="#header-functions">Functions</a></h3>
 <ul class="">
+<li><code><a title="cli_tool_audit.views.custom_json_serializer" href="#cli_tool_audit.views.custom_json_serializer">custom_json_serializer</a></code></li>
 <li><code><a title="cli_tool_audit.views.pretty_print_results" href="#cli_tool_audit.views.pretty_print_results">pretty_print_results</a></code></li>
 <li><code><a title="cli_tool_audit.views.report_from_pyproject_toml" href="#cli_tool_audit.views.report_from_pyproject_toml">report_from_pyproject_toml</a></code></li>
 <li><code><a title="cli_tool_audit.views.validate" href="#cli_tool_audit.views.validate">validate</a></code></li>

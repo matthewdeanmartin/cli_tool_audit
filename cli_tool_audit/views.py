@@ -2,17 +2,19 @@
 Main output view for cli_tool_audit assuming tool list is in config.
 """
 import concurrent
+import json
 import logging
 import os
-import sys
 from concurrent.futures import ThreadPoolExecutor
+from datetime import date, datetime
 
 import colorama
 from prettytable import PrettyTable
 from prettytable.colortable import ColorTable, Themes
 
+import cli_tool_audit.config_reader as config_reader
+import cli_tool_audit.policy as policy
 from cli_tool_audit.call_and_compatible import ToolCheckResult, check_tool_wrapper
-from cli_tool_audit.config_reader import read_config
 
 colorama.init(convert=True)
 
@@ -29,7 +31,7 @@ def validate(file_path: str = "pyproject.toml") -> list[ToolCheckResult]:
     Returns:
         list[ToolCheckResult]: A list of ToolCheckResult objects.
     """
-    cli_tools = read_config(file_path)
+    cli_tools = config_reader.read_config(file_path)
 
     # Determine the number of available CPUs
     num_cpus = os.cpu_count()
@@ -45,14 +47,40 @@ def validate(file_path: str = "pyproject.toml") -> list[ToolCheckResult]:
     return results
 
 
-def report_from_pyproject_toml(file_path: str = "pyproject.toml", exit_code_on_failure: bool = True):
+def custom_json_serializer(o):
+    """
+    Custom JSON serializer for objects not serializable by default json code.
+
+    Args:
+        o (object): The object to serialize.
+
+    Returns:
+        str: A JSON serializable representation of the object.
+    """
+    if isinstance(o, (date, datetime)):
+        return o.isoformat()
+    return str(o)
+
+
+def report_from_pyproject_toml(
+    file_path: str = "pyproject.toml",
+    exit_code_on_failure: bool = True,
+    file_format: str = "table",
+) -> int:
     """
     Report on the compatibility of the tools in the pyproject.toml file.
 
     Args:
         file_path (str, optional): The path to the pyproject.toml file. Defaults to "pyproject.toml".
         exit_code_on_failure (bool, optional): If True, exit with return value of 1 if validation fails. Defaults to True.
+        file_format (str, optional): The format of the output. Defaults to "table".
+
+    Returns:
+        int: The exit code.
     """
+    if not file_format:
+        file_format = "table"
+
     if not os.path.exists(file_path):
         one_up = os.path.join("..", file_path)
         if os.path.exists(one_up):
@@ -60,43 +88,62 @@ def report_from_pyproject_toml(file_path: str = "pyproject.toml", exit_code_on_f
 
     results = validate(file_path)
 
-    failed = pretty_print_results(results)
-    if failed and exit_code_on_failure:
+    failed = policy.apply_policy(results)
+    if file_format == "json":
+        print(json.dumps([result.__dict__ for result in results], indent=4, default=custom_json_serializer))
+    elif file_format == "json-compact":
+        print(json.dumps([result.__dict__ for result in results], default=custom_json_serializer))
+    elif file_format == "xml":
+        print("<results>")
+        for result in results:
+            print("  <result>")
+            for key, value in result.__dict__.items():
+                print(f"    <{key}>{value}</{key}>")
+            print("  </result>")
+        print("</results>")
+    elif file_format == "table":
+        pretty_print_results(results)
+    elif file_format == "csv":
+        print(
+            "tool,desired_version,is_available,is_snapshot,found_version,parsed_version,is_compatible,is_broken,last_modified"
+        )
+        for result in results:
+            print(
+                f"{result.tool},{result.desired_version},{result.is_available},{result.is_snapshot},{result.found_version},{result.parsed_version},{result.is_compatible},{result.is_broken},{result.last_modified}"
+            )
+    else:
+        print(
+            f"Unknown file format: {file_format}, defaulting to table output. Supported formats: json, json-compact, xml, table, csv."
+        )
+        pretty_print_results(results)
+
+    if failed and exit_code_on_failure and file_format == "table":
         print("Did not pass validation, failing with return value of 1.")
-        sys.exit(1)
+        return 1
+    return 0
 
 
-def pretty_print_results(results: list[ToolCheckResult]) -> bool:
+def pretty_print_results(results: list[ToolCheckResult]) -> None:
     """
     Pretty print the results of the validation.
 
     Args:
         results (list[ToolCheckResult]): A list of ToolCheckResult objects.
-
-    Returns:
-        bool: True if any of the tools failed validation, False otherwise.
     """
-    # TODO separate out failed logic
-
     if os.environ.get("NO_COLOR"):
         table = PrettyTable()
     else:
         table = ColorTable(theme=Themes.OCEAN)
     table.field_names = ["Tool", "Found", "Parsed", "Desired", "Compatible", "Status", "Modified"]
-    # Process the results as they are completed
-    failed = False
+
     all_rows: list[list[str]] = []
     for result in results:
         if result.is_broken:
             status = "Can't run"
-            failed = True
         elif not result.is_available:
             status = "Not available"
-            failed = True
         else:
             status = "Available"
-        if not result.is_compatible:
-            failed = True
 
         row_data = [
             result.tool,
@@ -120,8 +167,6 @@ def pretty_print_results(results: list[ToolCheckResult]) -> bool:
 
     # Print the table
     print(table)
-
-    return failed
 
 
 if __name__ == "__main__":

@@ -1,31 +1,12 @@
 """
 Merge tool call and compatibility check results.
 """
-import datetime
 import sys
-from dataclasses import dataclass
-from typing import Optional, cast
-
-from semver import Version
+from typing import cast
 
 import cli_tool_audit.call_tools as cli_availability
 from cli_tool_audit.compatibility import check_compatibility
-from cli_tool_audit.config_manager import CliToolConfig
-
-
-@dataclass
-class ToolCheckResult:
-    tool: str
-    desired_version: str
-    is_available: bool
-    is_snapshot: bool
-    found_version: Optional[str]
-    """Same as snapshot_version, the exact text produced by --version switch."""
-    parsed_version: Optional[Version]
-    """Semver parsed version."""
-    is_compatible: str
-    is_broken: bool
-    last_modified: Optional[datetime.datetime]
+from cli_tool_audit.models import CliToolConfig, ToolCheckResult
 
 
 def check_tool_wrapper(tool_info: tuple[str, CliToolConfig]) -> ToolCheckResult:
@@ -40,7 +21,7 @@ def check_tool_wrapper(tool_info: tuple[str, CliToolConfig]) -> ToolCheckResult:
     """
     tool, config = tool_info
 
-    if config.if_os and config.if_os != sys.platform:
+    if config.if_os and not sys.platform.startswith(config.if_os):
         # This isn't very transparent about what just happened
         return ToolCheckResult(
             tool=tool,

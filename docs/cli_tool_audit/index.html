@@ -184,9 +184,25 @@ from cli_tool_audit.views import validate</code></pre>
 <dd>
 <div class="desc"><p>Capture current version of a list of tools.</p></div>
 </dd>
+<dt><code class="name"><a title="cli_tool_audit.interactive" href="interactive.html">cli_tool_audit.interactive</a></code></dt>
+<dd>
+<div class="desc"><p>Interactively manage tool configurations.</p></div>
+</dd>
 <dt><code class="name"><a title="cli_tool_audit.known_switches" href="known_switches.html">cli_tool_audit.known_switches</a></code></dt>
 <dd>
 <div class="desc"><p>This file contains a dictionary of known switches for various CLI tools.</p></div>
+</dd>
+<dt><code class="name"><a title="cli_tool_audit.logging_config" href="logging_config.html">cli_tool_audit.logging_config</a></code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt><code class="name"><a title="cli_tool_audit.models" href="models.html">cli_tool_audit.models</a></code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt><code class="name"><a title="cli_tool_audit.policy" href="policy.html">cli_tool_audit.policy</a></code></dt>
+<dd>
+<div class="desc"><p>Apply various policies to the results of the tool checks.</p></div>
 </dd>
 <dt><code class="name"><a title="cli_tool_audit.version_parsing" href="version_parsing.html">cli_tool_audit.version_parsing</a></code></dt>
 <dd>
@@ -216,7 +232,7 @@ from cli_tool_audit.views import validate</code></pre>
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
 <dt id="cli_tool_audit.check_tool_availability"><code class="name flex">
-<span>def <span class="ident">check_tool_availability</span></span>(<span>tool_name: str, version_switch: str = '--version', only_check_existence: bool = False) ‑> <a title="cli_tool_audit.call_tools.ToolAvailabilityResult" href="call_tools.html#cli_tool_audit.call_tools.ToolAvailabilityResult">ToolAvailabilityResult</a></span>
+<span>def <span class="ident">check_tool_availability</span></span>(<span>tool_name: str, version_switch: str = '--version', only_check_existence: bool = False) ‑> <a title="cli_tool_audit.models.ToolAvailabilityResult" href="models.html#cli_tool_audit.models.ToolAvailabilityResult">ToolAvailabilityResult</a></span>
 </code></dt>
 <dd>
 <div class="desc"><p>Check if a tool is available in the system's PATH and if possible, determine a version number.</p>
@@ -296,7 +312,7 @@ from cli_tool_audit.views import validate</code></pre>
 </details>
 </dd>
 <dt id="cli_tool_audit.read_config"><code class="name flex">
-<span>def <span class="ident">read_config</span></span>(<span>file_path: str) ‑> dict[str, <a title="cli_tool_audit.config_manager.CliToolConfig" href="config_manager.html#cli_tool_audit.config_manager.CliToolConfig">CliToolConfig</a>]</span>
+<span>def <span class="ident">read_config</span></span>(<span>file_path: str) ‑> dict[str, <a title="cli_tool_audit.models.CliToolConfig" href="models.html#cli_tool_audit.models.CliToolConfig">CliToolConfig</a>]</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Read the cli-tools section from a pyproject.toml file.</p>
@@ -339,7 +355,7 @@ from cli_tool_audit.views import validate</code></pre>
 </details>
 </dd>
 <dt id="cli_tool_audit.validate"><code class="name flex">
-<span>def <span class="ident">validate</span></span>(<span>file_path: str = 'pyproject.toml') ‑> list[<a title="cli_tool_audit.call_and_compatible.ToolCheckResult" href="call_and_compatible.html#cli_tool_audit.call_and_compatible.ToolCheckResult">ToolCheckResult</a>]</span>
+<span>def <span class="ident">validate</span></span>(<span>file_path: str = 'pyproject.toml') ‑> list[<a title="cli_tool_audit.models.ToolCheckResult" href="models.html#cli_tool_audit.models.ToolCheckResult">ToolCheckResult</a>]</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Validate the tools in the pyproject.toml file.</p>
@@ -367,7 +383,7 @@ from cli_tool_audit.views import validate</code></pre>
     Returns:
         list[ToolCheckResult]: A list of ToolCheckResult objects.
     &#34;&#34;&#34;
-    cli_tools = read_config(file_path)
+    cli_tools = config_reader.read_config(file_path)
 
     # Determine the number of available CPUs
     num_cpus = os.cpu_count()
@@ -413,7 +429,11 @@ from cli_tool_audit.views import validate</code></pre>
 <li><code><a title="cli_tool_audit.config_manager" href="config_manager.html">cli_tool_audit.config_manager</a></code></li>
 <li><code><a title="cli_tool_audit.config_reader" href="config_reader.html">cli_tool_audit.config_reader</a></code></li>
 <li><code><a title="cli_tool_audit.freeze" href="freeze.html">cli_tool_audit.freeze</a></code></li>
+<li><code><a title="cli_tool_audit.interactive" href="interactive.html">cli_tool_audit.interactive</a></code></li>
 <li><code><a title="cli_tool_audit.known_switches" href="known_switches.html">cli_tool_audit.known_switches</a></code></li>
+<li><code><a title="cli_tool_audit.logging_config" href="logging_config.html">cli_tool_audit.logging_config</a></code></li>
+<li><code><a title="cli_tool_audit.models" href="models.html">cli_tool_audit.models</a></code></li>
+<li><code><a title="cli_tool_audit.policy" href="policy.html">cli_tool_audit.policy</a></code></li>
 <li><code><a title="cli_tool_audit.version_parsing" href="version_parsing.html">cli_tool_audit.version_parsing</a></code></li>
 <li><code><a title="cli_tool_audit.view_npm_stress_test" href="view_npm_stress_test.html">cli_tool_audit.view_npm_stress_test</a></code></li>
 <li><code><a title="cli_tool_audit.view_pipx_stress_test" href="view_pipx_stress_test.html">cli_tool_audit.view_pipx_stress_test</a></code></li>

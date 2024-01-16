@@ -4,12 +4,11 @@ Capture current version of a list of tools.
 import os
 import tempfile
 
-from cli_tool_audit import check_tool_availability
-from cli_tool_audit.call_tools import ToolAvailabilityResult
+import cli_tool_audit.call_tools as call_tools
 from cli_tool_audit.config_manager import ConfigManager
 
 
-def freeze_requirements(tool_names: list[str]) -> dict[str, ToolAvailabilityResult]:
+def freeze_requirements(tool_names: list[str]) -> dict[str, call_tools.ToolAvailabilityResult]:
     """
     Capture the current version of a list of tools.
 
@@ -17,11 +16,11 @@ def freeze_requirements(tool_names: list[str]) -> dict[str, ToolAvailabilityResu
         tool_names (list[str]): A list of tool names.
 
     Returns:
-        dict[str, ToolAvailabilityResult]: A dictionary of tool names and versions.
+        dict[str, call_tools.ToolAvailabilityResult]: A dictionary of tool names and versions.
     """
     results = {}
     for tool_name in tool_names:
-        result = check_tool_availability(tool_name, "--version")
+        result = call_tools.check_tool_availability(tool_name, "--version")
         results[tool_name] = result
     return results
 

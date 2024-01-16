@@ -28,23 +28,12 @@
 </summary>
 <pre><code class="python">import copy
 import os
-from dataclasses import dataclass
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 import toml
 import tomlkit
 
-
-@dataclass
-class CliToolConfig:
-    version: Optional[str] = None
-    version_snapshot: Optional[str] = None
-    version_switch: Optional[str] = None
-    only_check_existence: Optional[bool] = False
-    schema: Optional[str] = None
-    if_os: Optional[str] = None
-    version_stamp: Optional[str] = None
-    source: Optional[str] = None
+from cli_tool_audit.models import CliToolConfig
 
 
 class ConfigManager:
@@ -152,7 +141,6 @@ class ConfigManager:
             config = tomlkit.document()
 
         # Access or create the &#39;cli-tools&#39; section
-        # tools_section = config.get(&#39;tool&#39;, {}).get(&#39;cli-tools&#39;, {})
         if &#34;tool&#34; not in config:
             config[&#34;tool&#34;] = tomlkit.table()
         if &#34;cli-tools&#34; not in cast(Any, config.get(&#34;tool&#34;)):
@@ -195,63 +183,6 @@ if __name__ == &#34;__main__&#34;:
 <section>
 <h2 class="section-title" id="header-classes">Classes</h2>
 <dl>
-<dt id="cli_tool_audit.config_manager.CliToolConfig"><code class="flex name class">
-<span>class <span class="ident">CliToolConfig</span></span>
-<span>(</span><span>version: Optional[str] = None, version_snapshot: Optional[str] = None, version_switch: Optional[str] = None, only_check_existence: Optional[bool] = False, schema: Optional[str] = None, if_os: Optional[str] = None, version_stamp: Optional[str] = None, source: Optional[str] = None)</span>
-</code></dt>
-<dd>
-<div class="desc"><p>CliToolConfig(version: Optional[str] = None, version_snapshot: Optional[str] = None, version_switch: Optional[str] = None, only_check_existence: Optional[bool] = False, schema: Optional[str] = None, if_os: Optional[str] = None, version_stamp: Optional[str] = None, source: Optional[str] = None)</p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">@dataclass
-class CliToolConfig:
-    version: Optional[str] = None
-    version_snapshot: Optional[str] = None
-    version_switch: Optional[str] = None
-    only_check_existence: Optional[bool] = False
-    schema: Optional[str] = None
-    if_os: Optional[str] = None
-    version_stamp: Optional[str] = None
-    source: Optional[str] = None</code></pre>
-</details>
-<h3>Class variables</h3>
-<dl>
-<dt id="cli_tool_audit.config_manager.CliToolConfig.if_os"><code class="name">var <span class="ident">if_os</span> : Optional[str]</code></dt>
-<dd>
-<div class="desc"></div>
-</dd>
-<dt id="cli_tool_audit.config_manager.CliToolConfig.only_check_existence"><code class="name">var <span class="ident">only_check_existence</span> : Optional[bool]</code></dt>
-<dd>
-<div class="desc"></div>
-</dd>
-<dt id="cli_tool_audit.config_manager.CliToolConfig.schema"><code class="name">var <span class="ident">schema</span> : Optional[str]</code></dt>
-<dd>
-<div class="desc"></div>
-</dd>
-<dt id="cli_tool_audit.config_manager.CliToolConfig.source"><code class="name">var <span class="ident">source</span> : Optional[str]</code></dt>
-<dd>
-<div class="desc"></div>
-</dd>
-<dt id="cli_tool_audit.config_manager.CliToolConfig.version"><code class="name">var <span class="ident">version</span> : Optional[str]</code></dt>
-<dd>
-<div class="desc"></div>
-</dd>
-<dt id="cli_tool_audit.config_manager.CliToolConfig.version_snapshot"><code class="name">var <span class="ident">version_snapshot</span> : Optional[str]</code></dt>
-<dd>
-<div class="desc"></div>
-</dd>
-<dt id="cli_tool_audit.config_manager.CliToolConfig.version_stamp"><code class="name">var <span class="ident">version_stamp</span> : Optional[str]</code></dt>
-<dd>
-<div class="desc"></div>
-</dd>
-<dt id="cli_tool_audit.config_manager.CliToolConfig.version_switch"><code class="name">var <span class="ident">version_switch</span> : Optional[str]</code></dt>
-<dd>
-<div class="desc"></div>
-</dd>
-</dl>
-</dd>
 <dt id="cli_tool_audit.config_manager.ConfigManager"><code class="flex name class">
 <span>class <span class="ident">ConfigManager</span></span>
 <span>(</span><span>config_path: str)</span>
@@ -372,7 +303,6 @@ class CliToolConfig:
             config = tomlkit.document()
 
         # Access or create the &#39;cli-tools&#39; section
-        # tools_section = config.get(&#39;tool&#39;, {}).get(&#39;cli-tools&#39;, {})
         if &#34;tool&#34; not in config:
             config[&#34;tool&#34;] = tomlkit.table()
         if &#34;cli-tools&#34; not in cast(Any, config.get(&#34;tool&#34;)):
@@ -589,19 +519,6 @@ class CliToolConfig:
 </li>
 <li><h3><a href="#header-classes">Classes</a></h3>
 <ul>
-<li>
-<h4><code><a title="cli_tool_audit.config_manager.CliToolConfig" href="#cli_tool_audit.config_manager.CliToolConfig">CliToolConfig</a></code></h4>
-<ul class="">
-<li><code><a title="cli_tool_audit.config_manager.CliToolConfig.if_os" href="#cli_tool_audit.config_manager.CliToolConfig.if_os">if_os</a></code></li>
-<li><code><a title="cli_tool_audit.config_manager.CliToolConfig.only_check_existence" href="#cli_tool_audit.config_manager.CliToolConfig.only_check_existence">only_check_existence</a></code></li>
-<li><code><a title="cli_tool_audit.config_manager.CliToolConfig.schema" href="#cli_tool_audit.config_manager.CliToolConfig.schema">schema</a></code></li>
-<li><code><a title="cli_tool_audit.config_manager.CliToolConfig.source" href="#cli_tool_audit.config_manager.CliToolConfig.source">source</a></code></li>
-<li><code><a title="cli_tool_audit.config_manager.CliToolConfig.version" href="#cli_tool_audit.config_manager.CliToolConfig.version">version</a></code></li>
-<li><code><a title="cli_tool_audit.config_manager.CliToolConfig.version_snapshot" href="#cli_tool_audit.config_manager.CliToolConfig.version_snapshot">version_snapshot</a></code></li>
-<li><code><a title="cli_tool_audit.config_manager.CliToolConfig.version_stamp" href="#cli_tool_audit.config_manager.CliToolConfig.version_stamp">version_stamp</a></code></li>
-<li><code><a title="cli_tool_audit.config_manager.CliToolConfig.version_switch" href="#cli_tool_audit.config_manager.CliToolConfig.version_switch">version_switch</a></code></li>
-</ul>
-</li>
 <li>
 <h4><code><a title="cli_tool_audit.config_manager.ConfigManager" href="#cli_tool_audit.config_manager.ConfigManager">ConfigManager</a></code></h4>
 <ul class="">
