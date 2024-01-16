@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "cli_tool_audit"
 version = "1.0.7"
-description = "Audit for existance and version number of cli tools."
+description = "Audit for existence and version number of cli tools."
 authors = ["Matthew Martin <matthewdeanmartin@gmail.com>"]
 keywords = ["cli tooling", "version numbers", ]
 classifiers = [
@@ -29,7 +29,7 @@ license = "MIT"
 readme = "README.md"
 repository = "https://github.com/matthewdeanmartin/cli_tool_audit"
 homepage = "https://github.com/matthewdeanmartin/cli_tool_audit"
-documentation = "https://github.com/matthewdeanmartin/cli_tool_audit"
+documentation = "https://matthewdeanmartin.github.io/cli_tool_audit/cli_tool_audit/index.html"
 
 [tool.poetry.urls]
 "Bug Tracker" = "https://github.com/matthewdeanmartin/cli_tool_audit/issues"
