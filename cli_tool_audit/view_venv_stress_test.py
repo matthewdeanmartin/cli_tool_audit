@@ -11,6 +11,7 @@ from concurrent.futures import ThreadPoolExecutor
 # pylint: disable=no-name-in-module
 from whichcraft import which
 
+from cli_tool_audit.config_manager import CliToolConfig
 from cli_tool_audit.views import check_tool_wrapper, pretty_print_results
 
 
@@ -45,7 +46,10 @@ def report_for_venv_tools() -> None:
     venv_dir = pathlib.Path(python_path).parent.parent
     cli_tools = {}
     for executable in get_executables_in_venv(str(venv_dir)):
-        cli_tools[executable] = {"version_switch": "--version", "version": ">=0.0.0"}
+        config = CliToolConfig()
+        config.version_switch = "--version"
+        config.version = ">=0.0.0"
+        cli_tools[executable] = config
     # Determine the number of available CPUs
     num_cpus = os.cpu_count()
 

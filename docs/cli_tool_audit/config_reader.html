@@ -33,12 +33,12 @@ Read list of tools from config.
 
 import logging
 
-import toml
+from cli_tool_audit.config_manager import CliToolConfig, ConfigManager
 
 logger = logging.getLogger(__name__)
 
 
-def read_config(file_path: str) -&gt; dict[str, dict[str, str]]:
+def read_config(file_path: str) -&gt; dict[str, CliToolConfig]:
     &#34;&#34;&#34;
     Read the cli-tools section from a pyproject.toml file.
 
@@ -51,12 +51,11 @@ def read_config(file_path: str) -&gt; dict[str, dict[str, str]]:
     # pylint: disable=broad-exception-caught
     try:
         logger.debug(f&#34;Loading config from {file_path}&#34;)
-        with open(file_path, encoding=&#34;utf-8&#34;) as file:
-            pyproject_data = toml.load(file)
-        found = pyproject_data.get(&#34;tool&#34;, {}).get(&#34;cli-tools&#34;, {})
+        manager = ConfigManager(file_path)
+        found = manager.read_config()
         if not found:
-            logger.warning(&#34;Config section not found, expect [tool.cli-tools]&#34;)
-        return found
+            logger.warning(&#34;Config section not found, expected [tool.cli-tools] with values&#34;)
+        return manager.tools
     except BaseException as e:
         logger.error(e)
         print(f&#34;Error reading pyproject.toml: {e}&#34;)
@@ -71,7 +70,7 @@ def read_config(file_path: str) -&gt; dict[str, dict[str, str]]:
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
 <dt id="cli_tool_audit.config_reader.read_config"><code class="name flex">
-<span>def <span class="ident">read_config</span></span>(<span>file_path: str) ‑> dict[str, dict[str, str]]</span>
+<span>def <span class="ident">read_config</span></span>(<span>file_path: str) ‑> dict[str, <a title="cli_tool_audit.config_manager.CliToolConfig" href="config_manager.html#cli_tool_audit.config_manager.CliToolConfig">CliToolConfig</a>]</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Read the cli-tools section from a pyproject.toml file.</p>
@@ -89,7 +88,7 @@ def read_config(file_path: str) -&gt; dict[str, dict[str, str]]:
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def read_config(file_path: str) -&gt; dict[str, dict[str, str]]:
+<pre><code class="python">def read_config(file_path: str) -&gt; dict[str, CliToolConfig]:
     &#34;&#34;&#34;
     Read the cli-tools section from a pyproject.toml file.
 
@@ -102,12 +101,11 @@ def read_config(file_path: str) -&gt; dict[str, dict[str, str]]:
     # pylint: disable=broad-exception-caught
     try:
         logger.debug(f&#34;Loading config from {file_path}&#34;)
-        with open(file_path, encoding=&#34;utf-8&#34;) as file:
-            pyproject_data = toml.load(file)
-        found = pyproject_data.get(&#34;tool&#34;, {}).get(&#34;cli-tools&#34;, {})
+        manager = ConfigManager(file_path)
+        found = manager.read_config()
         if not found:
-            logger.warning(&#34;Config section not found, expect [tool.cli-tools]&#34;)
-        return found
+            logger.warning(&#34;Config section not found, expected [tool.cli-tools] with values&#34;)
+        return manager.tools
     except BaseException as e:
         logger.error(e)
         print(f&#34;Error reading pyproject.toml: {e}&#34;)

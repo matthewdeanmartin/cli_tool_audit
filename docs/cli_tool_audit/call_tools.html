@@ -45,7 +45,9 @@ Possible things that could happen
 - found, has version but cli version != package version
 &#34;&#34;&#34;
 
+import datetime
 import logging
+import os
 import subprocess  # nosec
 from dataclasses import dataclass
 from typing import Optional
@@ -53,7 +55,6 @@ from typing import Optional
 # pylint: disable=no-name-in-module
 from whichcraft import which
 
-from cli_tool_audit.config_reader import read_config
 from cli_tool_audit.known_swtiches import KNOWN_SWITCHES
 
 logger = logging.getLogger(__name__)
@@ -68,6 +69,20 @@ class ToolAvailabilityResult:
     is_available: bool
     is_broken: bool
     version: Optional[str]
+    last_modified: Optional[datetime.datetime]
+
+
+def get_command_last_modified_date(tool_name: str) -&gt; Optional[datetime.datetime]:
+    # Find the path of the command&#39;s executable
+    result = which(tool_name)
+    if result is None:
+        return None
+
+    executable_path = result
+
+    # Get the last modified time of the executable
+    last_modified_timestamp = os.path.getmtime(executable_path)
+    return datetime.datetime.fromtimestamp(last_modified_timestamp)
 
 
 def check_tool_availability(
@@ -87,13 +102,13 @@ def check_tool_availability(
     # Check if the tool is in the system&#39;s PATH
     is_broken = True
 
-    # This is wrong?
-    if not which(tool_name):
+    last_modified = get_command_last_modified_date(tool_name)
+    if not last_modified:
         logger.warning(f&#34;{tool_name} is not on path.&#34;)
-        return ToolAvailabilityResult(False, True, None)
+        return ToolAvailabilityResult(False, True, None, last_modified)
     if only_check_existence:
         logger.debug(f&#34;{tool_name} exists, but not checking for version.&#34;)
-        return ToolAvailabilityResult(True, False, None)
+        return ToolAvailabilityResult(True, False, None, last_modified)
 
     if version_switch is None or version_switch == &#34;--version&#34;:
         # override default.
@@ -122,28 +137,29 @@ def check_tool_availability(
         logger.error(f&#34;{tool_name} stdout: {exception.stdout}&#34;)
     except FileNotFoundError:
         logger.error(f&#34;{tool_name} is not on path.&#34;)
-        return ToolAvailabilityResult(False, True, None)
+        return ToolAvailabilityResult(False, True, None, last_modified)
 
-    return ToolAvailabilityResult(True, is_broken, version)
+    return ToolAvailabilityResult(True, is_broken, version, last_modified)
 
 
 if __name__ == &#34;__main__&#34;:
-    check_tool_availability(&#34;isort&#34;)
-
-    def run() -&gt; None:
-        &#34;&#34;&#34;Example&#34;&#34;&#34;
-        # Example usage
-        file_path = &#34;../pyproject.toml&#34;
-        cli_tools = read_config(file_path)
-
-        for tool, config in cli_tools.items():
-            result = check_tool_availability(tool, config.get(&#34;version_switch&#34;, &#34;--version&#34;))
-            print(
-                f&#34;{tool}: {&#39;Available&#39; if result.is_available else &#39;Not Available&#39;}&#34;
-                f&#34; - Version:\n{result.version if result.version else &#39;N/A&#39;}&#34;
-            )
-
-    run()</code></pre>
+    print(get_command_last_modified_date(&#34;asdfpipx&#34;))
+    # check_tool_availability(&#34;isort&#34;)
+    #
+    # def run() -&gt; None:
+    #     &#34;&#34;&#34;Example&#34;&#34;&#34;
+    #     # Example usage
+    #     file_path = &#34;../pyproject.toml&#34;
+    #     cli_tools = read_config(file_path)
+    #
+    #     for tool, config in cli_tools.items():
+    #         result = check_tool_availability(tool, config.version_switch or &#34;--version&#34;)
+    #         print(
+    #             f&#34;{tool}: {&#39;Available&#39; if result.is_available else &#39;Not Available&#39;}&#34;
+    #             f&#34; - Version:\n{result.version if result.version else &#39;N/A&#39;}&#34;
+    #         )
+    #
+    # run()</code></pre>
 </details>
 </section>
 <section>
@@ -193,13 +209,13 @@ if __name__ == &#34;__main__&#34;:
     # Check if the tool is in the system&#39;s PATH
     is_broken = True
 
-    # This is wrong?
-    if not which(tool_name):
+    last_modified = get_command_last_modified_date(tool_name)
+    if not last_modified:
         logger.warning(f&#34;{tool_name} is not on path.&#34;)
-        return ToolAvailabilityResult(False, True, None)
+        return ToolAvailabilityResult(False, True, None, last_modified)
     if only_check_existence:
         logger.debug(f&#34;{tool_name} exists, but not checking for version.&#34;)
-        return ToolAvailabilityResult(True, False, None)
+        return ToolAvailabilityResult(True, False, None, last_modified)
 
     if version_switch is None or version_switch == &#34;--version&#34;:
         # override default.
@@ -228,9 +244,31 @@ if __name__ == &#34;__main__&#34;:
         logger.error(f&#34;{tool_name} stdout: {exception.stdout}&#34;)
     except FileNotFoundError:
         logger.error(f&#34;{tool_name} is not on path.&#34;)
-        return ToolAvailabilityResult(False, True, None)
+        return ToolAvailabilityResult(False, True, None, last_modified)
 
-    return ToolAvailabilityResult(True, is_broken, version)</code></pre>
+    return ToolAvailabilityResult(True, is_broken, version, last_modified)</code></pre>
+</details>
+</dd>
+<dt id="cli_tool_audit.call_tools.get_command_last_modified_date"><code class="name flex">
+<span>def <span class="ident">get_command_last_modified_date</span></span>(<span>tool_name: str) ‑> Optional[datetime.datetime]</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def get_command_last_modified_date(tool_name: str) -&gt; Optional[datetime.datetime]:
+    # Find the path of the command&#39;s executable
+    result = which(tool_name)
+    if result is None:
+        return None
+
+    executable_path = result
+
+    # Get the last modified time of the executable
+    last_modified_timestamp = os.path.getmtime(executable_path)
+    return datetime.datetime.fromtimestamp(last_modified_timestamp)</code></pre>
 </details>
 </dd>
 </dl>
@@ -240,7 +278,7 @@ if __name__ == &#34;__main__&#34;:
 <dl>
 <dt id="cli_tool_audit.call_tools.ToolAvailabilityResult"><code class="flex name class">
 <span>class <span class="ident">ToolAvailabilityResult</span></span>
-<span>(</span><span>is_available: bool, is_broken: bool, version: Optional[str])</span>
+<span>(</span><span>is_available: bool, is_broken: bool, version: Optional[str], last_modified: Optional[datetime.datetime])</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Dataclass for the result of checking tool availability.</p></div>
@@ -256,7 +294,8 @@ class ToolAvailabilityResult:
 
     is_available: bool
     is_broken: bool
-    version: Optional[str]</code></pre>
+    version: Optional[str]
+    last_modified: Optional[datetime.datetime]</code></pre>
 </details>
 <h3>Class variables</h3>
 <dl>
@@ -265,6 +304,10 @@ class ToolAvailabilityResult:
 <div class="desc"></div>
 </dd>
 <dt id="cli_tool_audit.call_tools.ToolAvailabilityResult.is_broken"><code class="name">var <span class="ident">is_broken</span> : bool</code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="cli_tool_audit.call_tools.ToolAvailabilityResult.last_modified"><code class="name">var <span class="ident">last_modified</span> : Optional[datetime.datetime]</code></dt>
 <dd>
 <div class="desc"></div>
 </dd>
@@ -291,6 +334,7 @@ class ToolAvailabilityResult:
 <li><h3><a href="#header-functions">Functions</a></h3>
 <ul class="">
 <li><code><a title="cli_tool_audit.call_tools.check_tool_availability" href="#cli_tool_audit.call_tools.check_tool_availability">check_tool_availability</a></code></li>
+<li><code><a title="cli_tool_audit.call_tools.get_command_last_modified_date" href="#cli_tool_audit.call_tools.get_command_last_modified_date">get_command_last_modified_date</a></code></li>
 </ul>
 </li>
 <li><h3><a href="#header-classes">Classes</a></h3>
@@ -300,6 +344,7 @@ class ToolAvailabilityResult:
 <ul class="">
 <li><code><a title="cli_tool_audit.call_tools.ToolAvailabilityResult.is_available" href="#cli_tool_audit.call_tools.ToolAvailabilityResult.is_available">is_available</a></code></li>
 <li><code><a title="cli_tool_audit.call_tools.ToolAvailabilityResult.is_broken" href="#cli_tool_audit.call_tools.ToolAvailabilityResult.is_broken">is_broken</a></code></li>
+<li><code><a title="cli_tool_audit.call_tools.ToolAvailabilityResult.last_modified" href="#cli_tool_audit.call_tools.ToolAvailabilityResult.last_modified">last_modified</a></code></li>
 <li><code><a title="cli_tool_audit.call_tools.ToolAvailabilityResult.version" href="#cli_tool_audit.call_tools.ToolAvailabilityResult.version">version</a></code></li>
 </ul>
 </li>

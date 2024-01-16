@@ -6,19 +6,16 @@ import logging
 import logging.config
 import os
 import sys
+from dataclasses import fields
 from typing import Any
 
 from cli_tool_audit._version import __version__
-from cli_tool_audit.config_manager import ConfigManager, CliToolConfig
+from cli_tool_audit.config_manager import CliToolConfig, ConfigManager
+from cli_tool_audit.freeze import freeze_to_screen
 from cli_tool_audit.view_npm_stress_test import report_for_npm_tools
 from cli_tool_audit.view_pipx_stress_test import report_for_pipx_tools
 from cli_tool_audit.view_venv_stress_test import report_for_venv_tools
 from cli_tool_audit.views import report_from_pyproject_toml
-
-import argparse
-from typing import Any
-from dataclasses import dataclass, field, fields
-
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +43,7 @@ def handle_create(args):
 
 def handle_update(args):
     config_manager = ConfigManager(args.config)
-    config_manager.update_tool_config(args.tool, {k: v for k, v in vars(args).items() if k != 'tool'})
+    config_manager.update_tool_config(args.tool, {k: v for k, v in vars(args).items() if k != "tool"})
     print(f"Tool {args.tool} updated.")
 
 
@@ -56,19 +53,19 @@ def handle_delete(args):
     print(f"Tool {args.tool} deleted.")
 
 
-def main()->None:
+def main() -> None:
     """Parse arguments and run the CLI tool."""
     # Create the parser
     parser = argparse.ArgumentParser(description="Audit version numbers of CLI tools.")
     parser.add_argument(
         "--version", action="version", version=f"%(prog)s {__version__}", help="Show program's version number and exit."
     )
-    parser.add_argument("--config", default="pyproject.toml", type=str, help="Path to the configuration file in TOML format.")
+    parser.add_argument(
+        "--config", default="pyproject.toml", type=str, help="Path to the configuration file in TOML format."
+    )
     parser.add_argument("--verbose", action="store_true", help="verbose output")
 
     parser.add_argument("--demo", type=str, help="Demo for values of npm, pipx or venv")
-
-
 
     subparsers = parser.add_subparsers(help="commands")
 
@@ -80,9 +77,10 @@ def main()->None:
     create_parser = subparsers.add_parser("create", help="Create a new tool configuration")
     create_parser.add_argument("tool", help="Name of the tool")
     create_parser.add_argument("--version", help="Version of the tool")
-    create_parser.add_argument("--version_switch", help="Version switch for the tool")
-    create_parser.add_argument("--only_check_existence", action='store_true',
-                               help="Check only the existence of the tool")
+    create_parser.add_argument("--version_switch", nargs="?", help="Version switch for the tool")
+    create_parser.add_argument(
+        "--only_check_existence", action="store_true", help="Check only the existence of the tool"
+    )
     # ... add other arguments as needed
     create_parser.set_defaults(func=handle_create)
 
@@ -91,8 +89,9 @@ def main()->None:
     update_parser.add_argument("tool", help="Name of the tool")
     update_parser.add_argument("--version", help="Version of the tool")
     update_parser.add_argument("--version_switch", help="Version switch for the tool")
-    update_parser.add_argument("--only_check_existence", action='store_true',
-                               help="Check only the existence of the tool")
+    update_parser.add_argument(
+        "--only_check_existence", action="store_true", help="Check only the existence of the tool"
+    )
     # ... add other arguments as needed
     update_parser.set_defaults(func=handle_update)
 
@@ -100,6 +99,10 @@ def main()->None:
     delete_parser = subparsers.add_parser("delete", help="Delete a tool configuration")
     delete_parser.add_argument("tool", help="Name of the tool")
     delete_parser.set_defaults(func=handle_delete)
+
+    # Add 'freeze' sub-command
+    freeze_parser = subparsers.add_parser("freeze", help="Freeze the versions of specified tools")
+    freeze_parser.add_argument("tools", nargs="+", help="List of tool names to freeze")
 
     # Parse the arguments
     args = parser.parse_args()
@@ -151,15 +154,17 @@ def main()->None:
         report_for_npm_tools()
         sys.exit()
 
-
-
     args = parser.parse_args()
-    if hasattr(args, 'func'):
-        print(f"command {args}")
+    if hasattr(args, "func"):
         args.func(args)
         sys.exit()
     # else:
     #     parser.print_help()
+
+    # Namespace doesn't have word "freeze" in it.
+    if args.tools:
+        freeze_to_screen(args.tools)
+        sys.exit()
 
     # Default behavior
     # Handle the configuration file argument

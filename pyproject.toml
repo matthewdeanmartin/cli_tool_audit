@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "cli_tool_audit"
-version = "1.0.3"
+version = "1.0.4"
 description = "Audit for existance and vesion number of cli tools."
 authors = ["Matthew Martin <matthewdeanmartin@gmail.com>"]
 keywords = ["cli tooling", "version numbers", ]
@@ -41,14 +41,23 @@ tool_audit = 'cli_tool_audit.__main__:main'
 
 [tool.poetry.dependencies]
 python = ">=3.8"
+
+# file finding
 whichcraft = ">=0.6.1"
+
+# version parsing
 semver = ">=3.0.2"
+
+# UI
 prettytable = ">=3.9.0"
-colorama = "*"
-colorlog = "*"
+colorama = ">=0.4.6"
+colorlog = ">=6.8.0"
+
+# Config
+toml = ">=0.10.2"
+tomlkit = ">=0.12.3"
 
 [tool.poetry.dev-dependencies]
-tomlkit = "*"
 
 # build tools
 black = ">=23.11.0"
@@ -79,6 +88,7 @@ pdoc3 = ">=0.10.0"
 # contract
 # griffe = ">=0.38.1"
 
+tox="*"
 [tool.black]
 line-length = 120
 target-version = ['py39']
@@ -251,7 +261,8 @@ pandoc = { version = ">=2.7.3" }
 nano = { version = ">=7.1" }
 shellcheck = { version = ">=0.8.0" }
 choco = { version = ">=0.10.13" }
-
+brew = { version = ">=0.0.0", if_os="darwin" }
+poetry = {version_snapshot = "Poetry (version 1.5.1)"}
 
 
 #[tool.cli-tools]
@@ -264,3 +275,5 @@ choco = { version = ">=0.10.13" }
 #blerg = { version_stamp = "blerg v1-2 (Jan 2024) 64bit", if_os="win" }
 #winapp = {version =">=1.2.3.4", schema="dotnet", if_os="win", source="registry"}
 #winthing = {version =">=1.2.3", schema="semver", if_os="win", source="fileversioninfo"}
+
+

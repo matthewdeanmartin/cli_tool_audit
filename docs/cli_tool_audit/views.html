@@ -35,63 +35,17 @@ import logging
 import os
 import sys
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass
-from typing import Optional, cast
 
 import colorama
 from prettytable import PrettyTable
 from prettytable.colortable import ColorTable, Themes
-from semver import Version
 
-import cli_tool_audit.call_tools as cli_availability
-from cli_tool_audit.compatibility import check_compatibility
+from cli_tool_audit.call_and_compatible import ToolCheckResult, check_tool_wrapper
+from cli_tool_audit.config_reader import read_config
 
 colorama.init(convert=True)
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass
-class ToolCheckResult:
-    tool: str
-    desired_version: str
-    is_available: bool
-    found_version: Optional[str]
-    parsed_version: Optional[Version]
-    is_compatible: str
-    is_broken: bool
-
-
-def check_tool_wrapper(tool_info: tuple[str, dict[str, str]]) -&gt; ToolCheckResult:
-    &#34;&#34;&#34;
-    Wrapper function for check_tool_availability() that returns a ToolCheckResult object.
-
-    Args:
-        tool_info (tuple[str, dict[str, str]]): A tuple containing the tool name and the tool configuration.
-
-    Returns:
-        ToolCheckResult: A ToolCheckResult object.
-    &#34;&#34;&#34;
-    tool, config = tool_info
-    result = cli_availability.check_tool_availability(
-        tool, config.get(&#34;version_switch&#34;, &#34;--version&#34;), cast(bool, config.get(&#34;only_check_existence&#34;, False))
-    )
-    desired_version = config.get(&#34;version&#34;, &#34;0.0.0&#34;)
-    parsed_version = None
-    if config.get(&#34;only_check_existence&#34;, False) and result.is_available:
-        is_compatible = &#34;Compatible&#34;
-    else:
-        is_compatible, parsed_version = check_compatibility(desired_version, found_version=result.version)
-
-    return ToolCheckResult(
-        tool=tool,
-        desired_version=desired_version,
-        is_available=result.is_available,
-        found_version=result.version,
-        parsed_version=parsed_version,
-        is_compatible=is_compatible,
-        is_broken=result.is_broken,
-    )
 
 
 def validate(file_path: str = &#34;pyproject.toml&#34;) -&gt; list[ToolCheckResult]:
@@ -104,7 +58,7 @@ def validate(file_path: str = &#34;pyproject.toml&#34;) -&gt; list[ToolCheckResu
     Returns:
         list[ToolCheckResult]: A list of ToolCheckResult objects.
     &#34;&#34;&#34;
-    cli_tools = cli_availability.read_config(file_path)
+    cli_tools = read_config(file_path)
 
     # Determine the number of available CPUs
     num_cpus = os.cpu_count()
@@ -157,7 +111,7 @@ def pretty_print_results(results: list[ToolCheckResult]) -&gt; bool:
         table = PrettyTable()
     else:
         table = ColorTable(theme=Themes.OCEAN)
-    table.field_names = [&#34;Tool&#34;, &#34;Found&#34;, &#34;Parsed&#34;, &#34;Desired Version&#34;, &#34;Compatible&#34;, &#34;Status&#34;]
+    table.field_names = [&#34;Tool&#34;, &#34;Found&#34;, &#34;Parsed&#34;, &#34;Desired&#34;, &#34;Compatible&#34;, &#34;Status&#34;, &#34;Modified&#34;]
     # Process the results as they are completed
     failed = False
     all_rows: list[list[str]] = []
@@ -175,11 +129,12 @@ def pretty_print_results(results: list[ToolCheckResult]) -&gt; bool:
 
         row_data = [
             result.tool,
-            result.found_version[0:35].strip() if result.found_version else &#34;N/A&#34;,
-            result.parsed_version,
+            result.found_version[0:25].strip() if result.found_version else &#34;&#34;,
+            result.parsed_version if result.parsed_version else &#34;&#34;,
             result.desired_version,
             &#34;Yes&#34; if result.is_compatible == &#34;Compatible&#34; else result.is_compatible,
             status,
+            result.last_modified.strftime(&#34;%m/%d/%y&#34;) if result.last_modified else &#34;&#34;,
         ]
         row_transformed = []
         for datum in row_data:
@@ -209,65 +164,14 @@ if __name__ == &#34;__main__&#34;:
 <section>
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
-<dt id="cli_tool_audit.views.check_tool_wrapper"><code class="name flex">
-<span>def <span class="ident">check_tool_wrapper</span></span>(<span>tool_info: tuple[str, dict[str, str]]) ‑> <a title="cli_tool_audit.views.ToolCheckResult" href="#cli_tool_audit.views.ToolCheckResult">ToolCheckResult</a></span>
-</code></dt>
-<dd>
-<div class="desc"><p>Wrapper function for check_tool_availability() that returns a ToolCheckResult object.</p>
-<h2 id="args">Args</h2>
-<dl>
-<dt><strong><code>tool_info</code></strong> :&ensp;<code>tuple[str, dict[str, str]]</code></dt>
-<dd>A tuple containing the tool name and the tool configuration.</dd>
-</dl>
-<h2 id="returns">Returns</h2>
-<dl>
-<dt><code><a title="cli_tool_audit.views.ToolCheckResult" href="#cli_tool_audit.views.ToolCheckResult">ToolCheckResult</a></code></dt>
-<dd>A ToolCheckResult object.</dd>
-</dl></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">def check_tool_wrapper(tool_info: tuple[str, dict[str, str]]) -&gt; ToolCheckResult:
-    &#34;&#34;&#34;
-    Wrapper function for check_tool_availability() that returns a ToolCheckResult object.
-
-    Args:
-        tool_info (tuple[str, dict[str, str]]): A tuple containing the tool name and the tool configuration.
-
-    Returns:
-        ToolCheckResult: A ToolCheckResult object.
-    &#34;&#34;&#34;
-    tool, config = tool_info
-    result = cli_availability.check_tool_availability(
-        tool, config.get(&#34;version_switch&#34;, &#34;--version&#34;), cast(bool, config.get(&#34;only_check_existence&#34;, False))
-    )
-    desired_version = config.get(&#34;version&#34;, &#34;0.0.0&#34;)
-    parsed_version = None
-    if config.get(&#34;only_check_existence&#34;, False) and result.is_available:
-        is_compatible = &#34;Compatible&#34;
-    else:
-        is_compatible, parsed_version = check_compatibility(desired_version, found_version=result.version)
-
-    return ToolCheckResult(
-        tool=tool,
-        desired_version=desired_version,
-        is_available=result.is_available,
-        found_version=result.version,
-        parsed_version=parsed_version,
-        is_compatible=is_compatible,
-        is_broken=result.is_broken,
-    )</code></pre>
-</details>
-</dd>
 <dt id="cli_tool_audit.views.pretty_print_results"><code class="name flex">
-<span>def <span class="ident">pretty_print_results</span></span>(<span>results: list[<a title="cli_tool_audit.views.ToolCheckResult" href="#cli_tool_audit.views.ToolCheckResult">ToolCheckResult</a>]) ‑> bool</span>
+<span>def <span class="ident">pretty_print_results</span></span>(<span>results: list[<a title="cli_tool_audit.call_and_compatible.ToolCheckResult" href="call_and_compatible.html#cli_tool_audit.call_and_compatible.ToolCheckResult">ToolCheckResult</a>]) ‑> bool</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Pretty print the results of the validation.</p>
 <h2 id="args">Args</h2>
 <dl>
-<dt><strong><code>results</code></strong> :&ensp;<code>list[<a title="cli_tool_audit.views.ToolCheckResult" href="#cli_tool_audit.views.ToolCheckResult">ToolCheckResult</a>]</code></dt>
+<dt><strong><code>results</code></strong> :&ensp;<code>list[ToolCheckResult]</code></dt>
 <dd>A list of ToolCheckResult objects.</dd>
 </dl>
 <h2 id="returns">Returns</h2>
@@ -295,7 +199,7 @@ if __name__ == &#34;__main__&#34;:
         table = PrettyTable()
     else:
         table = ColorTable(theme=Themes.OCEAN)
-    table.field_names = [&#34;Tool&#34;, &#34;Found&#34;, &#34;Parsed&#34;, &#34;Desired Version&#34;, &#34;Compatible&#34;, &#34;Status&#34;]
+    table.field_names = [&#34;Tool&#34;, &#34;Found&#34;, &#34;Parsed&#34;, &#34;Desired&#34;, &#34;Compatible&#34;, &#34;Status&#34;, &#34;Modified&#34;]
     # Process the results as they are completed
     failed = False
     all_rows: list[list[str]] = []
@@ -313,11 +217,12 @@ if __name__ == &#34;__main__&#34;:
 
         row_data = [
             result.tool,
-            result.found_version[0:35].strip() if result.found_version else &#34;N/A&#34;,
-            result.parsed_version,
+            result.found_version[0:25].strip() if result.found_version else &#34;&#34;,
+            result.parsed_version if result.parsed_version else &#34;&#34;,
             result.desired_version,
             &#34;Yes&#34; if result.is_compatible == &#34;Compatible&#34; else result.is_compatible,
             status,
+            result.last_modified.strftime(&#34;%m/%d/%y&#34;) if result.last_modified else &#34;&#34;,
         ]
         row_transformed = []
         for datum in row_data:
@@ -374,7 +279,7 @@ if __name__ == &#34;__main__&#34;:
 </details>
 </dd>
 <dt id="cli_tool_audit.views.validate"><code class="name flex">
-<span>def <span class="ident">validate</span></span>(<span>file_path: str = 'pyproject.toml') ‑> list[<a title="cli_tool_audit.views.ToolCheckResult" href="#cli_tool_audit.views.ToolCheckResult">ToolCheckResult</a>]</span>
+<span>def <span class="ident">validate</span></span>(<span>file_path: str = 'pyproject.toml') ‑> list[<a title="cli_tool_audit.call_and_compatible.ToolCheckResult" href="call_and_compatible.html#cli_tool_audit.call_and_compatible.ToolCheckResult">ToolCheckResult</a>]</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Validate the tools in the pyproject.toml file.</p>
@@ -385,7 +290,7 @@ if __name__ == &#34;__main__&#34;:
 </dl>
 <h2 id="returns">Returns</h2>
 <dl>
-<dt><code>list[<a title="cli_tool_audit.views.ToolCheckResult" href="#cli_tool_audit.views.ToolCheckResult">ToolCheckResult</a>]</code></dt>
+<dt><code>list[ToolCheckResult]</code></dt>
 <dd>A list of ToolCheckResult objects.</dd>
 </dl></div>
 <details class="source">
@@ -402,7 +307,7 @@ if __name__ == &#34;__main__&#34;:
     Returns:
         list[ToolCheckResult]: A list of ToolCheckResult objects.
     &#34;&#34;&#34;
-    cli_tools = cli_availability.read_config(file_path)
+    cli_tools = read_config(file_path)
 
     # Determine the number of available CPUs
     num_cpus = os.cpu_count()
@@ -421,61 +326,6 @@ if __name__ == &#34;__main__&#34;:
 </dl>
 </section>
 <section>
-<h2 class="section-title" id="header-classes">Classes</h2>
-<dl>
-<dt id="cli_tool_audit.views.ToolCheckResult"><code class="flex name class">
-<span>class <span class="ident">ToolCheckResult</span></span>
-<span>(</span><span>tool: str, desired_version: str, is_available: bool, found_version: Optional[str], parsed_version: Optional[semver.version.Version], is_compatible: str, is_broken: bool)</span>
-</code></dt>
-<dd>
-<div class="desc"><p>ToolCheckResult(tool: str, desired_version: str, is_available: bool, found_version: Optional[str], parsed_version: Optional[semver.version.Version], is_compatible: str, is_broken: bool)</p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">@dataclass
-class ToolCheckResult:
-    tool: str
-    desired_version: str
-    is_available: bool
-    found_version: Optional[str]
-    parsed_version: Optional[Version]
-    is_compatible: str
-    is_broken: bool</code></pre>
-</details>
-<h3>Class variables</h3>
-<dl>
-<dt id="cli_tool_audit.views.ToolCheckResult.desired_version"><code class="name">var <span class="ident">desired_version</span> : str</code></dt>
-<dd>
-<div class="desc"></div>
-</dd>
-<dt id="cli_tool_audit.views.ToolCheckResult.found_version"><code class="name">var <span class="ident">found_version</span> : Optional[str]</code></dt>
-<dd>
-<div class="desc"></div>
-</dd>
-<dt id="cli_tool_audit.views.ToolCheckResult.is_available"><code class="name">var <span class="ident">is_available</span> : bool</code></dt>
-<dd>
-<div class="desc"></div>
-</dd>
-<dt id="cli_tool_audit.views.ToolCheckResult.is_broken"><code class="name">var <span class="ident">is_broken</span> : bool</code></dt>
-<dd>
-<div class="desc"></div>
-</dd>
-<dt id="cli_tool_audit.views.ToolCheckResult.is_compatible"><code class="name">var <span class="ident">is_compatible</span> : str</code></dt>
-<dd>
-<div class="desc"></div>
-</dd>
-<dt id="cli_tool_audit.views.ToolCheckResult.parsed_version"><code class="name">var <span class="ident">parsed_version</span> : Optional[semver.version.Version]</code></dt>
-<dd>
-<div class="desc"></div>
-</dd>
-<dt id="cli_tool_audit.views.ToolCheckResult.tool"><code class="name">var <span class="ident">tool</span> : str</code></dt>
-<dd>
-<div class="desc"></div>
-</dd>
-</dl>
-</dd>
-</dl>
 </section>
 </article>
 <nav id="sidebar">
@@ -491,26 +341,9 @@ class ToolCheckResult:
 </li>
 <li><h3><a href="#header-functions">Functions</a></h3>
 <ul class="">
-<li><code><a title="cli_tool_audit.views.check_tool_wrapper" href="#cli_tool_audit.views.check_tool_wrapper">check_tool_wrapper</a></code></li>
 <li><code><a title="cli_tool_audit.views.pretty_print_results" href="#cli_tool_audit.views.pretty_print_results">pretty_print_results</a></code></li>
 <li><code><a title="cli_tool_audit.views.report_from_pyproject_toml" href="#cli_tool_audit.views.report_from_pyproject_toml">report_from_pyproject_toml</a></code></li>
 <li><code><a title="cli_tool_audit.views.validate" href="#cli_tool_audit.views.validate">validate</a></code></li>
-</ul>
-</li>
-<li><h3><a href="#header-classes">Classes</a></h3>
-<ul>
-<li>
-<h4><code><a title="cli_tool_audit.views.ToolCheckResult" href="#cli_tool_audit.views.ToolCheckResult">ToolCheckResult</a></code></h4>
-<ul class="two-column">
-<li><code><a title="cli_tool_audit.views.ToolCheckResult.desired_version" href="#cli_tool_audit.views.ToolCheckResult.desired_version">desired_version</a></code></li>
-<li><code><a title="cli_tool_audit.views.ToolCheckResult.found_version" href="#cli_tool_audit.views.ToolCheckResult.found_version">found_version</a></code></li>
-<li><code><a title="cli_tool_audit.views.ToolCheckResult.is_available" href="#cli_tool_audit.views.ToolCheckResult.is_available">is_available</a></code></li>
-<li><code><a title="cli_tool_audit.views.ToolCheckResult.is_broken" href="#cli_tool_audit.views.ToolCheckResult.is_broken">is_broken</a></code></li>
-<li><code><a title="cli_tool_audit.views.ToolCheckResult.is_compatible" href="#cli_tool_audit.views.ToolCheckResult.is_compatible">is_compatible</a></code></li>
-<li><code><a title="cli_tool_audit.views.ToolCheckResult.parsed_version" href="#cli_tool_audit.views.ToolCheckResult.parsed_version">parsed_version</a></code></li>
-<li><code><a title="cli_tool_audit.views.ToolCheckResult.tool" href="#cli_tool_audit.views.ToolCheckResult.tool">tool</a></code></li>
-</ul>
-</li>
 </ul>
 </li>
 </ul>

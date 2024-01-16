@@ -50,8 +50,19 @@ def convert_version_range(version_range: str) -&gt; str:
         &gt;&gt;&gt; convert_version_range(&#34;~1.2&#34;)
         &#39;&gt;=1.2 &lt;1.3.0&#39;
     &#34;&#34;&#34;
-    if not version_range.startswith((&#34;^&#34;, &#34;~&#34;)):
+    if not version_range.startswith((&#34;^&#34;, &#34;~&#34;)) and &#34;*&#34; not in version_range:
         raise ValueError(&#34;Version range must start with ^ or ~&#34;)
+
+    if &#34;*&#34; in version_range:
+        parts = version_range.split(&#34;.&#34;)
+        if version_range == &#34;*&#34;:
+            return &#34;&gt;=0.0.0&#34;
+        if len(parts) == 2 and parts[1] == &#34;*&#34;:  # e.g., 1.*
+            major = parts[0]
+            return f&#34;&gt;={major}.0.0 &lt;{int(major) + 1}.0.0&#34;
+        if len(parts) == 3 and parts[2] == &#34;*&#34;:  # e.g., 1.2.*
+            major, minor = parts[:2]
+            return f&#34;&gt;={major}.{minor}.0 &lt;{major}.{int(minor) + 1}.0&#34;
 
     operator = version_range[0]
     version = parse(version_range[1:])
@@ -68,7 +79,7 @@ def convert_version_range(version_range: str) -&gt; str:
             return f&#34;&gt;={version} &lt;{version.major}.{version.minor + 1}.0&#34;
         if version.minor is None:
             return f&#34;&gt;={version.major}.0.0 &lt;{version.major + 1}.0.0&#34;
-    raise ValueError(&#34;Version range must start with ^ or ~&#34;)
+    raise ValueError(&#34;Version range must start with ^ or ~ or contain *&#34;)
 
 
 def check_range_compatibility(desired_version: str, found_semversion: Version) -&gt; str:
@@ -91,7 +102,12 @@ def check_range_compatibility(desired_version: str, found_semversion: Version) -
         &#39;Compatible&#39;
     &#34;&#34;&#34;
     version_string = convert_version_range(desired_version)
-    lower, upper = version_string.split(&#34; &#34;)
+    parts = version_string.split(&#34; &#34;)
+    if len(parts) == 1:
+        if not found_semversion.match(parts[0]):
+            return f&#34;{desired_version} != {found_semversion}&#34;
+
+    lower, upper = parts
     if not found_semversion.match(lower):
         return f&#34;{desired_version} != {found_semversion}&#34;
     if not found_semversion.match(upper):
@@ -162,7 +178,12 @@ if __name__ == &#34;__main__&#34;:
         &#39;Compatible&#39;
     &#34;&#34;&#34;
     version_string = convert_version_range(desired_version)
-    lower, upper = version_string.split(&#34; &#34;)
+    parts = version_string.split(&#34; &#34;)
+    if len(parts) == 1:
+        if not found_semversion.match(parts[0]):
+            return f&#34;{desired_version} != {found_semversion}&#34;
+
+    lower, upper = parts
     if not found_semversion.match(lower):
         return f&#34;{desired_version} != {found_semversion}&#34;
     if not found_semversion.match(upper):
@@ -211,8 +232,19 @@ if __name__ == &#34;__main__&#34;:
         &gt;&gt;&gt; convert_version_range(&#34;~1.2&#34;)
         &#39;&gt;=1.2 &lt;1.3.0&#39;
     &#34;&#34;&#34;
-    if not version_range.startswith((&#34;^&#34;, &#34;~&#34;)):
+    if not version_range.startswith((&#34;^&#34;, &#34;~&#34;)) and &#34;*&#34; not in version_range:
         raise ValueError(&#34;Version range must start with ^ or ~&#34;)
+
+    if &#34;*&#34; in version_range:
+        parts = version_range.split(&#34;.&#34;)
+        if version_range == &#34;*&#34;:
+            return &#34;&gt;=0.0.0&#34;
+        if len(parts) == 2 and parts[1] == &#34;*&#34;:  # e.g., 1.*
+            major = parts[0]
+            return f&#34;&gt;={major}.0.0 &lt;{int(major) + 1}.0.0&#34;
+        if len(parts) == 3 and parts[2] == &#34;*&#34;:  # e.g., 1.2.*
+            major, minor = parts[:2]
+            return f&#34;&gt;={major}.{minor}.0 &lt;{major}.{int(minor) + 1}.0&#34;
 
     operator = version_range[0]
     version = parse(version_range[1:])
@@ -229,7 +261,7 @@ if __name__ == &#34;__main__&#34;:
             return f&#34;&gt;={version} &lt;{version.major}.{version.minor + 1}.0&#34;
         if version.minor is None:
             return f&#34;&gt;={version.major}.0.0 &lt;{version.major + 1}.0.0&#34;
-    raise ValueError(&#34;Version range must start with ^ or ~&#34;)</code></pre>
+    raise ValueError(&#34;Version range must start with ^ or ~ or contain *&#34;)</code></pre>
 </details>
 </dd>
 </dl>

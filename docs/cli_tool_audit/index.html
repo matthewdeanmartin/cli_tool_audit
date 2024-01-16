@@ -33,13 +33,18 @@ Audit CLI tool version numbers.
 __all__ = [&#34;validate&#34;, &#34;read_config&#34;, &#34;check_tool_availability&#34;, &#34;__version__&#34;]
 
 from cli_tool_audit._version import __version__
-from cli_tool_audit.call_tools import check_tool_availability, read_config
+from cli_tool_audit.call_tools import check_tool_availability
+from cli_tool_audit.config_reader import read_config
 from cli_tool_audit.views import validate</code></pre>
 </details>
 </section>
 <section>
 <h2 class="section-title" id="header-submodules">Sub-modules</h2>
 <dl>
+<dt><code class="name"><a title="cli_tool_audit.call_and_compatible" href="call_and_compatible.html">cli_tool_audit.call_and_compatible</a></code></dt>
+<dd>
+<div class="desc"><p>Merge tool call and compatibility check results.</p></div>
+</dd>
 <dt><code class="name"><a title="cli_tool_audit.call_tools" href="call_tools.html">cli_tool_audit.call_tools</a></code></dt>
 <dd>
 <div class="desc"><p>Check if an external tool is expected and available on the PATH …</p></div>
@@ -52,9 +57,17 @@ from cli_tool_audit.views import validate</code></pre>
 <dd>
 <div class="desc"><p>This module contains functions to check if a found version is compatible with a desired version range.</p></div>
 </dd>
+<dt><code class="name"><a title="cli_tool_audit.config_manager" href="config_manager.html">cli_tool_audit.config_manager</a></code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
 <dt><code class="name"><a title="cli_tool_audit.config_reader" href="config_reader.html">cli_tool_audit.config_reader</a></code></dt>
 <dd>
 <div class="desc"><p>Read list of tools from config.</p></div>
+</dd>
+<dt><code class="name"><a title="cli_tool_audit.freeze" href="freeze.html">cli_tool_audit.freeze</a></code></dt>
+<dd>
+<div class="desc"><p>Capture current version of a list of tools.</p></div>
 </dd>
 <dt><code class="name"><a title="cli_tool_audit.known_swtiches" href="known_swtiches.html">cli_tool_audit.known_swtiches</a></code></dt>
 <dd>
@@ -127,13 +140,13 @@ from cli_tool_audit.views import validate</code></pre>
     # Check if the tool is in the system&#39;s PATH
     is_broken = True
 
-    # This is wrong?
-    if not which(tool_name):
+    last_modified = get_command_last_modified_date(tool_name)
+    if not last_modified:
         logger.warning(f&#34;{tool_name} is not on path.&#34;)
-        return ToolAvailabilityResult(False, True, None)
+        return ToolAvailabilityResult(False, True, None, last_modified)
     if only_check_existence:
         logger.debug(f&#34;{tool_name} exists, but not checking for version.&#34;)
-        return ToolAvailabilityResult(True, False, None)
+        return ToolAvailabilityResult(True, False, None, last_modified)
 
     if version_switch is None or version_switch == &#34;--version&#34;:
         # override default.
@@ -162,13 +175,13 @@ from cli_tool_audit.views import validate</code></pre>
         logger.error(f&#34;{tool_name} stdout: {exception.stdout}&#34;)
     except FileNotFoundError:
         logger.error(f&#34;{tool_name} is not on path.&#34;)
-        return ToolAvailabilityResult(False, True, None)
+        return ToolAvailabilityResult(False, True, None, last_modified)
 
-    return ToolAvailabilityResult(True, is_broken, version)</code></pre>
+    return ToolAvailabilityResult(True, is_broken, version, last_modified)</code></pre>
 </details>
 </dd>
 <dt id="cli_tool_audit.read_config"><code class="name flex">
-<span>def <span class="ident">read_config</span></span>(<span>file_path: str) ‑> dict[str, dict[str, str]]</span>
+<span>def <span class="ident">read_config</span></span>(<span>file_path: str) ‑> dict[str, <a title="cli_tool_audit.config_manager.CliToolConfig" href="config_manager.html#cli_tool_audit.config_manager.CliToolConfig">CliToolConfig</a>]</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Read the cli-tools section from a pyproject.toml file.</p>
@@ -186,7 +199,7 @@ from cli_tool_audit.views import validate</code></pre>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def read_config(file_path: str) -&gt; dict[str, dict[str, str]]:
+<pre><code class="python">def read_config(file_path: str) -&gt; dict[str, CliToolConfig]:
     &#34;&#34;&#34;
     Read the cli-tools section from a pyproject.toml file.
 
@@ -199,12 +212,11 @@ from cli_tool_audit.views import validate</code></pre>
     # pylint: disable=broad-exception-caught
     try:
         logger.debug(f&#34;Loading config from {file_path}&#34;)
-        with open(file_path, encoding=&#34;utf-8&#34;) as file:
-            pyproject_data = toml.load(file)
-        found = pyproject_data.get(&#34;tool&#34;, {}).get(&#34;cli-tools&#34;, {})
+        manager = ConfigManager(file_path)
+        found = manager.read_config()
         if not found:
-            logger.warning(&#34;Config section not found, expect [tool.cli-tools]&#34;)
-        return found
+            logger.warning(&#34;Config section not found, expected [tool.cli-tools] with values&#34;)
+        return manager.tools
     except BaseException as e:
         logger.error(e)
         print(f&#34;Error reading pyproject.toml: {e}&#34;)
@@ -212,7 +224,7 @@ from cli_tool_audit.views import validate</code></pre>
 </details>
 </dd>
 <dt id="cli_tool_audit.validate"><code class="name flex">
-<span>def <span class="ident">validate</span></span>(<span>file_path: str = 'pyproject.toml') ‑> list[<a title="cli_tool_audit.views.ToolCheckResult" href="views.html#cli_tool_audit.views.ToolCheckResult">ToolCheckResult</a>]</span>
+<span>def <span class="ident">validate</span></span>(<span>file_path: str = 'pyproject.toml') ‑> list[<a title="cli_tool_audit.call_and_compatible.ToolCheckResult" href="call_and_compatible.html#cli_tool_audit.call_and_compatible.ToolCheckResult">ToolCheckResult</a>]</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Validate the tools in the pyproject.toml file.</p>
@@ -240,7 +252,7 @@ from cli_tool_audit.views import validate</code></pre>
     Returns:
         list[ToolCheckResult]: A list of ToolCheckResult objects.
     &#34;&#34;&#34;
-    cli_tools = cli_availability.read_config(file_path)
+    cli_tools = read_config(file_path)
 
     # Determine the number of available CPUs
     num_cpus = os.cpu_count()
@@ -269,10 +281,13 @@ from cli_tool_audit.views import validate</code></pre>
 <ul id="index">
 <li><h3><a href="#header-submodules">Sub-modules</a></h3>
 <ul>
+<li><code><a title="cli_tool_audit.call_and_compatible" href="call_and_compatible.html">cli_tool_audit.call_and_compatible</a></code></li>
 <li><code><a title="cli_tool_audit.call_tools" href="call_tools.html">cli_tool_audit.call_tools</a></code></li>
 <li><code><a title="cli_tool_audit.compatibility" href="compatibility.html">cli_tool_audit.compatibility</a></code></li>
 <li><code><a title="cli_tool_audit.compatibility_complex" href="compatibility_complex.html">cli_tool_audit.compatibility_complex</a></code></li>
+<li><code><a title="cli_tool_audit.config_manager" href="config_manager.html">cli_tool_audit.config_manager</a></code></li>
 <li><code><a title="cli_tool_audit.config_reader" href="config_reader.html">cli_tool_audit.config_reader</a></code></li>
+<li><code><a title="cli_tool_audit.freeze" href="freeze.html">cli_tool_audit.freeze</a></code></li>
 <li><code><a title="cli_tool_audit.known_swtiches" href="known_swtiches.html">cli_tool_audit.known_swtiches</a></code></li>
 <li><code><a title="cli_tool_audit.version_parsing" href="version_parsing.html">cli_tool_audit.version_parsing</a></code></li>
 <li><code><a title="cli_tool_audit.view_npm_stress_test" href="view_npm_stress_test.html">cli_tool_audit.view_npm_stress_test</a></code></li>

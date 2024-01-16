@@ -3,6 +3,7 @@ import os
 import subprocess  # nosec
 from concurrent.futures import ThreadPoolExecutor
 
+from cli_tool_audit.config_manager import CliToolConfig
 from cli_tool_audit.views import check_tool_wrapper, pretty_print_results
 
 
@@ -35,8 +36,15 @@ def report_for_npm_tools() -> None:
 
     cli_tools = {}
     for app in apps:
-        app_cmd = app + ".cmd"
-        cli_tools[app_cmd] = {"version_switch": "--version", "version": ">=0.0.0"}
+        if os.name == "nt":
+            # I think this is a windows only thing?
+            app_cmd = app + ".cmd"
+        else:
+            app_cmd = app
+        config = CliToolConfig()
+        config.version_switch = "--version"
+        config.version = ">=0.0.0"
+        cli_tools[app_cmd] = config
 
     # Determine the number of available CPUs
     num_cpus = os.cpu_count()

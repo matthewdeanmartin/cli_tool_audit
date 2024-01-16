@@ -13,7 +13,7 @@ from cli_tool_audit.version_parsing import two_pass_semver_parse
 logger = logging.getLogger(__name__)
 
 
-def split_version_match_pattern(pattern: str) -> tuple[str | Any, ...]:
+def split_version_match_pattern(pattern: str) -> tuple[Any, ...]:
     """
     Split a version match pattern into a comparator and a version number.
 
@@ -57,7 +57,7 @@ def split_version_match_pattern(pattern: str) -> tuple[str | Any, ...]:
 CANT_TELL = "Can't tell"
 
 
-def check_compatibility(desired_version: str, found_version: Optional[str]) -> tuple[str, Version | None]:
+def check_compatibility(desired_version: str, found_version: Optional[str]) -> tuple[str, Optional[Version]]:
     """
     Check if a found version is compatible with a desired version. Uses semantic versioning.
     When a version isn't semver, we attempt to convert it to semver.

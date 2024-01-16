@@ -6,63 +6,17 @@ import logging
 import os
 import sys
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass
-from typing import Optional, cast
 
 import colorama
 from prettytable import PrettyTable
 from prettytable.colortable import ColorTable, Themes
-from semver import Version
 
-import cli_tool_audit.call_tools as cli_availability
-from cli_tool_audit.compatibility import check_compatibility
+from cli_tool_audit.call_and_compatible import ToolCheckResult, check_tool_wrapper
+from cli_tool_audit.config_reader import read_config
 
 colorama.init(convert=True)
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass
-class ToolCheckResult:
-    tool: str
-    desired_version: str
-    is_available: bool
-    found_version: Optional[str]
-    parsed_version: Optional[Version]
-    is_compatible: str
-    is_broken: bool
-
-
-def check_tool_wrapper(tool_info: tuple[str, dict[str, str]]) -> ToolCheckResult:
-    """
-    Wrapper function for check_tool_availability() that returns a ToolCheckResult object.
-
-    Args:
-        tool_info (tuple[str, dict[str, str]]): A tuple containing the tool name and the tool configuration.
-
-    Returns:
-        ToolCheckResult: A ToolCheckResult object.
-    """
-    tool, config = tool_info
-    result = cli_availability.check_tool_availability(
-        tool, config.get("version_switch", "--version"), cast(bool, config.get("only_check_existence", False))
-    )
-    desired_version = config.get("version", "0.0.0")
-    parsed_version = None
-    if config.get("only_check_existence", False) and result.is_available:
-        is_compatible = "Compatible"
-    else:
-        is_compatible, parsed_version = check_compatibility(desired_version, found_version=result.version)
-
-    return ToolCheckResult(
-        tool=tool,
-        desired_version=desired_version,
-        is_available=result.is_available,
-        found_version=result.version,
-        parsed_version=parsed_version,
-        is_compatible=is_compatible,
-        is_broken=result.is_broken,
-    )
 
 
 def validate(file_path: str = "pyproject.toml") -> list[ToolCheckResult]:
@@ -75,7 +29,7 @@ def validate(file_path: str = "pyproject.toml") -> list[ToolCheckResult]:
     Returns:
         list[ToolCheckResult]: A list of ToolCheckResult objects.
     """
-    cli_tools = cli_availability.read_config(file_path)
+    cli_tools = read_config(file_path)
 
     # Determine the number of available CPUs
     num_cpus = os.cpu_count()
@@ -128,7 +82,7 @@ def pretty_print_results(results: list[ToolCheckResult]) -> bool:
         table = PrettyTable()
     else:
         table = ColorTable(theme=Themes.OCEAN)
-    table.field_names = ["Tool", "Found", "Parsed", "Desired Version", "Compatible", "Status"]
+    table.field_names = ["Tool", "Found", "Parsed", "Desired", "Compatible", "Status", "Modified"]
     # Process the results as they are completed
     failed = False
     all_rows: list[list[str]] = []
@@ -146,11 +100,12 @@ def pretty_print_results(results: list[ToolCheckResult]) -> bool:
 
         row_data = [
             result.tool,
-            result.found_version[0:35].strip() if result.found_version else "N/A",
-            result.parsed_version,
+            result.found_version[0:25].strip() if result.found_version else "",
+            result.parsed_version if result.parsed_version else "",
             result.desired_version,
             "Yes" if result.is_compatible == "Compatible" else result.is_compatible,
             status,
+            result.last_modified.strftime("%m/%d/%y") if result.last_modified else "",
         ]
         row_transformed = []
         for datum in row_data:

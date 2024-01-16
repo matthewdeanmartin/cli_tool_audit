@@ -8,6 +8,7 @@ import subprocess  # nosec
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
+from cli_tool_audit.config_manager import CliToolConfig
 from cli_tool_audit.views import check_tool_wrapper, pretty_print_results
 
 
@@ -59,7 +60,10 @@ def report_for_pipx_tools() -> None:
         if app in ("yated.exe", "calcure.exe", "yated", "calcure", "dedlin.exe", "dedlin"):
             # These launch interactive process & then time out.
             continue
-        cli_tools[app] = {"version_switch": "--version", "version": f">={expected_version}"}
+        config = CliToolConfig()
+        config.version_switch = "--version"
+        config.version = f">={expected_version}"
+        cli_tools[app] = config
 
     # Determine the number of available CPUs
     num_cpus = os.cpu_count()

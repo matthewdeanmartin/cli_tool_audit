@@ -37,6 +37,7 @@ import subprocess  # nosec
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
+from cli_tool_audit.config_manager import CliToolConfig
 from cli_tool_audit.views import check_tool_wrapper, pretty_print_results
 
 
@@ -88,7 +89,10 @@ def report_for_pipx_tools() -&gt; None:
         if app in (&#34;yated.exe&#34;, &#34;calcure.exe&#34;, &#34;yated&#34;, &#34;calcure&#34;, &#34;dedlin.exe&#34;, &#34;dedlin&#34;):
             # These launch interactive process &amp; then time out.
             continue
-        cli_tools[app] = {&#34;version_switch&#34;: &#34;--version&#34;, &#34;version&#34;: f&#34;&gt;={expected_version}&#34;}
+        config = CliToolConfig()
+        config.version_switch = &#34;--version&#34;
+        config.version = f&#34;&gt;={expected_version}&#34;
+        cli_tools[app] = config
 
     # Determine the number of available CPUs
     num_cpus = os.cpu_count()
@@ -202,7 +206,10 @@ if __name__ == &#34;__main__&#34;:
         if app in (&#34;yated.exe&#34;, &#34;calcure.exe&#34;, &#34;yated&#34;, &#34;calcure&#34;, &#34;dedlin.exe&#34;, &#34;dedlin&#34;):
             # These launch interactive process &amp; then time out.
             continue
-        cli_tools[app] = {&#34;version_switch&#34;: &#34;--version&#34;, &#34;version&#34;: f&#34;&gt;={expected_version}&#34;}
+        config = CliToolConfig()
+        config.version_switch = &#34;--version&#34;
+        config.version = f&#34;&gt;={expected_version}&#34;
+        cli_tools[app] = config
 
     # Determine the number of available CPUs
     num_cpus = os.cpu_count()

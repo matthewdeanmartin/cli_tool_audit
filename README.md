@@ -41,17 +41,34 @@ pipx install cli-tool-audit
 CLI usage
 ```
 ❯ cli_tool_audit --help
-usage: cli_tool_audit [-h] [--version] [--config CONFIG] [--verbose] [--demo DEMO]
+usage: cli_tool_audit [-h] [--version] [--config CONFIG] [--verbose] [--demo DEMO] {read,create,update,delete,freeze} ...
 
 Audit version numbers of CLI tools.
 
+positional arguments:
+  {read,create,update,delete,freeze}
+                        commands
+    read                Read and list all tool configurations
+    create              Create a new tool configuration
+    update              Update an existing tool configuration
+    delete              Delete a tool configuration
+    freeze              Freeze the versions of specified tools
+
 options:
-  -h, --help       show this help message and exit
-  --version        Show program's version number and exit.
-  --config CONFIG  Path to the configuration file in TOML format.
-  --verbose        verbose output
-  --demo DEMO      Demo for values of npm, pipx or venv
+  -h, --help            show this help message and exit
+  --version             Show program's version number and exit.
+  --config CONFIG       Path to the configuration file in TOML format.
+  --verbose             verbose output
+  --demo DEMO           Demo for values of npm, pipx or venv
 ```
+Note. If you use the create/update commands and specify the `--vesion` switch, it must have an equal sign.
+
+Here is how to generate a freeze, a list of current versions by snapshot, for a lis tof tools. All tools will be 
+check with `--version` unless they are well known.
+```shell
+cli_tool_audit freeze python java make rustc
+```
+
 
 ```python
 import cli_tool_audit
@@ -62,14 +79,29 @@ print(cli_tool_audit.validate(config="pyproject.toml"))
 The configuration file lists the tools you expect how hints on how detect the version.
 ```toml
 [tool.cli-tools]
-pipx = { version = "^1.0.0", version_switch = "--version" }
-mypy = { version = "^1.0.0", version_switch = "--version" }
-pylint = {  version = "^1.0.0", version_switch = "--version" }
-black = {  version = "^1.0.0", version_switch = "--version" }
-pygount = { version = "^1.0.0", version_switch = "--version" }
-ruff = { version = "^1.0.0", version_switch = "--version" }
+# Typical example
+pipx = { version = ">=1.0.0", version_switch = "--version" }
+# Restrict to specific OS
+brew = { version = ">=0.1.0", if_os="darwin" }
+# Pin to a snapshot of the output of `poetry --version`
+poetry = {version_snapshot = "Poetry (version 1.5.1)"}
+# Don't attempt to run `notepad --version`, just check if it is on the path
+notepad = { only_check_existence = true }
+# Any version.
+vulture = { version = "*" }
+# Supports ^ and ~ version ranges.
+shellcheck = { version = "^0.8.0" }
+# Uses semver's compatibility logic, which is not the same as an exact match.
+rustc = { version = "1.67.0" }
 ```
+See [semver3](https://python-semver.readthedocs.io/en/latest/usage/check-compatible-semver-version.html) for 
+compatibility logic for versions without operators/symbols.
 
+See [poetry](https://python-poetry.org/docs/dependency-specification/) for version range specifiers.
+
+See [stackoverflow](https://stackoverflow.com/a/13874620/33264) for os names.
+
+## Demos
 Demos will discover a bunch of executables as installed in the local virtual environment, installed by pipx or 
 installed by npm. It will then assume that we want the current or any version and run an audit. Since we know these 
 files already exist, the failures are centered on failing to execute, failing to guess the version switch, failure 

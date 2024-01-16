@@ -4,12 +4,12 @@ Read list of tools from config.
 
 import logging
 
-import toml
+from cli_tool_audit.config_manager import CliToolConfig, ConfigManager
 
 logger = logging.getLogger(__name__)
 
 
-def read_config(file_path: str) -> dict[str, dict[str, str]]:
+def read_config(file_path: str) -> dict[str, CliToolConfig]:
     """
     Read the cli-tools section from a pyproject.toml file.
 
@@ -22,12 +22,11 @@ def read_config(file_path: str) -> dict[str, dict[str, str]]:
     # pylint: disable=broad-exception-caught
     try:
         logger.debug(f"Loading config from {file_path}")
-        with open(file_path, encoding="utf-8") as file:
-            pyproject_data = toml.load(file)
-        found = pyproject_data.get("tool", {}).get("cli-tools", {})
+        manager = ConfigManager(file_path)
+        found = manager.read_config()
         if not found:
-            logger.warning("Config section not found, expect [tool.cli-tools]")
-        return found
+            logger.warning("Config section not found, expected [tool.cli-tools] with values")
+        return manager.tools
     except BaseException as e:
         logger.error(e)
         print(f"Error reading pyproject.toml: {e}")
