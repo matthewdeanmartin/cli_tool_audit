@@ -3,6 +3,16 @@
 Verify that a list of cli tools are available. Like a requirements.txt for cli tools, but without an installer
 component. Intended to work with cli tools regardless to how they were installed, e.g. via pipx, npm, etc.
 
+If 100% of your tools are installed by the same package manager that can install tools from a list with desired
+versions, then you don't need this tool.
+
+Some useful scenarios:
+
+- Validating an end user's environment before running an app where you can't install all the
+  dependencies for them.
+- Validating a CI environment and failing the build when configuration has drifted
+- Validating a developer's workstation instead of an "install everything" script.
+
 ## How it works
 
 You declare a list of cli commands and version ranges.
@@ -41,11 +51,26 @@ pipx install cli-tool-audit
 
 ## Usage
 
-CLI usage
+Generate minimal config for a few tools.
+
+```bash
+cli_tool_audit freeze python java make rustc
+```
+
+Copy result of above into your pyproject.toml. Edit as needed, especially if you don't want snapshot versioning,
+which is probably too strict.
+
+Audit the environment with the current configuration.
+
+```bash
+cli_tool_audit audit
+```
+
+All commands
 
 ```text
 ❯ cli_tool_audit --help
-usage: cli-tool-audit [-h] [-V] [-c CONFIG] [-ff {json,json-compact,xml,table,csv}] [-nf] [--verbose] [--demo {pipx,venv,npm}]
+usage: cli-tool-audit [-h] [-V] [-c CONFIG] [-nc] [-ff {json,json-compact,xml,table,csv}] [-nf] [--verbose] [--demo {pipx,venv,npm}]
                       {interactive,read,create,update,delete,freeze,audit} ...
 
 Audit version numbers of CLI tools.
@@ -66,6 +91,8 @@ options:
   -V, --version         Show program's version number and exit.
   -c CONFIG, --config CONFIG
                         Path to the configuration file in TOML format. (default is pyproject.toml)
+  -nc, --no-cache, --no_cache
+                        Disable caching of results.
   -ff {json,json-compact,xml,table,csv}, --file-format {json,json-compact,xml,table,csv}, --file_format {json,json-compact,xml,table,csv}
                         Output results in the specified format. (default is table)
   -nf, --never-fail, --never_fail

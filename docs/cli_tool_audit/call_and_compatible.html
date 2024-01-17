@@ -34,24 +34,26 @@ import sys
 import threading
 
 from cli_tool_audit.audit_cache import AuditFacade
+from cli_tool_audit.audit_manager import AuditManager
 from cli_tool_audit.models import CliToolConfig, ToolCheckResult
 
 # Old interface
 
 
 def check_tool_wrapper(
-    tool_info: tuple[str, CliToolConfig, threading.Lock],
+    tool_info: tuple[str, CliToolConfig, threading.Lock, bool],
 ) -&gt; ToolCheckResult:
     &#34;&#34;&#34;
     Wrapper function for check_tool_availability() that returns a ToolCheckResult object.
 
     Args:
-        tool_info (tuple[str, CliToolConfig]): A tuple containing the tool name and the tool configuration.
+        tool_info (tuple[str, CliToolConfig, threading.Lock, bool]): A tuple containing the tool name, the
+        CliToolConfig object, a lock, and a boolean indicating if the cache is enabled.
 
     Returns:
         ToolCheckResult: A ToolCheckResult object.
     &#34;&#34;&#34;
-    tool, config, lock = tool_info
+    tool, config, lock, enable_cache = tool_info
 
     if config.if_os and not sys.platform.startswith(config.if_os):
         # This isn&#39;t very transparent about what just happened
@@ -68,11 +70,17 @@ def check_tool_wrapper(
             last_modified=None,
         )
 
-    manager = AuditFacade()
     config.name = tool
     config.version_switch = config.version_switch or &#34;--version&#34;
-    with lock:
-        return manager.call_and_check(tool_config=config)
+
+    if enable_cache:
+        cached_manager = AuditFacade()
+        with lock:
+            return cached_manager.call_and_check(tool_config=config)
+
+    manager = AuditManager()
+    return manager.call_and_check(tool_config=config)
+
     # result = cli_availability.check_tool_availability(
     #     tool, config.version_switch or &#34;--version&#34;, cast(bool, config.only_check_existence or False)
     # )
@@ -113,15 +121,16 @@ def check_tool_wrapper(
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
 <dt id="cli_tool_audit.call_and_compatible.check_tool_wrapper"><code class="name flex">
-<span>def <span class="ident">check_tool_wrapper</span></span>(<span>tool_info: tuple[str, <a title="cli_tool_audit.models.CliToolConfig" href="models.html#cli_tool_audit.models.CliToolConfig">CliToolConfig</a>, _thread.allocate_lock]) ‑> <a title="cli_tool_audit.models.ToolCheckResult" href="models.html#cli_tool_audit.models.ToolCheckResult">ToolCheckResult</a></span>
+<span>def <span class="ident">check_tool_wrapper</span></span>(<span>tool_info: tuple[str, <a title="cli_tool_audit.models.CliToolConfig" href="models.html#cli_tool_audit.models.CliToolConfig">CliToolConfig</a>, _thread.allocate_lock, bool]) ‑> <a title="cli_tool_audit.models.ToolCheckResult" href="models.html#cli_tool_audit.models.ToolCheckResult">ToolCheckResult</a></span>
 </code></dt>
 <dd>
 <div class="desc"><p>Wrapper function for check_tool_availability() that returns a ToolCheckResult object.</p>
 <h2 id="args">Args</h2>
 <dl>
-<dt><strong><code>tool_info</code></strong> :&ensp;<code>tuple[str, CliToolConfig]</code></dt>
-<dd>A tuple containing the tool name and the tool configuration.</dd>
+<dt><strong><code>tool_info</code></strong> :&ensp;<code>tuple[str, CliToolConfig, threading.Lock, bool]</code></dt>
+<dd>A tuple containing the tool name, the</dd>
 </dl>
+<p>CliToolConfig object, a lock, and a boolean indicating if the cache is enabled.</p>
 <h2 id="returns">Returns</h2>
 <dl>
 <dt><code>ToolCheckResult</code></dt>
@@ -132,18 +141,19 @@ def check_tool_wrapper(
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def check_tool_wrapper(
-    tool_info: tuple[str, CliToolConfig, threading.Lock],
+    tool_info: tuple[str, CliToolConfig, threading.Lock, bool],
 ) -&gt; ToolCheckResult:
     &#34;&#34;&#34;
     Wrapper function for check_tool_availability() that returns a ToolCheckResult object.
 
     Args:
-        tool_info (tuple[str, CliToolConfig]): A tuple containing the tool name and the tool configuration.
+        tool_info (tuple[str, CliToolConfig, threading.Lock, bool]): A tuple containing the tool name, the
+        CliToolConfig object, a lock, and a boolean indicating if the cache is enabled.
 
     Returns:
         ToolCheckResult: A ToolCheckResult object.
     &#34;&#34;&#34;
-    tool, config, lock = tool_info
+    tool, config, lock, enable_cache = tool_info
 
     if config.if_os and not sys.platform.startswith(config.if_os):
         # This isn&#39;t very transparent about what just happened
@@ -160,11 +170,17 @@ def check_tool_wrapper(
             last_modified=None,
         )
 
-    manager = AuditFacade()
     config.name = tool
     config.version_switch = config.version_switch or &#34;--version&#34;
-    with lock:
-        return manager.call_and_check(tool_config=config)
+
+    if enable_cache:
+        cached_manager = AuditFacade()
+        with lock:
+            return cached_manager.call_and_check(tool_config=config)
+
+    manager = AuditManager()
+    return manager.call_and_check(tool_config=config)
+
     # result = cli_availability.check_tool_availability(
     #     tool, config.version_switch or &#34;--version&#34;, cast(bool, config.only_check_existence or False)
     # )

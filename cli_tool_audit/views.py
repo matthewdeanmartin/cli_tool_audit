@@ -22,12 +22,13 @@ colorama.init(convert=True)
 logger = logging.getLogger(__name__)
 
 
-def validate(file_path: str = "pyproject.toml") -> list[ToolCheckResult]:
+def validate(file_path: str = "pyproject.toml", no_cache: bool = False) -> list[ToolCheckResult]:
     """
     Validate the tools in the pyproject.toml file.
 
     Args:
         file_path (str, optional): The path to the pyproject.toml file. Defaults to "pyproject.toml".
+        no_cache (bool, optional): If True, don't use the cache. Defaults to False.
 
     Returns:
         list[ToolCheckResult]: A list of ToolCheckResult objects.
@@ -37,11 +38,17 @@ def validate(file_path: str = "pyproject.toml") -> list[ToolCheckResult]:
     # Determine the number of available CPUs
     num_cpus = os.cpu_count()
 
+    enable_cache = len(cli_tools) >= 5
     # Create a ThreadPoolExecutor with one thread per CPU
     lock = Lock()
+    if no_cache:
+        enable_cache = False
     with ThreadPoolExecutor(max_workers=num_cpus) as executor:
         # Submit tasks to the executor
-        futures = [executor.submit(check_tool_wrapper, (tool, config, lock)) for tool, config in cli_tools.items()]
+        futures = [
+            executor.submit(check_tool_wrapper, (tool, config, lock, enable_cache))
+            for tool, config in cli_tools.items()
+        ]
         results = []
         for future in concurrent.futures.as_completed(futures):
             result = future.result()
@@ -53,6 +60,7 @@ def report_from_pyproject_toml(
     file_path: str = "pyproject.toml",
     exit_code_on_failure: bool = True,
     file_format: str = "table",
+    no_cache: bool = False,
 ) -> int:
     """
     Report on the compatibility of the tools in the pyproject.toml file.
@@ -61,6 +69,7 @@ def report_from_pyproject_toml(
         file_path (str, optional): The path to the pyproject.toml file. Defaults to "pyproject.toml".
         exit_code_on_failure (bool, optional): If True, exit with return value of 1 if validation fails. Defaults to True.
         file_format (str, optional): The format of the output. Defaults to "table".
+        no_cache (bool, optional): If True, don't use the cache. Defaults to False.
 
     Returns:
         int: The exit code.
@@ -73,7 +82,7 @@ def report_from_pyproject_toml(
         if os.path.exists(one_up):
             file_path = one_up
 
-    results = validate(file_path)
+    results = validate(file_path, no_cache=no_cache)
 
     failed = policy.apply_policy(results)
     if file_format == "json":

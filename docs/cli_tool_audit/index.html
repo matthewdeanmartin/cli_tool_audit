@@ -26,6 +26,15 @@
 <h1 id="cli_tool_audit">cli_tool_audit</h1>
 <p>Verify that a list of cli tools are available. Like a requirements.txt for cli tools, but without an installer
 component. Intended to work with cli tools regardless to how they were installed, e.g. via pipx, npm, etc.</p>
+<p>If 100% of your tools are installed by the same package manager that can install tools from a list with desired
+versions, then you don't need this tool.</p>
+<p>Some useful scenarios:</p>
+<ul>
+<li>Validating an end user's environment before running an app where you can't install all the
+dependencies for them.</li>
+<li>Validating a CI environment and failing the build when configuration has drifted</li>
+<li>Validating a developer's workstation instead of an "install everything" script.</li>
+</ul>
 <h2 id="how-it-works">How it works</h2>
 <p>You declare a list of cli commands and version ranges.</p>
 <p>The tool will run <code>tool --version</code> for each tool and make best efforts to parse the result and compare it to the
@@ -51,9 +60,17 @@ If all the tools are global then you can pipx install.</p>
 <pre><code class="language-shell">pipx install cli-tool-audit
 </code></pre>
 <h2 id="usage">Usage</h2>
-<p>CLI usage</p>
+<p>Generate minimal config for a few tools.</p>
+<pre><code class="language-bash">cli_tool_audit freeze python java make rustc
+</code></pre>
+<p>Copy result of above into your pyproject.toml. Edit as needed, especially if you don't want snapshot versioning,
+which is probably too strict.</p>
+<p>Audit the environment with the current configuration.</p>
+<pre><code class="language-bash">cli_tool_audit audit
+</code></pre>
+<p>All commands</p>
 <pre><code class="language-text">❯ cli_tool_audit --help
-usage: cli-tool-audit [-h] [-V] [-c CONFIG] [-ff {json,json-compact,xml,table,csv}] [-nf] [--verbose] [--demo {pipx,venv,npm}]
+usage: cli-tool-audit [-h] [-V] [-c CONFIG] [-nc] [-ff {json,json-compact,xml,table,csv}] [-nf] [--verbose] [--demo {pipx,venv,npm}]
                       {interactive,read,create,update,delete,freeze,audit} ...
 
 Audit version numbers of CLI tools.
@@ -74,6 +91,8 @@ options:
   -V, --version         Show program's version number and exit.
   -c CONFIG, --config CONFIG
                         Path to the configuration file in TOML format. (default is pyproject.toml)
+  -nc, --no-cache, --no_cache
+                        Disable caching of results.
   -ff {json,json-compact,xml,table,csv}, --file-format {json,json-compact,xml,table,csv}, --file_format {json,json-compact,xml,table,csv}
                         Output results in the specified format. (default is table)
   -nf, --never-fail, --never_fail
@@ -154,9 +173,10 @@ Audit CLI tool version numbers.
 
 .. include:: ../README.md
 &#34;&#34;&#34;
-__all__ = [&#34;validate&#34;, &#34;read_config&#34;, &#34;check_tool_availability&#34;, &#34;__version__&#34;]
+__all__ = [&#34;validate&#34;, &#34;read_config&#34;, &#34;check_tool_availability&#34;, &#34;__version__&#34;, &#34;__about__&#34;]
 
-from cli_tool_audit._version import __version__
+import cli_tool_audit.__about__ as __about__
+from cli_tool_audit.__about__ import __version__
 from cli_tool_audit.call_tools import check_tool_availability
 from cli_tool_audit.config_reader import read_config
 from cli_tool_audit.views import validate</code></pre>
@@ -215,7 +235,7 @@ from cli_tool_audit.views import validate</code></pre>
 </dd>
 <dt><code class="name"><a title="cli_tool_audit.logging_config" href="logging_config.html">cli_tool_audit.logging_config</a></code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Logging configuration.</p></div>
 </dd>
 <dt><code class="name"><a title="cli_tool_audit.models" href="models.html">cli_tool_audit.models</a></code></dt>
 <dd>
@@ -376,7 +396,7 @@ from cli_tool_audit.views import validate</code></pre>
 </details>
 </dd>
 <dt id="cli_tool_audit.validate"><code class="name flex">
-<span>def <span class="ident">validate</span></span>(<span>file_path: str = 'pyproject.toml') ‑> list[<a title="cli_tool_audit.models.ToolCheckResult" href="models.html#cli_tool_audit.models.ToolCheckResult">ToolCheckResult</a>]</span>
+<span>def <span class="ident">validate</span></span>(<span>file_path: str = 'pyproject.toml', no_cache: bool = False) ‑> list[<a title="cli_tool_audit.models.ToolCheckResult" href="models.html#cli_tool_audit.models.ToolCheckResult">ToolCheckResult</a>]</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Validate the tools in the pyproject.toml file.</p>
@@ -384,6 +404,8 @@ from cli_tool_audit.views import validate</code></pre>
 <dl>
 <dt><strong><code>file_path</code></strong> :&ensp;<code>str</code>, optional</dt>
 <dd>The path to the pyproject.toml file. Defaults to "pyproject.toml".</dd>
+<dt><strong><code>no_cache</code></strong> :&ensp;<code>bool</code>, optional</dt>
+<dd>If True, don't use the cache. Defaults to False.</dd>
 </dl>
 <h2 id="returns">Returns</h2>
 <dl>
@@ -394,12 +416,13 @@ from cli_tool_audit.views import validate</code></pre>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def validate(file_path: str = &#34;pyproject.toml&#34;) -&gt; list[ToolCheckResult]:
+<pre><code class="python">def validate(file_path: str = &#34;pyproject.toml&#34;, no_cache: bool = False) -&gt; list[ToolCheckResult]:
     &#34;&#34;&#34;
     Validate the tools in the pyproject.toml file.
 
     Args:
         file_path (str, optional): The path to the pyproject.toml file. Defaults to &#34;pyproject.toml&#34;.
+        no_cache (bool, optional): If True, don&#39;t use the cache. Defaults to False.
 
     Returns:
         list[ToolCheckResult]: A list of ToolCheckResult objects.
@@ -409,11 +432,17 @@ from cli_tool_audit.views import validate</code></pre>
     # Determine the number of available CPUs
     num_cpus = os.cpu_count()
 
+    enable_cache = len(cli_tools) &gt;= 5
     # Create a ThreadPoolExecutor with one thread per CPU
     lock = Lock()
+    if no_cache:
+        enable_cache = False
     with ThreadPoolExecutor(max_workers=num_cpus) as executor:
         # Submit tasks to the executor
-        futures = [executor.submit(check_tool_wrapper, (tool, config, lock)) for tool, config in cli_tools.items()]
+        futures = [
+            executor.submit(check_tool_wrapper, (tool, config, lock, enable_cache))
+            for tool, config in cli_tools.items()
+        ]
         results = []
         for future in concurrent.futures.as_completed(futures):
             result = future.result()

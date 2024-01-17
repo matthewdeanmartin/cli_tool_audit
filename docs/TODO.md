@@ -20,7 +20,7 @@
 
 ## Output
 
-- --format [json, yaml, csv, ascii] for final report
+- --format \[json, yaml, csv, ascii\] for final report
 
 ## Switches
 

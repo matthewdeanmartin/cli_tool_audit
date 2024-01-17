@@ -35,12 +35,14 @@ class VersionChecker(ABC):
     """
     Abstract base class for checking if a version is compatible with a desired version.
     """
+
     @abstractmethod
     def check_compatibility(self, desired_version: str) -> VersionResult:
         """
         Check if the version is compatible with the desired version.
         Args:
             desired_version (str): The desired version.
+
         Returns:
             VersionResult: The result of the check.
         """
@@ -51,6 +53,7 @@ class VersionChecker(ABC):
         Format a report on the compatibility of a version with a desired version.
         Args:
             desired_version (str): The desired version.
+
         Returns:
             str: The formatted report.
         """
@@ -66,6 +69,7 @@ class SemVerChecker(VersionChecker):
         Parse a version string into a semver Version object.
         Args:
             version_string (str): The version string to parse.
+
         Returns:
             Optional[Version]: The parsed version or None if the version string is invalid.
         """
@@ -76,6 +80,7 @@ class SemVerChecker(VersionChecker):
         Check if the version is compatible with the desired version.
         Args:
             desired_version (Optional[str]): The desired version.
+
         Returns:
             VersionResult: The result of the check.
         """
@@ -94,6 +99,7 @@ class SemVerChecker(VersionChecker):
         Format a report on the compatibility of a version with a desired version.
         Args:
             desired_version (str): The desired version.
+
         Returns:
             str: The formatted report.
         """
@@ -118,6 +124,7 @@ class ExistenceVersionChecker(VersionChecker):
         Check if the tool exists.
         Args:
             desired_version (Optional[str]): The desired version. Ignored.
+
         Returns:
             VersionResult: The result of the check.
         """
@@ -128,6 +135,7 @@ class ExistenceVersionChecker(VersionChecker):
         Format a report on the compatibility of a version with a desired version.
         Args:
             desired_version (str): The desired version.
+
         Returns:
             str: The formatted report.
         """
@@ -135,27 +143,89 @@ class ExistenceVersionChecker(VersionChecker):
 
 
 class SnapshotVersionChecker(VersionChecker):
+    """
+    Check if a version is compatible with a desired version using snapshot versioning.
+
+    Snapshot versioning is where the entire string returned by `cmd --version` represents
+    the version and the version string has no internal structure, no ordering and no
+    possibility of version range checking.
+    """
+
     def __init__(self, version_string: str) -> None:
+        """
+        Check if a version is compatible with a desired version using snapshot versioning.
+        """
         self.found_version = self.parse_version(version_string)
 
     def parse_version(self, version_string: str) -> str:
+        """
+        A no-op, the version string is already parsed.
+
+        Args:
+            version_string (str): The version string to parse.
+
+        Returns:
+            str: The unchanged version.
+        """
         return version_string
 
     def check_compatibility(self, desired_version: Optional[str]) -> VersionResult:
+        """
+        Check if the version is compatible with the desired version which could be a range.
+        Args:
+            desired_version (Optional[str]): The desired version.
+
+        Returns:
+            VersionResult: The result of the check.
+        """
         return VersionResult(is_compatible=self.found_version == desired_version, clean_format=self.found_version)
 
     def format_report(self, desired_version: str) -> str:
+        """
+        Format a report on the compatibility of a version with a desired version.
+        Args:
+            desired_version (str): The desired version.
+
+        Returns:
+            str: The formatted report.
+        """
         return "Compatible" if self.found_version == desired_version else "different"
 
 
 class Pep440VersionChecker(VersionChecker):
+    """
+    Check if a version is compatible with a desired version using PEP 440 versioning.
+    """
+
     def __init__(self, version_string: str) -> None:
+        """
+        Check if a version is compatible with a desired version using PEP 440 versioning.
+        Args:
+            version_string (str): The version string to check.
+        """
         self.found_version = self.parse_version(version_string)
 
     def parse_version(self, version_string: str) -> packaging.Version:
+        """
+        Parse a version string into a packaging.Version object.
+        Args:
+            version_string (str): The version string to parse.
+
+        Returns:
+            packaging.Version: The parsed version.
+        """
         return packaging.Version(version_string)
 
     def check_compatibility(self, desired_version: Optional[str]) -> VersionResult:
+        """
+        Check if the version is compatible with the desired version which could be a range.
+
+        Args:
+            desired_version (Optional[str]): The desired version.
+
+        Returns:
+            VersionResult: The result of the check.
+        """
         # Range match
         if not desired_version:
             # Treat blank as "*"
@@ -171,6 +241,14 @@ class Pep440VersionChecker(VersionChecker):
         )
 
     def format_report(self, desired_version: str) -> str:
+        """
+        Format a report on the compatibility of a version with a desired version.
+        Args:
+            desired_version (str): The desired version.
+
+        Returns:
+            str: The formatted report.
+        """
         return "Compatible" if self.found_version == desired_version else f"{self.found_version} != {desired_version}"
 
 
@@ -178,11 +256,13 @@ class AuditManager:
     """
     Class to audit a tool, abstract base class to allow for supporting different version schemas.
     """
+
     def call_and_check(self, tool_config: CliToolConfig) -> ToolCheckResult:
         """
         Call and check the given tool.
         Args:
             tool_config (CliToolConfig): The tool to call and check.
+
         Returns:
             ToolCheckResult: The result of the check.
         """

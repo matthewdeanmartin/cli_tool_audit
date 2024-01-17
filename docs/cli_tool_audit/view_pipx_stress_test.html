@@ -106,12 +106,14 @@ def report_for_pipx_tools(max_count: int = -1) -&gt; None:
     # Determine the number of available CPUs
     num_cpus = os.cpu_count()
 
+    enable_cache = len(cli_tools) &gt;= 5
     # Create a ThreadPoolExecutor with one thread per CPU
     lock = Lock()
     with ThreadPoolExecutor(max_workers=num_cpus) as executor:
         # Submit tasks to the executor
         futures = [
-            executor.submit(views.check_tool_wrapper, (tool, config, lock)) for tool, config in cli_tools.items()
+            executor.submit(views.check_tool_wrapper, (tool, config, lock, enable_cache))
+            for tool, config in cli_tools.items()
         ]
 
         results = []
@@ -244,12 +246,14 @@ if __name__ == &#34;__main__&#34;:
     # Determine the number of available CPUs
     num_cpus = os.cpu_count()
 
+    enable_cache = len(cli_tools) &gt;= 5
     # Create a ThreadPoolExecutor with one thread per CPU
     lock = Lock()
     with ThreadPoolExecutor(max_workers=num_cpus) as executor:
         # Submit tasks to the executor
         futures = [
-            executor.submit(views.check_tool_wrapper, (tool, config, lock)) for tool, config in cli_tools.items()
+            executor.submit(views.check_tool_wrapper, (tool, config, lock, enable_cache))
+            for tool, config in cli_tools.items()
         ]
 
         results = []

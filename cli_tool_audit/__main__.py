@@ -17,7 +17,7 @@ import cli_tool_audit.view_npm_stress_test as demo_npm
 import cli_tool_audit.view_pipx_stress_test as demo_pipx
 import cli_tool_audit.view_venv_stress_test as demo_venv
 import cli_tool_audit.views as views
-from cli_tool_audit._version import __version__
+from cli_tool_audit.__about__ import __version__
 
 logger = logging.getLogger(__name__)
 
@@ -144,6 +144,13 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         help="Path to the configuration file in TOML format. (default is %(default)s)",
     )
     parser.add_argument(
+        "-nc",
+        "--no-cache",
+        "--no_cache",
+        action="store_true",
+        help="Disable caching of results.",
+    )
+    parser.add_argument(
         "-ff",
         "--file-format",
         "--file_format",
@@ -238,9 +245,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     # Default behavior
     if args.config:
         return views.report_from_pyproject_toml(
-            args.config, exit_code_on_failure=not args.never_fail, file_format=args.file_format
+            args.config, exit_code_on_failure=not args.never_fail, file_format=args.file_format, no_cache=args.no_cache
         )
-    return views.report_from_pyproject_toml(exit_code_on_failure=not args.never_fail, file_format=args.file_format)
+    return views.report_from_pyproject_toml(
+        exit_code_on_failure=not args.never_fail, file_format=args.file_format, no_cache=args.no_cache
+    )
 
 
 if __name__ == "__main__":

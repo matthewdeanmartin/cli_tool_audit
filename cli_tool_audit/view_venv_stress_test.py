@@ -60,12 +60,14 @@ def report_for_venv_tools(max_count: int = -1) -> None:
     # Determine the number of available CPUs
     num_cpus = os.cpu_count()
 
+    enable_cache = len(cli_tools) >= 5
     # Create a ThreadPoolExecutor with one thread per CPU
     with ThreadPoolExecutor(max_workers=num_cpus) as executor:
         # Submit tasks to the executor
         lock = Lock()
         futures = [
-            executor.submit(views.check_tool_wrapper, (tool, config, lock)) for tool, config in cli_tools.items()
+            executor.submit(views.check_tool_wrapper, (tool, config, lock, enable_cache))
+            for tool, config in cli_tools.items()
         ]
         results = []
         # Process the results as they are completed

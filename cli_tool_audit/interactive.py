@@ -4,7 +4,7 @@ Interactively manage tool configurations.
 from cli_tool_audit.config_manager import ConfigManager
 
 
-def interactive_config_manager(config_manager: ConfigManager):
+def interactive_config_manager(config_manager: ConfigManager) -> None:
     """
     Interactively manage tool configurations.
 

@@ -9,11 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Caching of good results, speeding things up
+- Caching enabled only for batches of 5+ tool checks
 - TODO: command to clear cache/change cache location
 - Formalize support of four schemas, semver, pep440, snapshot and exists.
+- Added `about.py`
 
 ### Fixed
 - "wrong OS" no longer flagged as problem
+- Added lock to ThreadPoolExecutor's work items
 
 ## [1.1.0] - 2024-01-16
 

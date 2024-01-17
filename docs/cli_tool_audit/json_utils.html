@@ -31,14 +31,15 @@
 JSON utility functions.
 &#34;&#34;&#34;
 from datetime import date, datetime
+from typing import Any
 
 
-def custom_json_serializer(o):
+def custom_json_serializer(o: Any) -&gt; str:
     &#34;&#34;&#34;
     Custom JSON serializer for objects not serializable by default json code.
 
     Args:
-        o (object): The object to serialize.
+        o (Any): The object to serialize.
 
     Returns:
         str: A JSON serializable representation of the object.
@@ -56,13 +57,13 @@ def custom_json_serializer(o):
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
 <dt id="cli_tool_audit.json_utils.custom_json_serializer"><code class="name flex">
-<span>def <span class="ident">custom_json_serializer</span></span>(<span>o)</span>
+<span>def <span class="ident">custom_json_serializer</span></span>(<span>o: Any) ‑> str</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Custom JSON serializer for objects not serializable by default json code.</p>
 <h2 id="args">Args</h2>
 <dl>
-<dt><strong><code>o</code></strong> :&ensp;<code>object</code></dt>
+<dt><strong><code>o</code></strong> :&ensp;<code>Any</code></dt>
 <dd>The object to serialize.</dd>
 </dl>
 <h2 id="returns">Returns</h2>
@@ -74,12 +75,12 @@ def custom_json_serializer(o):
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def custom_json_serializer(o):
+<pre><code class="python">def custom_json_serializer(o: Any) -&gt; str:
     &#34;&#34;&#34;
     Custom JSON serializer for objects not serializable by default json code.
 
     Args:
-        o (object): The object to serialize.
+        o (Any): The object to serialize.
 
     Returns:
         str: A JSON serializable representation of the object.

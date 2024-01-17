@@ -1,5 +1,6 @@
 datetime
 bool
+boolean
 Dataclass
 pyproject
 venv
@@ -9,6 +10,7 @@ README
 CLI
 cli
 pipx
+npm
 toml
 md
 json
@@ -18,5 +20,10 @@ ToolCheckResult
 Args
 args
 argv
+deserialize
 serializer
+deserializer
 serializable
+deserializable
+dataclasses
+schemas

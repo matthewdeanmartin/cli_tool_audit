@@ -4,19 +4,21 @@ This module provides a facade for the audit manager that caches results.
 
 import datetime
 import json
+import logging
 from pathlib import Path
-from typing import Optional, Any
+from typing import Any, Optional
 
 import cli_tool_audit.audit_manager as audit_manager
 from cli_tool_audit.json_utils import custom_json_serializer
-from cli_tool_audit.models import CliToolConfig, ToolCheckResult, cache_hash
+from cli_tool_audit.models import CliToolConfig, ToolCheckResult
 
 
-def custom_json_deserializer(data:dict[str,Any])->dict[str,Any]:
+def custom_json_deserializer(data: dict[str, Any]) -> dict[str, Any]:
     """
     Custom JSON deserializer for objects not deserializable by default json code.
     Args:
         data (dict[str,Any]): The object to deserialize.
+
     Returns:
         dict[str,Any]: A JSON deserializable representation of the object.
     """
@@ -25,11 +27,11 @@ def custom_json_deserializer(data:dict[str,Any])->dict[str,Any]:
     return data
 
 
-
+logger = logging.getLogger(__name__)
 
 
 class AuditFacade:
-    def __init__(self, cache_dir:Optional[str]=None)->None:
+    def __init__(self, cache_dir: Optional[str] = None) -> None:
         """
         Initialize the facade.
         Args:
@@ -44,11 +46,12 @@ class AuditFacade:
         Get the cache filename for the given tool.
         Args:
             tool_config (CliToolConfig): The tool to get the cache filename for.
+
         Returns:
             Path: The cache filename.
         """
         sanitized_name = tool_config.name.replace(".", "_")
-        the_hash = cache_hash(tool_config)
+        the_hash = tool_config.cache_hash()
         return self.cache_dir / f"{sanitized_name}_{the_hash}.json"
 
     def read_from_cache(self, tool_config: CliToolConfig) -> Optional[ToolCheckResult]:
@@ -56,16 +59,19 @@ class AuditFacade:
         Read the cached result for the given tool.
         Args:
             tool_config (CliToolConfig): The tool to get the cached result for.
+
         Returns:
             Optional[ToolCheckResult]: The cached result or None if not found.
         """
         cache_file = self.get_cache_filename(tool_config)
         if cache_file.exists():
             with open(cache_file, encoding="utf-8") as file:
+                logger.debug(f"Cache hit for {tool_config.name}")
                 return ToolCheckResult(**json.load(file, object_hook=custom_json_deserializer))
+        logger.debug(f"Cache miss for {tool_config.name}")
         return None
 
-    def write_to_cache(self, tool_config: CliToolConfig, result: ToolCheckResult)->None:
+    def write_to_cache(self, tool_config: CliToolConfig, result: ToolCheckResult) -> None:
         """
         Write the given result to the cache.
         Args:
@@ -74,6 +80,7 @@ class AuditFacade:
         """
         cache_file = self.get_cache_filename(tool_config)
         with open(cache_file, "w", encoding="utf-8") as file:
+            logger.debug(f"Caching {tool_config.name}")
             json.dump(result.__dict__, file, ensure_ascii=False, indent=4, default=custom_json_serializer)
 
     def call_and_check(self, tool_config: CliToolConfig) -> ToolCheckResult:
@@ -81,6 +88,7 @@ class AuditFacade:
         Call and check the given tool.
         Args:
             tool_config (CliToolConfig): The tool to call and check.
+
         Returns:
             ToolCheckResult: The result of the check.
         """

@@ -38,15 +38,20 @@ from typing import Optional
 
 @dataclass
 class ToolCheckResult:
+    &#34;&#34;&#34;
+    Represents the result of a tool check and version check.
+    &#34;&#34;&#34;
+
     tool: str
     desired_version: str
     is_needed_for_os: bool
     is_available: bool
     is_snapshot: bool
+    &#34;&#34;&#34;Snapshot schema&#34;&#34;&#34;
     found_version: Optional[str]
     &#34;&#34;&#34;Same as snapshot_version, the exact text produced by --version switch.&#34;&#34;&#34;
     parsed_version: Optional[str]
-    &#34;&#34;&#34;Semver parsed version.&#34;&#34;&#34;
+    &#34;&#34;&#34;Clean stringification of the version object for current schema.&#34;&#34;&#34;
     is_compatible: str
     is_broken: bool
     last_modified: Optional[datetime.datetime]
@@ -54,6 +59,9 @@ class ToolCheckResult:
     def is_problem(self) -&gt; bool:
         &#34;&#34;&#34;Is this tool&#39;s state a problem?
         If it is needed for this OS, if it is incompatible or unavailable, it is a problem.
+
+        Returns:
+            bool: True if this tool&#39;s state is a problem, False otherwise.
         &#34;&#34;&#34;
         missing_or_incompatible = self.is_compatible != &#34;Compatible&#34; or not self.is_available
         return self.is_needed_for_os and missing_or_incompatible
@@ -62,17 +70,22 @@ class ToolCheckResult:
 @dataclass
 class ToolAvailabilityResult:
     &#34;&#34;&#34;
-    Dataclass for the result of checking tool availability.
+    Represents only if the tool is available or not.
     &#34;&#34;&#34;
 
     is_available: bool
     is_broken: bool
     version: Optional[str]
+    &#34;&#34;&#34;Desired version&#34;&#34;&#34;
     last_modified: Optional[datetime.datetime]
 
 
 @dataclass
 class CliToolConfig:
+    &#34;&#34;&#34;
+    Represents what tool and what version the user wants to audit on their system.
+    &#34;&#34;&#34;
+
     name: str
     version: Optional[str] = None
     version_snapshot: Optional[str] = None
@@ -83,29 +96,25 @@ class CliToolConfig:
     version_stamp: Optional[str] = None
     source: Optional[str] = None
 
+    def cache_hash(self) -&gt; str:
+        &#34;&#34;&#34;
+        Generate a hash for a CliToolConfig instance.
 
-def cache_hash(tool_config: CliToolConfig) -&gt; str:
-    &#34;&#34;&#34;
-    Generate a hash for a CliToolConfig instance.
+        Returns:
+            str: The hash of the tool configuration.
+        &#34;&#34;&#34;
+        config_str = &#34;&#34;
+        for key, value in asdict(self).items():
+            config_str += f&#34;{key}={value};&#34;  # Concatenate key-value pairs
 
-    Args:
-        tool_config (CliToolConfig): The tool configuration.
-
-    Returns:
-        str: The hash of the tool configuration.
-    &#34;&#34;&#34;
-    config_str = &#34;&#34;
-    for key, value in asdict(tool_config).items():
-        config_str += f&#34;{key}={value};&#34;  # Concatenate key-value pairs
-
-    # Use hashlib to compute an MD5 hash of the concatenated string
-    return hashlib.md5(config_str.encode()).hexdigest()  # nosec
+        # Use hashlib to compute an MD5 hash of the concatenated string
+        return hashlib.md5(config_str.encode()).hexdigest()  # nosec
 
 
 if __name__ == &#34;__main__&#34;:
     # Example usage
     config = CliToolConfig(name=&#34;example_tool&#34;, version=&#34;1.0.0&#34;)
-    print(cache_hash(config))</code></pre>
+    print(config.cache_hash())</code></pre>
 </details>
 </section>
 <section>
@@ -113,46 +122,6 @@ if __name__ == &#34;__main__&#34;:
 <section>
 </section>
 <section>
-<h2 class="section-title" id="header-functions">Functions</h2>
-<dl>
-<dt id="cli_tool_audit.models.cache_hash"><code class="name flex">
-<span>def <span class="ident">cache_hash</span></span>(<span>tool_config: <a title="cli_tool_audit.models.CliToolConfig" href="#cli_tool_audit.models.CliToolConfig">CliToolConfig</a>) ‑> str</span>
-</code></dt>
-<dd>
-<div class="desc"><p>Generate a hash for a CliToolConfig instance.</p>
-<h2 id="args">Args</h2>
-<dl>
-<dt><strong><code>tool_config</code></strong> :&ensp;<code><a title="cli_tool_audit.models.CliToolConfig" href="#cli_tool_audit.models.CliToolConfig">CliToolConfig</a></code></dt>
-<dd>The tool configuration.</dd>
-</dl>
-<h2 id="returns">Returns</h2>
-<dl>
-<dt><code>str</code></dt>
-<dd>The hash of the tool configuration.</dd>
-</dl></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">def cache_hash(tool_config: CliToolConfig) -&gt; str:
-    &#34;&#34;&#34;
-    Generate a hash for a CliToolConfig instance.
-
-    Args:
-        tool_config (CliToolConfig): The tool configuration.
-
-    Returns:
-        str: The hash of the tool configuration.
-    &#34;&#34;&#34;
-    config_str = &#34;&#34;
-    for key, value in asdict(tool_config).items():
-        config_str += f&#34;{key}={value};&#34;  # Concatenate key-value pairs
-
-    # Use hashlib to compute an MD5 hash of the concatenated string
-    return hashlib.md5(config_str.encode()).hexdigest()  # nosec</code></pre>
-</details>
-</dd>
-</dl>
 </section>
 <section>
 <h2 class="section-title" id="header-classes">Classes</h2>
@@ -162,13 +131,17 @@ if __name__ == &#34;__main__&#34;:
 <span>(</span><span>name: str, version: Optional[str] = None, version_snapshot: Optional[str] = None, version_switch: Optional[str] = None, only_check_existence: Optional[bool] = False, schema: Optional[str] = None, if_os: Optional[str] = None, version_stamp: Optional[str] = None, source: Optional[str] = None)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>CliToolConfig(name: str, version: Optional[str] = None, version_snapshot: Optional[str] = None, version_switch: Optional[str] = None, only_check_existence: Optional[bool] = False, schema: Optional[str] = None, if_os: Optional[str] = None, version_stamp: Optional[str] = None, source: Optional[str] = None)</p></div>
+<div class="desc"><p>Represents what tool and what version the user wants to audit on their system.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">@dataclass
 class CliToolConfig:
+    &#34;&#34;&#34;
+    Represents what tool and what version the user wants to audit on their system.
+    &#34;&#34;&#34;
+
     name: str
     version: Optional[str] = None
     version_snapshot: Optional[str] = None
@@ -177,7 +150,21 @@ class CliToolConfig:
     schema: Optional[str] = None
     if_os: Optional[str] = None
     version_stamp: Optional[str] = None
-    source: Optional[str] = None</code></pre>
+    source: Optional[str] = None
+
+    def cache_hash(self) -&gt; str:
+        &#34;&#34;&#34;
+        Generate a hash for a CliToolConfig instance.
+
+        Returns:
+            str: The hash of the tool configuration.
+        &#34;&#34;&#34;
+        config_str = &#34;&#34;
+        for key, value in asdict(self).items():
+            config_str += f&#34;{key}={value};&#34;  # Concatenate key-value pairs
+
+        # Use hashlib to compute an MD5 hash of the concatenated string
+        return hashlib.md5(config_str.encode()).hexdigest()  # nosec</code></pre>
 </details>
 <h3>Class variables</h3>
 <dl>
@@ -218,13 +205,45 @@ class CliToolConfig:
 <div class="desc"></div>
 </dd>
 </dl>
+<h3>Methods</h3>
+<dl>
+<dt id="cli_tool_audit.models.CliToolConfig.cache_hash"><code class="name flex">
+<span>def <span class="ident">cache_hash</span></span>(<span>self) ‑> str</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Generate a hash for a CliToolConfig instance.</p>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code>str</code></dt>
+<dd>The hash of the tool configuration.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def cache_hash(self) -&gt; str:
+    &#34;&#34;&#34;
+    Generate a hash for a CliToolConfig instance.
+
+    Returns:
+        str: The hash of the tool configuration.
+    &#34;&#34;&#34;
+    config_str = &#34;&#34;
+    for key, value in asdict(self).items():
+        config_str += f&#34;{key}={value};&#34;  # Concatenate key-value pairs
+
+    # Use hashlib to compute an MD5 hash of the concatenated string
+    return hashlib.md5(config_str.encode()).hexdigest()  # nosec</code></pre>
+</details>
+</dd>
+</dl>
 </dd>
 <dt id="cli_tool_audit.models.ToolAvailabilityResult"><code class="flex name class">
 <span>class <span class="ident">ToolAvailabilityResult</span></span>
 <span>(</span><span>is_available: bool, is_broken: bool, version: Optional[str], last_modified: Optional[datetime.datetime])</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Dataclass for the result of checking tool availability.</p></div>
+<div class="desc"><p>Represents only if the tool is available or not.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
@@ -232,12 +251,13 @@ class CliToolConfig:
 <pre><code class="python">@dataclass
 class ToolAvailabilityResult:
     &#34;&#34;&#34;
-    Dataclass for the result of checking tool availability.
+    Represents only if the tool is available or not.
     &#34;&#34;&#34;
 
     is_available: bool
     is_broken: bool
     version: Optional[str]
+    &#34;&#34;&#34;Desired version&#34;&#34;&#34;
     last_modified: Optional[datetime.datetime]</code></pre>
 </details>
 <h3>Class variables</h3>
@@ -256,7 +276,7 @@ class ToolAvailabilityResult:
 </dd>
 <dt id="cli_tool_audit.models.ToolAvailabilityResult.version"><code class="name">var <span class="ident">version</span> : Optional[str]</code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Desired version</p></div>
 </dd>
 </dl>
 </dd>
@@ -265,22 +285,27 @@ class ToolAvailabilityResult:
 <span>(</span><span>tool: str, desired_version: str, is_needed_for_os: bool, is_available: bool, is_snapshot: bool, found_version: Optional[str], parsed_version: Optional[str], is_compatible: str, is_broken: bool, last_modified: Optional[datetime.datetime])</span>
 </code></dt>
 <dd>
-<div class="desc"><p>ToolCheckResult(tool: str, desired_version: str, is_needed_for_os: bool, is_available: bool, is_snapshot: bool, found_version: Optional[str], parsed_version: Optional[str], is_compatible: str, is_broken: bool, last_modified: Optional[datetime.datetime])</p></div>
+<div class="desc"><p>Represents the result of a tool check and version check.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">@dataclass
 class ToolCheckResult:
+    &#34;&#34;&#34;
+    Represents the result of a tool check and version check.
+    &#34;&#34;&#34;
+
     tool: str
     desired_version: str
     is_needed_for_os: bool
     is_available: bool
     is_snapshot: bool
+    &#34;&#34;&#34;Snapshot schema&#34;&#34;&#34;
     found_version: Optional[str]
     &#34;&#34;&#34;Same as snapshot_version, the exact text produced by --version switch.&#34;&#34;&#34;
     parsed_version: Optional[str]
-    &#34;&#34;&#34;Semver parsed version.&#34;&#34;&#34;
+    &#34;&#34;&#34;Clean stringification of the version object for current schema.&#34;&#34;&#34;
     is_compatible: str
     is_broken: bool
     last_modified: Optional[datetime.datetime]
@@ -288,6 +313,9 @@ class ToolCheckResult:
     def is_problem(self) -&gt; bool:
         &#34;&#34;&#34;Is this tool&#39;s state a problem?
         If it is needed for this OS, if it is incompatible or unavailable, it is a problem.
+
+        Returns:
+            bool: True if this tool&#39;s state is a problem, False otherwise.
         &#34;&#34;&#34;
         missing_or_incompatible = self.is_compatible != &#34;Compatible&#34; or not self.is_available
         return self.is_needed_for_os and missing_or_incompatible</code></pre>
@@ -320,7 +348,7 @@ class ToolCheckResult:
 </dd>
 <dt id="cli_tool_audit.models.ToolCheckResult.is_snapshot"><code class="name">var <span class="ident">is_snapshot</span> : bool</code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Snapshot schema</p></div>
 </dd>
 <dt id="cli_tool_audit.models.ToolCheckResult.last_modified"><code class="name">var <span class="ident">last_modified</span> : Optional[datetime.datetime]</code></dt>
 <dd>
@@ -328,7 +356,7 @@ class ToolCheckResult:
 </dd>
 <dt id="cli_tool_audit.models.ToolCheckResult.parsed_version"><code class="name">var <span class="ident">parsed_version</span> : Optional[str]</code></dt>
 <dd>
-<div class="desc"><p>Semver parsed version.</p></div>
+<div class="desc"><p>Clean stringification of the version object for current schema.</p></div>
 </dd>
 <dt id="cli_tool_audit.models.ToolCheckResult.tool"><code class="name">var <span class="ident">tool</span> : str</code></dt>
 <dd>
@@ -342,7 +370,12 @@ class ToolCheckResult:
 </code></dt>
 <dd>
 <div class="desc"><p>Is this tool's state a problem?
-If it is needed for this OS, if it is incompatible or unavailable, it is a problem.</p></div>
+If it is needed for this OS, if it is incompatible or unavailable, it is a problem.</p>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code>bool</code></dt>
+<dd>True if this tool's state is a problem, False otherwise.</dd>
+</dl></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
@@ -350,6 +383,9 @@ If it is needed for this OS, if it is incompatible or unavailable, it is a probl
 <pre><code class="python">def is_problem(self) -&gt; bool:
     &#34;&#34;&#34;Is this tool&#39;s state a problem?
     If it is needed for this OS, if it is incompatible or unavailable, it is a problem.
+
+    Returns:
+        bool: True if this tool&#39;s state is a problem, False otherwise.
     &#34;&#34;&#34;
     missing_or_incompatible = self.is_compatible != &#34;Compatible&#34; or not self.is_available
     return self.is_needed_for_os and missing_or_incompatible</code></pre>
@@ -371,16 +407,12 @@ If it is needed for this OS, if it is incompatible or unavailable, it is a probl
 <li><code><a title="cli_tool_audit" href="index.html">cli_tool_audit</a></code></li>
 </ul>
 </li>
-<li><h3><a href="#header-functions">Functions</a></h3>
-<ul class="">
-<li><code><a title="cli_tool_audit.models.cache_hash" href="#cli_tool_audit.models.cache_hash">cache_hash</a></code></li>
-</ul>
-</li>
 <li><h3><a href="#header-classes">Classes</a></h3>
 <ul>
 <li>
 <h4><code><a title="cli_tool_audit.models.CliToolConfig" href="#cli_tool_audit.models.CliToolConfig">CliToolConfig</a></code></h4>
 <ul class="">
+<li><code><a title="cli_tool_audit.models.CliToolConfig.cache_hash" href="#cli_tool_audit.models.CliToolConfig.cache_hash">cache_hash</a></code></li>
 <li><code><a title="cli_tool_audit.models.CliToolConfig.if_os" href="#cli_tool_audit.models.CliToolConfig.if_os">if_os</a></code></li>
 <li><code><a title="cli_tool_audit.models.CliToolConfig.name" href="#cli_tool_audit.models.CliToolConfig.name">name</a></code></li>
 <li><code><a title="cli_tool_audit.models.CliToolConfig.only_check_existence" href="#cli_tool_audit.models.CliToolConfig.only_check_existence">only_check_existence</a></code></li>
