@@ -118,3 +118,9 @@ check_spelling:
 	$(VENV) pylint cli_tool_audit --enable C0402 --rcfile=.pylintrc_spell
 	$(VENV) codespell README.md --ignore-words=private_dictionary.txt
 	$(VENV) codespell cli_tool_audit --ignore-words=private_dictionary.txt
+
+check_changelog:
+	# pipx install keepachangelog-manager
+	$(VENV) changelogmanager validate
+
+check_all: check_docs check_md check_spelling

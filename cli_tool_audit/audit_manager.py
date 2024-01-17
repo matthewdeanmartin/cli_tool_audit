@@ -288,7 +288,7 @@ class AuditManager:
 
         # Not pretty.
         if config.only_check_existence:
-            existence_checker = ExistenceVersionChecker("Found" if result.is_available else "Not found")
+            existence_checker = ExistenceVersionChecker("Found" if result.is_available else "Not Found")
             version_result = existence_checker.check_compatibility("Found")
             compatibility_report = existence_checker.format_report("Found")
             desired_version = "*"
