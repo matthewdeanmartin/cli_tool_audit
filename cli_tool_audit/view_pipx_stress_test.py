@@ -6,6 +6,7 @@ import json
 import os
 import subprocess  # nosec
 from concurrent.futures import ThreadPoolExecutor
+from threading import Lock
 from typing import Any
 
 import cli_tool_audit.views as views
@@ -65,7 +66,7 @@ def report_for_pipx_tools(max_count: int = -1) -> None:
         if app in ("yated.exe", "calcure.exe", "yated", "calcure", "dedlin.exe", "dedlin"):
             # These launch interactive process & then time out.
             continue
-        config = CliToolConfig()
+        config = CliToolConfig(app)
         config.version_switch = "--version"
         config.version = f">={expected_version}"
         cli_tools[app] = config
@@ -77,9 +78,12 @@ def report_for_pipx_tools(max_count: int = -1) -> None:
     num_cpus = os.cpu_count()
 
     # Create a ThreadPoolExecutor with one thread per CPU
+    lock = Lock()
     with ThreadPoolExecutor(max_workers=num_cpus) as executor:
         # Submit tasks to the executor
-        futures = [executor.submit(views.check_tool_wrapper, (tool, config)) for tool, config in cli_tools.items()]
+        futures = [
+            executor.submit(views.check_tool_wrapper, (tool, config, lock)) for tool, config in cli_tools.items()
+        ]
 
         results = []
         # Process the results as they are completed

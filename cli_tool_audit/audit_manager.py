@@ -1,0 +1,320 @@
+"""
+Class to audit a tool, abstract base class to allow for supporting different version schemas.
+
+Includes several implementations of VersionChecker, which are used by AuditManager.
+"""
+import datetime
+import logging
+import os
+import subprocess  # nosec
+import sys
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from typing import Optional, cast
+
+import packaging.specifiers as packaging_specifiers
+import packaging.version as packaging
+from semver import Version
+from whichcraft import which
+
+from cli_tool_audit.compatibility import check_compatibility
+from cli_tool_audit.known_switches import KNOWN_SWITCHES
+from cli_tool_audit.models import CliToolConfig, ToolAvailabilityResult, ToolCheckResult
+from cli_tool_audit.version_parsing import two_pass_semver_parse
+
+logger = logging.getLogger(__name__)
+
+
+@dataclass
+class VersionResult:
+    is_compatible: bool
+    clean_format: str
+
+
+class VersionChecker(ABC):
+    """
+    Abstract base class for checking if a version is compatible with a desired version.
+    """
+    @abstractmethod
+    def check_compatibility(self, desired_version: str) -> VersionResult:
+        """
+        Check if the version is compatible with the desired version.
+        Args:
+            desired_version (str): The desired version.
+        Returns:
+            VersionResult: The result of the check.
+        """
+
+    @abstractmethod
+    def format_report(self, desired_version: str) -> str:
+        """
+        Format a report on the compatibility of a version with a desired version.
+        Args:
+            desired_version (str): The desired version.
+        Returns:
+            str: The formatted report.
+        """
+
+
+class SemVerChecker(VersionChecker):
+    def __init__(self, version_string: str) -> None:
+        self.found_version = self.parse_version(version_string)
+        self.result: Optional[VersionResult] = None
+
+    def parse_version(self, version_string: str) -> Optional[Version]:
+        """
+        Parse a version string into a semver Version object.
+        Args:
+            version_string (str): The version string to parse.
+        Returns:
+            Optional[Version]: The parsed version or None if the version string is invalid.
+        """
+        return two_pass_semver_parse(version_string)
+
+    def check_compatibility(self, desired_version: Optional[str]) -> VersionResult:
+        """
+        Check if the version is compatible with the desired version.
+        Args:
+            desired_version (Optional[str]): The desired version.
+        Returns:
+            VersionResult: The result of the check.
+        """
+        if not self.found_version:
+            return VersionResult(is_compatible=False, clean_format="Invalid Format")
+        desired_version = desired_version or "0.0.0"
+        compatible_result, _version_object = check_compatibility(desired_version, str(self.found_version))
+
+        self.result = VersionResult(
+            is_compatible=compatible_result == "Compatible", clean_format=str(self.found_version)
+        )
+        return self.result
+
+    def format_report(self, desired_version: str) -> str:
+        """
+        Format a report on the compatibility of a version with a desired version.
+        Args:
+            desired_version (str): The desired version.
+        Returns:
+            str: The formatted report.
+        """
+        if not self.found_version or not self.result:
+            return "Invalid Format"
+        return "Compatible" if self.result.is_compatible else f"{self.found_version} != {desired_version}"
+
+
+class ExistenceVersionChecker(VersionChecker):
+    def __init__(self, version_string: str) -> None:
+        """
+        Check if a tool exists.
+        Args:
+            version_string (str): A constant, "Found" or "Not Found"
+        """
+        if version_string not in ("Found", "Not Found"):
+            raise ValueError(f"version_string must be 'Found' or 'Not Found', not {version_string}")
+        self.found_version = version_string
+
+    def check_compatibility(self, desired_version: Optional[str]) -> VersionResult:
+        """
+        Check if the tool exists.
+        Args:
+            desired_version (Optional[str]): The desired version. Ignored.
+        Returns:
+            VersionResult: The result of the check.
+        """
+        return VersionResult(is_compatible=self.found_version == desired_version, clean_format=self.found_version)
+
+    def format_report(self, desired_version: str) -> str:
+        """
+        Format a report on the compatibility of a version with a desired version.
+        Args:
+            desired_version (str): The desired version.
+        Returns:
+            str: The formatted report.
+        """
+        return "Compatible" if self.found_version == desired_version else "Not Found"
+
+
+class SnapshotVersionChecker(VersionChecker):
+    def __init__(self, version_string: str) -> None:
+        self.found_version = self.parse_version(version_string)
+
+    def parse_version(self, version_string: str) -> str:
+        return version_string
+
+    def check_compatibility(self, desired_version: Optional[str]) -> VersionResult:
+        return VersionResult(is_compatible=self.found_version == desired_version, clean_format=self.found_version)
+
+    def format_report(self, desired_version: str) -> str:
+        return "Compatible" if self.found_version == desired_version else "different"
+
+
+class Pep440VersionChecker(VersionChecker):
+    def __init__(self, version_string: str) -> None:
+        self.found_version = self.parse_version(version_string)
+
+    def parse_version(self, version_string: str) -> packaging.Version:
+        return packaging.Version(version_string)
+
+    def check_compatibility(self, desired_version: Optional[str]) -> VersionResult:
+        # Range match
+        if not desired_version:
+            # Treat blank as "*"
+            return VersionResult(is_compatible=True, clean_format=str(self.found_version))
+        if " " in desired_version or ">" in desired_version or "<" in desired_version or "~" in desired_version:
+            specifier = packaging_specifiers.SpecifierSet(desired_version)
+            return VersionResult(
+                is_compatible=specifier.contains(self.found_version), clean_format=str(self.found_version)
+            )
+        # exact match
+        return VersionResult(
+            is_compatible=self.found_version == packaging.Version(desired_version), clean_format=str(self.found_version)
+        )
+
+    def format_report(self, desired_version: str) -> str:
+        return "Compatible" if self.found_version == desired_version else f"{self.found_version} != {desired_version}"
+
+
+class AuditManager:
+    """
+    Class to audit a tool, abstract base class to allow for supporting different version schemas.
+    """
+    def call_and_check(self, tool_config: CliToolConfig) -> ToolCheckResult:
+        """
+        Call and check the given tool.
+        Args:
+            tool_config (CliToolConfig): The tool to call and check.
+        Returns:
+            ToolCheckResult: The result of the check.
+        """
+        tool, config = tool_config.name, tool_config
+
+        if config.if_os and not sys.platform.startswith(config.if_os):
+            # This isn't very transparent about what just happened
+            return ToolCheckResult(
+                tool=tool,
+                is_needed_for_os=False,
+                desired_version=config.version or "0.0.0",
+                is_available=False,
+                found_version=None,
+                parsed_version=None,
+                is_snapshot=False,
+                is_compatible=f"{sys.platform}, not {config.if_os}",
+                is_broken=False,
+                last_modified=None,
+            )
+        result = self.call_tool(
+            tool, config.version_switch or "--version", cast(bool, config.only_check_existence or False)
+        )
+
+        # Not pretty.
+        if config.only_check_existence:
+            existence_checker = ExistenceVersionChecker("Found" if result.is_available else "Not found")
+            version_result = existence_checker.check_compatibility("Found")
+            compatibility_report = existence_checker.format_report("Found")
+            desired_version = "*"
+        elif config.version_snapshot:
+            snapshot_checker = SnapshotVersionChecker(result.version or "")
+            version_result = snapshot_checker.check_compatibility(config.version_snapshot)
+            compatibility_report = snapshot_checker.format_report(config.version_snapshot or "")
+            desired_version = config.version_snapshot
+        elif config.schema == "pep440":
+            pep440_checker = Pep440VersionChecker(result.version or "")
+            version_result = pep440_checker.check_compatibility(config.version or "0.0.0")
+            compatibility_report = pep440_checker.format_report(config.version or "0.0.0")
+            desired_version = config.version or "*"
+        else:  # config.schema == "semver":
+            semver_checker = SemVerChecker(result.version or "")
+            version_result = semver_checker.check_compatibility(config.version)
+            compatibility_report = semver_checker.format_report(config.version or "0.0.0")
+            desired_version = config.version or "*"
+
+        return ToolCheckResult(
+            tool=tool,
+            desired_version=desired_version,
+            is_needed_for_os=True,
+            is_available=result.is_available,
+            is_snapshot=bool(config.version_snapshot),
+            found_version=result.version,
+            parsed_version=version_result.clean_format,
+            is_compatible=compatibility_report,
+            is_broken=result.is_broken,
+            last_modified=result.last_modified,
+        )
+
+    def call_tool(
+        self, tool_name: str, version_switch: str = "--version", only_check_existence: bool = False
+    ) -> ToolAvailabilityResult:
+        """
+        Check if a tool is available in the system's PATH and if possible, determine a version number.
+
+        Args:
+            tool_name (str): The name of the tool to check.
+            version_switch (str): The switch to get the tool version. Defaults to '--version'.
+            only_check_existence (bool): Only check if the tool exists, don't check version. Defaults to False.
+
+        Returns:
+            ToolAvailabilityResult: An object containing the availability and version of the tool.
+        """
+        # Check if the tool is in the system's PATH
+        is_broken = True
+
+        last_modified = self.get_command_last_modified_date(tool_name)
+        if not last_modified:
+            logger.warning(f"{tool_name} is not on path.")
+            return ToolAvailabilityResult(False, True, None, last_modified)
+        if only_check_existence:
+            logger.debug(f"{tool_name} exists, but not checking for version.")
+            return ToolAvailabilityResult(True, False, None, last_modified)
+
+        if version_switch is None or version_switch == "--version":
+            # override default.
+            # Could be a problem if KNOWN_SWITCHES was ever wrong.
+            version_switch = KNOWN_SWITCHES.get(tool_name, "--version")
+
+        version = None
+
+        # pylint: disable=broad-exception-caught
+        try:
+            command = [tool_name, version_switch]
+            result = subprocess.run(
+                command, capture_output=True, text=True, timeout=15, shell=False, check=True
+            )  # nosec
+            # Sometimes version is on line 2 or later.
+            version = result.stdout.strip()
+            if not version:
+                # check stderror
+                logger.debug("Got nothing from stdout, checking stderror")
+                version = result.stderr.strip()
+
+            logger.debug(f"Called tool with {' '.join(command)}, got  {version}")
+            is_broken = False
+        except subprocess.CalledProcessError as exception:
+            is_broken = True
+            logger.error(f"{tool_name} failed invocation with {exception}")
+            logger.error(f"{tool_name} stderr: {exception.stderr}")
+            logger.error(f"{tool_name} stdout: {exception.stdout}")
+        except FileNotFoundError:
+            logger.error(f"{tool_name} is not on path.")
+            return ToolAvailabilityResult(False, True, None, last_modified)
+
+        return ToolAvailabilityResult(True, is_broken, version, last_modified)
+
+    def get_command_last_modified_date(self, tool_name: str) -> Optional[datetime.datetime]:
+        """
+        Get the last modified date of a command's executable.
+        Args:
+            tool_name (str): The name of the command.
+
+        Returns:
+            Optional[datetime.datetime]: The last modified date of the command's executable.
+        """
+        # Find the path of the command's executable
+        result = which(tool_name)
+        if result is None:
+            return None
+
+        executable_path = result
+
+        # Get the last modified time of the executable
+        last_modified_timestamp = os.path.getmtime(executable_path)
+        return datetime.datetime.fromtimestamp(last_modified_timestamp)

@@ -7,6 +7,7 @@ import os
 import pathlib
 import sys
 from concurrent.futures import ThreadPoolExecutor
+from threading import Lock
 
 # pylint: disable=no-name-in-module
 from whichcraft import which
@@ -49,7 +50,7 @@ def report_for_venv_tools(max_count: int = -1) -> None:
     cli_tools = {}
     count = 0
     for executable in get_executables_in_venv(str(venv_dir)):
-        config = CliToolConfig()
+        config = CliToolConfig(executable)
         config.version_switch = "--version"
         config.version = ">=0.0.0"
         cli_tools[executable] = config
@@ -62,7 +63,10 @@ def report_for_venv_tools(max_count: int = -1) -> None:
     # Create a ThreadPoolExecutor with one thread per CPU
     with ThreadPoolExecutor(max_workers=num_cpus) as executor:
         # Submit tasks to the executor
-        futures = [executor.submit(views.check_tool_wrapper, (tool, config)) for tool, config in cli_tools.items()]
+        lock = Lock()
+        futures = [
+            executor.submit(views.check_tool_wrapper, (tool, config, lock)) for tool, config in cli_tools.items()
+        ]
         results = []
         # Process the results as they are completed
         for future in concurrent.futures.as_completed(futures):

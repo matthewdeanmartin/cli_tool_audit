@@ -53,25 +53,34 @@ If all the tools are global then you can pipx install.</p>
 <h2 id="usage">Usage</h2>
 <p>CLI usage</p>
 <pre><code class="language-text">❯ cli_tool_audit --help
-usage: cli_tool_audit [-h] [--version] [--config CONFIG] [--verbose] [--demo DEMO] {read,create,update,delete,freeze} ...
+usage: cli-tool-audit [-h] [-V] [-c CONFIG] [-ff {json,json-compact,xml,table,csv}] [-nf] [--verbose] [--demo {pipx,venv,npm}]
+                      {interactive,read,create,update,delete,freeze,audit} ...
 
 Audit version numbers of CLI tools.
 
 positional arguments:
-  {read,create,update,delete,freeze}
-                        commands
+  {interactive,read,create,update,delete,freeze,audit}
+                        Edit configuration from terminal.
+    interactive         Interactively edit configuration
     read                Read and list all tool configurations
     create              Create a new tool configuration
     update              Update an existing tool configuration
     delete              Delete a tool configuration
     freeze              Freeze the versions of specified tools
+    audit               Audit environment with current configuration (default)
 
 options:
   -h, --help            show this help message and exit
-  --version             Show program's version number and exit.
-  --config CONFIG       Path to the configuration file in TOML format.
+  -V, --version         Show program's version number and exit.
+  -c CONFIG, --config CONFIG
+                        Path to the configuration file in TOML format. (default is pyproject.toml)
+  -ff {json,json-compact,xml,table,csv}, --file-format {json,json-compact,xml,table,csv}, --file_format {json,json-compact,xml,table,csv}
+                        Output results in the specified format. (default is table)
+  -nf, --never-fail, --never_fail
+                        Never return a non-zero exit code
   --verbose             verbose output
-  --demo DEMO           Demo for values of npm, pipx or venv
+  --demo {pipx,venv,npm}
+                        Demo for values of npm, pipx or venv
 </code></pre>
 <p>Note. If you use the create/update commands and specify the <code>--version</code> switch, it must have an equal sign.</p>
 <p>Here is how to generate a freeze, a list of current versions by snapshot, for a lis tof tools. All tools will be
@@ -156,6 +165,14 @@ from cli_tool_audit.views import validate</code></pre>
 <section>
 <h2 class="section-title" id="header-submodules">Sub-modules</h2>
 <dl>
+<dt><code class="name"><a title="cli_tool_audit.audit_cache" href="audit_cache.html">cli_tool_audit.audit_cache</a></code></dt>
+<dd>
+<div class="desc"><p>This module provides a facade for the audit manager that caches results.</p></div>
+</dd>
+<dt><code class="name"><a title="cli_tool_audit.audit_manager" href="audit_manager.html">cli_tool_audit.audit_manager</a></code></dt>
+<dd>
+<div class="desc"><p>Class to audit a tool, abstract base class to allow for supporting different version schemas …</p></div>
+</dd>
 <dt><code class="name"><a title="cli_tool_audit.call_and_compatible" href="call_and_compatible.html">cli_tool_audit.call_and_compatible</a></code></dt>
 <dd>
 <div class="desc"><p>Merge tool call and compatibility check results.</p></div>
@@ -188,6 +205,10 @@ from cli_tool_audit.views import validate</code></pre>
 <dd>
 <div class="desc"><p>Interactively manage tool configurations.</p></div>
 </dd>
+<dt><code class="name"><a title="cli_tool_audit.json_utils" href="json_utils.html">cli_tool_audit.json_utils</a></code></dt>
+<dd>
+<div class="desc"><p>JSON utility functions.</p></div>
+</dd>
 <dt><code class="name"><a title="cli_tool_audit.known_switches" href="known_switches.html">cli_tool_audit.known_switches</a></code></dt>
 <dd>
 <div class="desc"><p>This file contains a dictionary of known switches for various CLI tools.</p></div>
@@ -198,7 +219,7 @@ from cli_tool_audit.views import validate</code></pre>
 </dd>
 <dt><code class="name"><a title="cli_tool_audit.models" href="models.html">cli_tool_audit.models</a></code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>This module contains dataclasses for the tool audit.</p></div>
 </dd>
 <dt><code class="name"><a title="cli_tool_audit.policy" href="policy.html">cli_tool_audit.policy</a></code></dt>
 <dd>
@@ -210,7 +231,7 @@ from cli_tool_audit.views import validate</code></pre>
 </dd>
 <dt><code class="name"><a title="cli_tool_audit.view_npm_stress_test" href="view_npm_stress_test.html">cli_tool_audit.view_npm_stress_test</a></code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>This module contains a stress test for the cli_tool_audit module …</p></div>
 </dd>
 <dt><code class="name"><a title="cli_tool_audit.view_pipx_stress_test" href="view_pipx_stress_test.html">cli_tool_audit.view_pipx_stress_test</a></code></dt>
 <dd>
@@ -389,9 +410,10 @@ from cli_tool_audit.views import validate</code></pre>
     num_cpus = os.cpu_count()
 
     # Create a ThreadPoolExecutor with one thread per CPU
+    lock = Lock()
     with ThreadPoolExecutor(max_workers=num_cpus) as executor:
         # Submit tasks to the executor
-        futures = [executor.submit(check_tool_wrapper, (tool, config)) for tool, config in cli_tools.items()]
+        futures = [executor.submit(check_tool_wrapper, (tool, config, lock)) for tool, config in cli_tools.items()]
         results = []
         for future in concurrent.futures.as_completed(futures):
             result = future.result()
@@ -422,6 +444,8 @@ from cli_tool_audit.views import validate</code></pre>
 <ul id="index">
 <li><h3><a href="#header-submodules">Sub-modules</a></h3>
 <ul>
+<li><code><a title="cli_tool_audit.audit_cache" href="audit_cache.html">cli_tool_audit.audit_cache</a></code></li>
+<li><code><a title="cli_tool_audit.audit_manager" href="audit_manager.html">cli_tool_audit.audit_manager</a></code></li>
 <li><code><a title="cli_tool_audit.call_and_compatible" href="call_and_compatible.html">cli_tool_audit.call_and_compatible</a></code></li>
 <li><code><a title="cli_tool_audit.call_tools" href="call_tools.html">cli_tool_audit.call_tools</a></code></li>
 <li><code><a title="cli_tool_audit.compatibility" href="compatibility.html">cli_tool_audit.compatibility</a></code></li>
@@ -430,6 +454,7 @@ from cli_tool_audit.views import validate</code></pre>
 <li><code><a title="cli_tool_audit.config_reader" href="config_reader.html">cli_tool_audit.config_reader</a></code></li>
 <li><code><a title="cli_tool_audit.freeze" href="freeze.html">cli_tool_audit.freeze</a></code></li>
 <li><code><a title="cli_tool_audit.interactive" href="interactive.html">cli_tool_audit.interactive</a></code></li>
+<li><code><a title="cli_tool_audit.json_utils" href="json_utils.html">cli_tool_audit.json_utils</a></code></li>
 <li><code><a title="cli_tool_audit.known_switches" href="known_switches.html">cli_tool_audit.known_switches</a></code></li>
 <li><code><a title="cli_tool_audit.logging_config" href="logging_config.html">cli_tool_audit.logging_config</a></code></li>
 <li><code><a title="cli_tool_audit.models" href="models.html">cli_tool_audit.models</a></code></li>

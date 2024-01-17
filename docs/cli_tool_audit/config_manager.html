@@ -61,6 +61,7 @@ class ConfigManager:
                 config = toml.load(file)
                 tools_config = config.get(&#34;tool&#34;, {}).get(&#34;cli-tools&#34;, {})
                 for tool_name, settings in tools_config.items():
+                    settings[&#34;name&#34;] = tool_name
                     self.tools[tool_name] = CliToolConfig(**settings)
         return bool(self.tools)
 
@@ -79,6 +80,7 @@ class ConfigManager:
             self.read_config()
         if tool_name in self.tools:
             raise ValueError(f&#34;Tool {tool_name} already exists&#34;)
+        config[&#34;name&#34;] = tool_name
         self.tools[tool_name] = CliToolConfig(**config)
         self._save_config()
 
@@ -110,6 +112,7 @@ class ConfigManager:
         if not self.tools:
             self.read_config()
         if tool_name not in self.tools:
+            config[&#34;name&#34;] = tool_name
             self.tools[tool_name] = CliToolConfig(**config)
         else:
             for key, value in config.items():
@@ -223,6 +226,7 @@ if __name__ == &#34;__main__&#34;:
                 config = toml.load(file)
                 tools_config = config.get(&#34;tool&#34;, {}).get(&#34;cli-tools&#34;, {})
                 for tool_name, settings in tools_config.items():
+                    settings[&#34;name&#34;] = tool_name
                     self.tools[tool_name] = CliToolConfig(**settings)
         return bool(self.tools)
 
@@ -241,6 +245,7 @@ if __name__ == &#34;__main__&#34;:
             self.read_config()
         if tool_name in self.tools:
             raise ValueError(f&#34;Tool {tool_name} already exists&#34;)
+        config[&#34;name&#34;] = tool_name
         self.tools[tool_name] = CliToolConfig(**config)
         self._save_config()
 
@@ -272,6 +277,7 @@ if __name__ == &#34;__main__&#34;:
         if not self.tools:
             self.read_config()
         if tool_name not in self.tools:
+            config[&#34;name&#34;] = tool_name
             self.tools[tool_name] = CliToolConfig(**config)
         else:
             for key, value in config.items():
@@ -366,6 +372,7 @@ if __name__ == &#34;__main__&#34;:
         self.read_config()
     if tool_name in self.tools:
         raise ValueError(f&#34;Tool {tool_name} already exists&#34;)
+    config[&#34;name&#34;] = tool_name
     self.tools[tool_name] = CliToolConfig(**config)
     self._save_config()</code></pre>
 </details>
@@ -396,6 +403,7 @@ if __name__ == &#34;__main__&#34;:
     if not self.tools:
         self.read_config()
     if tool_name not in self.tools:
+        config[&#34;name&#34;] = tool_name
         self.tools[tool_name] = CliToolConfig(**config)
     else:
         for key, value in config.items():
@@ -457,6 +465,7 @@ if __name__ == &#34;__main__&#34;:
             config = toml.load(file)
             tools_config = config.get(&#34;tool&#34;, {}).get(&#34;cli-tools&#34;, {})
             for tool_name, settings in tools_config.items():
+                settings[&#34;name&#34;] = tool_name
                 self.tools[tool_name] = CliToolConfig(**settings)
     return bool(self.tools)</code></pre>
 </details>

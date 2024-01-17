@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2024-01-17
+
+### Added
+- Caching of good results, speeding things up
+- TODO: command to clear cache/change cache location
+- Formalize support of four schemas, semver, pep440, snapshot and exists.
+
+### Fixed
+- "wrong OS" no longer flagged as problem
+
 ## [1.1.0] - 2024-01-16
 
 ### Added

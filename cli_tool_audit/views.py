@@ -6,7 +6,7 @@ import json
 import logging
 import os
 from concurrent.futures import ThreadPoolExecutor
-from datetime import date, datetime
+from threading import Lock
 
 import colorama
 from prettytable import PrettyTable
@@ -15,6 +15,7 @@ from prettytable.colortable import ColorTable, Themes
 import cli_tool_audit.config_reader as config_reader
 import cli_tool_audit.policy as policy
 from cli_tool_audit.call_and_compatible import ToolCheckResult, check_tool_wrapper
+from cli_tool_audit.json_utils import custom_json_serializer
 
 colorama.init(convert=True)
 
@@ -37,29 +38,15 @@ def validate(file_path: str = "pyproject.toml") -> list[ToolCheckResult]:
     num_cpus = os.cpu_count()
 
     # Create a ThreadPoolExecutor with one thread per CPU
+    lock = Lock()
     with ThreadPoolExecutor(max_workers=num_cpus) as executor:
         # Submit tasks to the executor
-        futures = [executor.submit(check_tool_wrapper, (tool, config)) for tool, config in cli_tools.items()]
+        futures = [executor.submit(check_tool_wrapper, (tool, config, lock)) for tool, config in cli_tools.items()]
         results = []
         for future in concurrent.futures.as_completed(futures):
             result = future.result()
             results.append(result)
     return results
-
-
-def custom_json_serializer(o):
-    """
-    Custom JSON serializer for objects not serializable by default json code.
-
-    Args:
-        o (object): The object to serialize.
-
-    Returns:
-        str: A JSON serializable representation of the object.
-    """
-    if isinstance(o, (date, datetime)):
-        return o.isoformat()
-    return str(o)
 
 
 def report_from_pyproject_toml(
@@ -156,7 +143,7 @@ def pretty_print_results(results: list[ToolCheckResult]) -> None:
         ]
         row_transformed = []
         for datum in row_data:
-            if result.is_compatible != "Compatible" or not result.is_available:
+            if result.is_problem():
                 transformed = f"{colorama.Fore.RED}{datum}{colorama.Style.RESET_ALL}"
             else:
                 transformed = str(datum)

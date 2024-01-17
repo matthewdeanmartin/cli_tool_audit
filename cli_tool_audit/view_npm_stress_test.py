@@ -1,7 +1,13 @@
+"""
+This module contains a stress test for the cli_tool_audit module.
+
+It fetches all globally installed npm tools and runs them through the audit process.
+"""
 import concurrent
 import os
 import subprocess  # nosec
 from concurrent.futures import ThreadPoolExecutor
+from threading import Lock
 
 import cli_tool_audit.views as views
 from cli_tool_audit.models import CliToolConfig
@@ -44,7 +50,7 @@ def report_for_npm_tools(max_count: int = -1) -> None:
             app_cmd = app + ".cmd"
         else:
             app_cmd = app
-        config = CliToolConfig()
+        config = CliToolConfig(app_cmd)
         config.version_switch = "--version"
         config.version = ">=0.0.0"
         cli_tools[app_cmd] = config
@@ -58,7 +64,10 @@ def report_for_npm_tools(max_count: int = -1) -> None:
     # Create a ThreadPoolExecutor with one thread per CPU
     with ThreadPoolExecutor(max_workers=num_cpus) as executor:
         # Submit tasks to the executor
-        futures = [executor.submit(views.check_tool_wrapper, (tool, config)) for tool, config in cli_tools.items()]
+        lock = Lock()
+        futures = [
+            executor.submit(views.check_tool_wrapper, (tool, config, lock)) for tool, config in cli_tools.items()
+        ]
 
         results = []
         # Process the results as they are completed

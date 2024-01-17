@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
 <meta name="generator" content="pdoc 0.10.0" />
 <title>cli_tool_audit.view_npm_stress_test API documentation</title>
-<meta name="description" content="" />
+<meta name="description" content="This module contains a stress test for the cli_tool_audit module …" />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
 <link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin>
@@ -22,14 +22,22 @@
 <h1 class="title">Module <code>cli_tool_audit.view_npm_stress_test</code></h1>
 </header>
 <section id="section-intro">
+<p>This module contains a stress test for the cli_tool_audit module.</p>
+<p>It fetches all globally installed npm tools and runs them through the audit process.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">import concurrent
+<pre><code class="python">&#34;&#34;&#34;
+This module contains a stress test for the cli_tool_audit module.
+
+It fetches all globally installed npm tools and runs them through the audit process.
+&#34;&#34;&#34;
+import concurrent
 import os
 import subprocess  # nosec
 from concurrent.futures import ThreadPoolExecutor
+from threading import Lock
 
 import cli_tool_audit.views as views
 from cli_tool_audit.models import CliToolConfig
@@ -56,7 +64,7 @@ def list_global_npm_executables() -&gt; list[str]:
     return executables
 
 
-def report_for_npm_tools(max_count:int=-1) -&gt; None:
+def report_for_npm_tools(max_count: int = -1) -&gt; None:
     &#34;&#34;&#34;
     Report on the compatibility of the tools installed with pipx.
     Args:
@@ -72,7 +80,7 @@ def report_for_npm_tools(max_count:int=-1) -&gt; None:
             app_cmd = app + &#34;.cmd&#34;
         else:
             app_cmd = app
-        config = CliToolConfig()
+        config = CliToolConfig(app_cmd)
         config.version_switch = &#34;--version&#34;
         config.version = &#34;&gt;=0.0.0&#34;
         cli_tools[app_cmd] = config
@@ -80,14 +88,16 @@ def report_for_npm_tools(max_count:int=-1) -&gt; None:
         if 0 &lt; count &gt;= max_count:
             break
 
-
     # Determine the number of available CPUs
     num_cpus = os.cpu_count()
 
     # Create a ThreadPoolExecutor with one thread per CPU
     with ThreadPoolExecutor(max_workers=num_cpus) as executor:
         # Submit tasks to the executor
-        futures = [executor.submit(views.check_tool_wrapper, (tool, config)) for tool, config in cli_tools.items()]
+        lock = Lock()
+        futures = [
+            executor.submit(views.check_tool_wrapper, (tool, config, lock)) for tool, config in cli_tools.items()
+        ]
 
         results = []
         # Process the results as they are completed
@@ -158,7 +168,7 @@ if __name__ == &#34;__main__&#34;:
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def report_for_npm_tools(max_count:int=-1) -&gt; None:
+<pre><code class="python">def report_for_npm_tools(max_count: int = -1) -&gt; None:
     &#34;&#34;&#34;
     Report on the compatibility of the tools installed with pipx.
     Args:
@@ -174,7 +184,7 @@ if __name__ == &#34;__main__&#34;:
             app_cmd = app + &#34;.cmd&#34;
         else:
             app_cmd = app
-        config = CliToolConfig()
+        config = CliToolConfig(app_cmd)
         config.version_switch = &#34;--version&#34;
         config.version = &#34;&gt;=0.0.0&#34;
         cli_tools[app_cmd] = config
@@ -182,14 +192,16 @@ if __name__ == &#34;__main__&#34;:
         if 0 &lt; count &gt;= max_count:
             break
 
-
     # Determine the number of available CPUs
     num_cpus = os.cpu_count()
 
     # Create a ThreadPoolExecutor with one thread per CPU
     with ThreadPoolExecutor(max_workers=num_cpus) as executor:
         # Submit tasks to the executor
-        futures = [executor.submit(views.check_tool_wrapper, (tool, config)) for tool, config in cli_tools.items()]
+        lock = Lock()
+        futures = [
+            executor.submit(views.check_tool_wrapper, (tool, config, lock)) for tool, config in cli_tools.items()
+        ]
 
         results = []
         # Process the results as they are completed

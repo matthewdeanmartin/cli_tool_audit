@@ -1,0 +1,1286 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
+<meta name="generator" content="pdoc 0.10.0" />
+<title>cli_tool_audit.audit_manager API documentation</title>
+<meta name="description" content="Class to audit a tool, abstract base class to allow for supporting different version schemas …" />
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
+<link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin>
+<style>:root{--highlight-color:#fe9}.flex{display:flex !important}body{line-height:1.5em}#content{padding:20px}#sidebar{padding:30px;overflow:hidden}#sidebar > *:last-child{margin-bottom:2cm}.http-server-breadcrumbs{font-size:130%;margin:0 0 15px 0}#footer{font-size:.75em;padding:5px 30px;border-top:1px solid #ddd;text-align:right}#footer p{margin:0 0 0 1em;display:inline-block}#footer p:last-child{margin-right:30px}h1,h2,h3,h4,h5{font-weight:300}h1{font-size:2.5em;line-height:1.1em}h2{font-size:1.75em;margin:1em 0 .50em 0}h3{font-size:1.4em;margin:25px 0 10px 0}h4{margin:0;font-size:105%}h1:target,h2:target,h3:target,h4:target,h5:target,h6:target{background:var(--highlight-color);padding:.2em 0}a{color:#058;text-decoration:none;transition:color .3s ease-in-out}a:hover{color:#e82}.title code{font-weight:bold}h2[id^="header-"]{margin-top:2em}.ident{color:#900}pre code{background:#f8f8f8;font-size:.8em;line-height:1.4em}code{background:#f2f2f1;padding:1px 4px;overflow-wrap:break-word}h1 code{background:transparent}pre{background:#f8f8f8;border:0;border-top:1px solid #ccc;border-bottom:1px solid #ccc;margin:1em 0;padding:1ex}#http-server-module-list{display:flex;flex-flow:column}#http-server-module-list div{display:flex}#http-server-module-list dt{min-width:10%}#http-server-module-list p{margin-top:0}.toc ul,#index{list-style-type:none;margin:0;padding:0}#index code{background:transparent}#index h3{border-bottom:1px solid #ddd}#index ul{padding:0}#index h4{margin-top:.6em;font-weight:bold}@media (min-width:200ex){#index .two-column{column-count:2}}@media (min-width:300ex){#index .two-column{column-count:3}}dl{margin-bottom:2em}dl dl:last-child{margin-bottom:4em}dd{margin:0 0 1em 3em}#header-classes + dl > dd{margin-bottom:3em}dd dd{margin-left:2em}dd p{margin:10px 0}.name{background:#eee;font-weight:bold;font-size:.85em;padding:5px 10px;display:inline-block;min-width:40%}.name:hover{background:#e0e0e0}dt:target .name{background:var(--highlight-color)}.name > span:first-child{white-space:nowrap}.name.class > span:nth-child(2){margin-left:.4em}.inherited{color:#999;border-left:5px solid #eee;padding-left:1em}.inheritance em{font-style:normal;font-weight:bold}.desc h2{font-weight:400;font-size:1.25em}.desc h3{font-size:1em}.desc dt code{background:inherit}.source summary,.git-link-div{color:#666;text-align:right;font-weight:400;font-size:.8em;text-transform:uppercase}.source summary > *{white-space:nowrap;cursor:pointer}.git-link{color:inherit;margin-left:1em}.source pre{max-height:500px;overflow:auto;margin:0}.source pre code{font-size:12px;overflow:visible}.hlist{list-style:none}.hlist li{display:inline}.hlist li:after{content:',\2002'}.hlist li:last-child:after{content:none}.hlist .hlist{display:inline;padding-left:1em}img{max-width:100%}td{padding:0 .5em}.admonition{padding:.1em .5em;margin-bottom:1em}.admonition-title{font-weight:bold}.admonition.note,.admonition.info,.admonition.important{background:#aef}.admonition.todo,.admonition.versionadded,.admonition.tip,.admonition.hint{background:#dfd}.admonition.warning,.admonition.versionchanged,.admonition.deprecated{background:#fd4}.admonition.error,.admonition.danger,.admonition.caution{background:lightpink}</style>
+<style media="screen and (min-width: 700px)">@media screen and (min-width:700px){#sidebar{width:30%;height:100vh;overflow:auto;position:sticky;top:0}#content{width:70%;max-width:100ch;padding:3em 4em;border-left:1px solid #ddd}pre code{font-size:1em}.item .name{font-size:1em}main{display:flex;flex-direction:row-reverse;justify-content:flex-end}.toc ul ul,#index ul{padding-left:1.5em}.toc > ul > li{margin-top:.5em}}</style>
+<style media="print">@media print{#sidebar h1{page-break-before:always}.source{display:none}}@media print{*{background:transparent !important;color:#000 !important;box-shadow:none !important;text-shadow:none !important}a[href]:after{content:" (" attr(href) ")";font-size:90%}a[href][title]:after{content:none}abbr[title]:after{content:" (" attr(title) ")"}.ir a:after,a[href^="javascript:"]:after,a[href^="#"]:after{content:""}pre,blockquote{border:1px solid #999;page-break-inside:avoid}thead{display:table-header-group}tr,img{page-break-inside:avoid}img{max-width:100% !important}@page{margin:0.5cm}p,h2,h3{orphans:3;widows:3}h1,h2,h3,h4,h5,h6{page-break-after:avoid}}</style>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/highlight.min.js" integrity="sha256-Uv3H6lx7dJmRfRvH8TH6kJD1TSK1aFcwgx+mdg3epi8=" crossorigin></script>
+<script>window.addEventListener('DOMContentLoaded', () => hljs.initHighlighting())</script>
+</head>
+<body>
+<main>
+<article id="content">
+<header>
+<h1 class="title">Module <code>cli_tool_audit.audit_manager</code></h1>
+</header>
+<section id="section-intro">
+<p>Class to audit a tool, abstract base class to allow for supporting different version schemas.</p>
+<p>Includes several implementations of VersionChecker, which are used by AuditManager.</p>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">&#34;&#34;&#34;
+Class to audit a tool, abstract base class to allow for supporting different version schemas.
+
+Includes several implementations of VersionChecker, which are used by AuditManager.
+&#34;&#34;&#34;
+import datetime
+import logging
+import os
+import subprocess  # nosec
+import sys
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from typing import Optional, cast
+
+import packaging.specifiers as packaging_specifiers
+import packaging.version as packaging
+from semver import Version
+from whichcraft import which
+
+from cli_tool_audit.compatibility import check_compatibility
+from cli_tool_audit.known_switches import KNOWN_SWITCHES
+from cli_tool_audit.models import CliToolConfig, ToolAvailabilityResult, ToolCheckResult
+from cli_tool_audit.version_parsing import two_pass_semver_parse
+
+logger = logging.getLogger(__name__)
+
+
+@dataclass
+class VersionResult:
+    is_compatible: bool
+    clean_format: str
+
+
+class VersionChecker(ABC):
+    &#34;&#34;&#34;
+    Abstract base class for checking if a version is compatible with a desired version.
+    &#34;&#34;&#34;
+    @abstractmethod
+    def check_compatibility(self, desired_version: str) -&gt; VersionResult:
+        &#34;&#34;&#34;
+        Check if the version is compatible with the desired version.
+        Args:
+            desired_version (str): The desired version.
+        Returns:
+            VersionResult: The result of the check.
+        &#34;&#34;&#34;
+
+    @abstractmethod
+    def format_report(self, desired_version: str) -&gt; str:
+        &#34;&#34;&#34;
+        Format a report on the compatibility of a version with a desired version.
+        Args:
+            desired_version (str): The desired version.
+        Returns:
+            str: The formatted report.
+        &#34;&#34;&#34;
+
+
+class SemVerChecker(VersionChecker):
+    def __init__(self, version_string: str) -&gt; None:
+        self.found_version = self.parse_version(version_string)
+        self.result: Optional[VersionResult] = None
+
+    def parse_version(self, version_string: str) -&gt; Optional[Version]:
+        &#34;&#34;&#34;
+        Parse a version string into a semver Version object.
+        Args:
+            version_string (str): The version string to parse.
+        Returns:
+            Optional[Version]: The parsed version or None if the version string is invalid.
+        &#34;&#34;&#34;
+        return two_pass_semver_parse(version_string)
+
+    def check_compatibility(self, desired_version: Optional[str]) -&gt; VersionResult:
+        &#34;&#34;&#34;
+        Check if the version is compatible with the desired version.
+        Args:
+            desired_version (Optional[str]): The desired version.
+        Returns:
+            VersionResult: The result of the check.
+        &#34;&#34;&#34;
+        if not self.found_version:
+            return VersionResult(is_compatible=False, clean_format=&#34;Invalid Format&#34;)
+        desired_version = desired_version or &#34;0.0.0&#34;
+        compatible_result, _version_object = check_compatibility(desired_version, str(self.found_version))
+
+        self.result = VersionResult(
+            is_compatible=compatible_result == &#34;Compatible&#34;, clean_format=str(self.found_version)
+        )
+        return self.result
+
+    def format_report(self, desired_version: str) -&gt; str:
+        &#34;&#34;&#34;
+        Format a report on the compatibility of a version with a desired version.
+        Args:
+            desired_version (str): The desired version.
+        Returns:
+            str: The formatted report.
+        &#34;&#34;&#34;
+        if not self.found_version or not self.result:
+            return &#34;Invalid Format&#34;
+        return &#34;Compatible&#34; if self.result.is_compatible else f&#34;{self.found_version} != {desired_version}&#34;
+
+
+class ExistenceVersionChecker(VersionChecker):
+    def __init__(self, version_string: str) -&gt; None:
+        &#34;&#34;&#34;
+        Check if a tool exists.
+        Args:
+            version_string (str): A constant, &#34;Found&#34; or &#34;Not Found&#34;
+        &#34;&#34;&#34;
+        if version_string not in (&#34;Found&#34;, &#34;Not Found&#34;):
+            raise ValueError(f&#34;version_string must be &#39;Found&#39; or &#39;Not Found&#39;, not {version_string}&#34;)
+        self.found_version = version_string
+
+    def check_compatibility(self, desired_version: Optional[str]) -&gt; VersionResult:
+        &#34;&#34;&#34;
+        Check if the tool exists.
+        Args:
+            desired_version (Optional[str]): The desired version. Ignored.
+        Returns:
+            VersionResult: The result of the check.
+        &#34;&#34;&#34;
+        return VersionResult(is_compatible=self.found_version == desired_version, clean_format=self.found_version)
+
+    def format_report(self, desired_version: str) -&gt; str:
+        &#34;&#34;&#34;
+        Format a report on the compatibility of a version with a desired version.
+        Args:
+            desired_version (str): The desired version.
+        Returns:
+            str: The formatted report.
+        &#34;&#34;&#34;
+        return &#34;Compatible&#34; if self.found_version == desired_version else &#34;Not Found&#34;
+
+
+class SnapshotVersionChecker(VersionChecker):
+    def __init__(self, version_string: str) -&gt; None:
+        self.found_version = self.parse_version(version_string)
+
+    def parse_version(self, version_string: str) -&gt; str:
+        return version_string
+
+    def check_compatibility(self, desired_version: Optional[str]) -&gt; VersionResult:
+        return VersionResult(is_compatible=self.found_version == desired_version, clean_format=self.found_version)
+
+    def format_report(self, desired_version: str) -&gt; str:
+        return &#34;Compatible&#34; if self.found_version == desired_version else &#34;different&#34;
+
+
+class Pep440VersionChecker(VersionChecker):
+    def __init__(self, version_string: str) -&gt; None:
+        self.found_version = self.parse_version(version_string)
+
+    def parse_version(self, version_string: str) -&gt; packaging.Version:
+        return packaging.Version(version_string)
+
+    def check_compatibility(self, desired_version: Optional[str]) -&gt; VersionResult:
+        # Range match
+        if not desired_version:
+            # Treat blank as &#34;*&#34;
+            return VersionResult(is_compatible=True, clean_format=str(self.found_version))
+        if &#34; &#34; in desired_version or &#34;&gt;&#34; in desired_version or &#34;&lt;&#34; in desired_version or &#34;~&#34; in desired_version:
+            specifier = packaging_specifiers.SpecifierSet(desired_version)
+            return VersionResult(
+                is_compatible=specifier.contains(self.found_version), clean_format=str(self.found_version)
+            )
+        # exact match
+        return VersionResult(
+            is_compatible=self.found_version == packaging.Version(desired_version), clean_format=str(self.found_version)
+        )
+
+    def format_report(self, desired_version: str) -&gt; str:
+        return &#34;Compatible&#34; if self.found_version == desired_version else f&#34;{self.found_version} != {desired_version}&#34;
+
+
+class AuditManager:
+    &#34;&#34;&#34;
+    Class to audit a tool, abstract base class to allow for supporting different version schemas.
+    &#34;&#34;&#34;
+    def call_and_check(self, tool_config: CliToolConfig) -&gt; ToolCheckResult:
+        &#34;&#34;&#34;
+        Call and check the given tool.
+        Args:
+            tool_config (CliToolConfig): The tool to call and check.
+        Returns:
+            ToolCheckResult: The result of the check.
+        &#34;&#34;&#34;
+        tool, config = tool_config.name, tool_config
+
+        if config.if_os and not sys.platform.startswith(config.if_os):
+            # This isn&#39;t very transparent about what just happened
+            return ToolCheckResult(
+                tool=tool,
+                is_needed_for_os=False,
+                desired_version=config.version or &#34;0.0.0&#34;,
+                is_available=False,
+                found_version=None,
+                parsed_version=None,
+                is_snapshot=False,
+                is_compatible=f&#34;{sys.platform}, not {config.if_os}&#34;,
+                is_broken=False,
+                last_modified=None,
+            )
+        result = self.call_tool(
+            tool, config.version_switch or &#34;--version&#34;, cast(bool, config.only_check_existence or False)
+        )
+
+        # Not pretty.
+        if config.only_check_existence:
+            existence_checker = ExistenceVersionChecker(&#34;Found&#34; if result.is_available else &#34;Not found&#34;)
+            version_result = existence_checker.check_compatibility(&#34;Found&#34;)
+            compatibility_report = existence_checker.format_report(&#34;Found&#34;)
+            desired_version = &#34;*&#34;
+        elif config.version_snapshot:
+            snapshot_checker = SnapshotVersionChecker(result.version or &#34;&#34;)
+            version_result = snapshot_checker.check_compatibility(config.version_snapshot)
+            compatibility_report = snapshot_checker.format_report(config.version_snapshot or &#34;&#34;)
+            desired_version = config.version_snapshot
+        elif config.schema == &#34;pep440&#34;:
+            pep440_checker = Pep440VersionChecker(result.version or &#34;&#34;)
+            version_result = pep440_checker.check_compatibility(config.version or &#34;0.0.0&#34;)
+            compatibility_report = pep440_checker.format_report(config.version or &#34;0.0.0&#34;)
+            desired_version = config.version or &#34;*&#34;
+        else:  # config.schema == &#34;semver&#34;:
+            semver_checker = SemVerChecker(result.version or &#34;&#34;)
+            version_result = semver_checker.check_compatibility(config.version)
+            compatibility_report = semver_checker.format_report(config.version or &#34;0.0.0&#34;)
+            desired_version = config.version or &#34;*&#34;
+
+        return ToolCheckResult(
+            tool=tool,
+            desired_version=desired_version,
+            is_needed_for_os=True,
+            is_available=result.is_available,
+            is_snapshot=bool(config.version_snapshot),
+            found_version=result.version,
+            parsed_version=version_result.clean_format,
+            is_compatible=compatibility_report,
+            is_broken=result.is_broken,
+            last_modified=result.last_modified,
+        )
+
+    def call_tool(
+        self, tool_name: str, version_switch: str = &#34;--version&#34;, only_check_existence: bool = False
+    ) -&gt; ToolAvailabilityResult:
+        &#34;&#34;&#34;
+        Check if a tool is available in the system&#39;s PATH and if possible, determine a version number.
+
+        Args:
+            tool_name (str): The name of the tool to check.
+            version_switch (str): The switch to get the tool version. Defaults to &#39;--version&#39;.
+            only_check_existence (bool): Only check if the tool exists, don&#39;t check version. Defaults to False.
+
+        Returns:
+            ToolAvailabilityResult: An object containing the availability and version of the tool.
+        &#34;&#34;&#34;
+        # Check if the tool is in the system&#39;s PATH
+        is_broken = True
+
+        last_modified = self.get_command_last_modified_date(tool_name)
+        if not last_modified:
+            logger.warning(f&#34;{tool_name} is not on path.&#34;)
+            return ToolAvailabilityResult(False, True, None, last_modified)
+        if only_check_existence:
+            logger.debug(f&#34;{tool_name} exists, but not checking for version.&#34;)
+            return ToolAvailabilityResult(True, False, None, last_modified)
+
+        if version_switch is None or version_switch == &#34;--version&#34;:
+            # override default.
+            # Could be a problem if KNOWN_SWITCHES was ever wrong.
+            version_switch = KNOWN_SWITCHES.get(tool_name, &#34;--version&#34;)
+
+        version = None
+
+        # pylint: disable=broad-exception-caught
+        try:
+            command = [tool_name, version_switch]
+            result = subprocess.run(
+                command, capture_output=True, text=True, timeout=15, shell=False, check=True
+            )  # nosec
+            # Sometimes version is on line 2 or later.
+            version = result.stdout.strip()
+            if not version:
+                # check stderror
+                logger.debug(&#34;Got nothing from stdout, checking stderror&#34;)
+                version = result.stderr.strip()
+
+            logger.debug(f&#34;Called tool with {&#39; &#39;.join(command)}, got  {version}&#34;)
+            is_broken = False
+        except subprocess.CalledProcessError as exception:
+            is_broken = True
+            logger.error(f&#34;{tool_name} failed invocation with {exception}&#34;)
+            logger.error(f&#34;{tool_name} stderr: {exception.stderr}&#34;)
+            logger.error(f&#34;{tool_name} stdout: {exception.stdout}&#34;)
+        except FileNotFoundError:
+            logger.error(f&#34;{tool_name} is not on path.&#34;)
+            return ToolAvailabilityResult(False, True, None, last_modified)
+
+        return ToolAvailabilityResult(True, is_broken, version, last_modified)
+
+    def get_command_last_modified_date(self, tool_name: str) -&gt; Optional[datetime.datetime]:
+        &#34;&#34;&#34;
+        Get the last modified date of a command&#39;s executable.
+        Args:
+            tool_name (str): The name of the command.
+
+        Returns:
+            Optional[datetime.datetime]: The last modified date of the command&#39;s executable.
+        &#34;&#34;&#34;
+        # Find the path of the command&#39;s executable
+        result = which(tool_name)
+        if result is None:
+            return None
+
+        executable_path = result
+
+        # Get the last modified time of the executable
+        last_modified_timestamp = os.path.getmtime(executable_path)
+        return datetime.datetime.fromtimestamp(last_modified_timestamp)</code></pre>
+</details>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+<h2 class="section-title" id="header-classes">Classes</h2>
+<dl>
+<dt id="cli_tool_audit.audit_manager.AuditManager"><code class="flex name class">
+<span>class <span class="ident">AuditManager</span></span>
+</code></dt>
+<dd>
+<div class="desc"><p>Class to audit a tool, abstract base class to allow for supporting different version schemas.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class AuditManager:
+    &#34;&#34;&#34;
+    Class to audit a tool, abstract base class to allow for supporting different version schemas.
+    &#34;&#34;&#34;
+    def call_and_check(self, tool_config: CliToolConfig) -&gt; ToolCheckResult:
+        &#34;&#34;&#34;
+        Call and check the given tool.
+        Args:
+            tool_config (CliToolConfig): The tool to call and check.
+        Returns:
+            ToolCheckResult: The result of the check.
+        &#34;&#34;&#34;
+        tool, config = tool_config.name, tool_config
+
+        if config.if_os and not sys.platform.startswith(config.if_os):
+            # This isn&#39;t very transparent about what just happened
+            return ToolCheckResult(
+                tool=tool,
+                is_needed_for_os=False,
+                desired_version=config.version or &#34;0.0.0&#34;,
+                is_available=False,
+                found_version=None,
+                parsed_version=None,
+                is_snapshot=False,
+                is_compatible=f&#34;{sys.platform}, not {config.if_os}&#34;,
+                is_broken=False,
+                last_modified=None,
+            )
+        result = self.call_tool(
+            tool, config.version_switch or &#34;--version&#34;, cast(bool, config.only_check_existence or False)
+        )
+
+        # Not pretty.
+        if config.only_check_existence:
+            existence_checker = ExistenceVersionChecker(&#34;Found&#34; if result.is_available else &#34;Not found&#34;)
+            version_result = existence_checker.check_compatibility(&#34;Found&#34;)
+            compatibility_report = existence_checker.format_report(&#34;Found&#34;)
+            desired_version = &#34;*&#34;
+        elif config.version_snapshot:
+            snapshot_checker = SnapshotVersionChecker(result.version or &#34;&#34;)
+            version_result = snapshot_checker.check_compatibility(config.version_snapshot)
+            compatibility_report = snapshot_checker.format_report(config.version_snapshot or &#34;&#34;)
+            desired_version = config.version_snapshot
+        elif config.schema == &#34;pep440&#34;:
+            pep440_checker = Pep440VersionChecker(result.version or &#34;&#34;)
+            version_result = pep440_checker.check_compatibility(config.version or &#34;0.0.0&#34;)
+            compatibility_report = pep440_checker.format_report(config.version or &#34;0.0.0&#34;)
+            desired_version = config.version or &#34;*&#34;
+        else:  # config.schema == &#34;semver&#34;:
+            semver_checker = SemVerChecker(result.version or &#34;&#34;)
+            version_result = semver_checker.check_compatibility(config.version)
+            compatibility_report = semver_checker.format_report(config.version or &#34;0.0.0&#34;)
+            desired_version = config.version or &#34;*&#34;
+
+        return ToolCheckResult(
+            tool=tool,
+            desired_version=desired_version,
+            is_needed_for_os=True,
+            is_available=result.is_available,
+            is_snapshot=bool(config.version_snapshot),
+            found_version=result.version,
+            parsed_version=version_result.clean_format,
+            is_compatible=compatibility_report,
+            is_broken=result.is_broken,
+            last_modified=result.last_modified,
+        )
+
+    def call_tool(
+        self, tool_name: str, version_switch: str = &#34;--version&#34;, only_check_existence: bool = False
+    ) -&gt; ToolAvailabilityResult:
+        &#34;&#34;&#34;
+        Check if a tool is available in the system&#39;s PATH and if possible, determine a version number.
+
+        Args:
+            tool_name (str): The name of the tool to check.
+            version_switch (str): The switch to get the tool version. Defaults to &#39;--version&#39;.
+            only_check_existence (bool): Only check if the tool exists, don&#39;t check version. Defaults to False.
+
+        Returns:
+            ToolAvailabilityResult: An object containing the availability and version of the tool.
+        &#34;&#34;&#34;
+        # Check if the tool is in the system&#39;s PATH
+        is_broken = True
+
+        last_modified = self.get_command_last_modified_date(tool_name)
+        if not last_modified:
+            logger.warning(f&#34;{tool_name} is not on path.&#34;)
+            return ToolAvailabilityResult(False, True, None, last_modified)
+        if only_check_existence:
+            logger.debug(f&#34;{tool_name} exists, but not checking for version.&#34;)
+            return ToolAvailabilityResult(True, False, None, last_modified)
+
+        if version_switch is None or version_switch == &#34;--version&#34;:
+            # override default.
+            # Could be a problem if KNOWN_SWITCHES was ever wrong.
+            version_switch = KNOWN_SWITCHES.get(tool_name, &#34;--version&#34;)
+
+        version = None
+
+        # pylint: disable=broad-exception-caught
+        try:
+            command = [tool_name, version_switch]
+            result = subprocess.run(
+                command, capture_output=True, text=True, timeout=15, shell=False, check=True
+            )  # nosec
+            # Sometimes version is on line 2 or later.
+            version = result.stdout.strip()
+            if not version:
+                # check stderror
+                logger.debug(&#34;Got nothing from stdout, checking stderror&#34;)
+                version = result.stderr.strip()
+
+            logger.debug(f&#34;Called tool with {&#39; &#39;.join(command)}, got  {version}&#34;)
+            is_broken = False
+        except subprocess.CalledProcessError as exception:
+            is_broken = True
+            logger.error(f&#34;{tool_name} failed invocation with {exception}&#34;)
+            logger.error(f&#34;{tool_name} stderr: {exception.stderr}&#34;)
+            logger.error(f&#34;{tool_name} stdout: {exception.stdout}&#34;)
+        except FileNotFoundError:
+            logger.error(f&#34;{tool_name} is not on path.&#34;)
+            return ToolAvailabilityResult(False, True, None, last_modified)
+
+        return ToolAvailabilityResult(True, is_broken, version, last_modified)
+
+    def get_command_last_modified_date(self, tool_name: str) -&gt; Optional[datetime.datetime]:
+        &#34;&#34;&#34;
+        Get the last modified date of a command&#39;s executable.
+        Args:
+            tool_name (str): The name of the command.
+
+        Returns:
+            Optional[datetime.datetime]: The last modified date of the command&#39;s executable.
+        &#34;&#34;&#34;
+        # Find the path of the command&#39;s executable
+        result = which(tool_name)
+        if result is None:
+            return None
+
+        executable_path = result
+
+        # Get the last modified time of the executable
+        last_modified_timestamp = os.path.getmtime(executable_path)
+        return datetime.datetime.fromtimestamp(last_modified_timestamp)</code></pre>
+</details>
+<h3>Methods</h3>
+<dl>
+<dt id="cli_tool_audit.audit_manager.AuditManager.call_and_check"><code class="name flex">
+<span>def <span class="ident">call_and_check</span></span>(<span>self, tool_config: <a title="cli_tool_audit.models.CliToolConfig" href="models.html#cli_tool_audit.models.CliToolConfig">CliToolConfig</a>) ‑> <a title="cli_tool_audit.models.ToolCheckResult" href="models.html#cli_tool_audit.models.ToolCheckResult">ToolCheckResult</a></span>
+</code></dt>
+<dd>
+<div class="desc"><p>Call and check the given tool.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>tool_config</code></strong> :&ensp;<code>CliToolConfig</code></dt>
+<dd>The tool to call and check.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code>ToolCheckResult</code></dt>
+<dd>The result of the check.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def call_and_check(self, tool_config: CliToolConfig) -&gt; ToolCheckResult:
+    &#34;&#34;&#34;
+    Call and check the given tool.
+    Args:
+        tool_config (CliToolConfig): The tool to call and check.
+    Returns:
+        ToolCheckResult: The result of the check.
+    &#34;&#34;&#34;
+    tool, config = tool_config.name, tool_config
+
+    if config.if_os and not sys.platform.startswith(config.if_os):
+        # This isn&#39;t very transparent about what just happened
+        return ToolCheckResult(
+            tool=tool,
+            is_needed_for_os=False,
+            desired_version=config.version or &#34;0.0.0&#34;,
+            is_available=False,
+            found_version=None,
+            parsed_version=None,
+            is_snapshot=False,
+            is_compatible=f&#34;{sys.platform}, not {config.if_os}&#34;,
+            is_broken=False,
+            last_modified=None,
+        )
+    result = self.call_tool(
+        tool, config.version_switch or &#34;--version&#34;, cast(bool, config.only_check_existence or False)
+    )
+
+    # Not pretty.
+    if config.only_check_existence:
+        existence_checker = ExistenceVersionChecker(&#34;Found&#34; if result.is_available else &#34;Not found&#34;)
+        version_result = existence_checker.check_compatibility(&#34;Found&#34;)
+        compatibility_report = existence_checker.format_report(&#34;Found&#34;)
+        desired_version = &#34;*&#34;
+    elif config.version_snapshot:
+        snapshot_checker = SnapshotVersionChecker(result.version or &#34;&#34;)
+        version_result = snapshot_checker.check_compatibility(config.version_snapshot)
+        compatibility_report = snapshot_checker.format_report(config.version_snapshot or &#34;&#34;)
+        desired_version = config.version_snapshot
+    elif config.schema == &#34;pep440&#34;:
+        pep440_checker = Pep440VersionChecker(result.version or &#34;&#34;)
+        version_result = pep440_checker.check_compatibility(config.version or &#34;0.0.0&#34;)
+        compatibility_report = pep440_checker.format_report(config.version or &#34;0.0.0&#34;)
+        desired_version = config.version or &#34;*&#34;
+    else:  # config.schema == &#34;semver&#34;:
+        semver_checker = SemVerChecker(result.version or &#34;&#34;)
+        version_result = semver_checker.check_compatibility(config.version)
+        compatibility_report = semver_checker.format_report(config.version or &#34;0.0.0&#34;)
+        desired_version = config.version or &#34;*&#34;
+
+    return ToolCheckResult(
+        tool=tool,
+        desired_version=desired_version,
+        is_needed_for_os=True,
+        is_available=result.is_available,
+        is_snapshot=bool(config.version_snapshot),
+        found_version=result.version,
+        parsed_version=version_result.clean_format,
+        is_compatible=compatibility_report,
+        is_broken=result.is_broken,
+        last_modified=result.last_modified,
+    )</code></pre>
+</details>
+</dd>
+<dt id="cli_tool_audit.audit_manager.AuditManager.call_tool"><code class="name flex">
+<span>def <span class="ident">call_tool</span></span>(<span>self, tool_name: str, version_switch: str = '--version', only_check_existence: bool = False) ‑> <a title="cli_tool_audit.models.ToolAvailabilityResult" href="models.html#cli_tool_audit.models.ToolAvailabilityResult">ToolAvailabilityResult</a></span>
+</code></dt>
+<dd>
+<div class="desc"><p>Check if a tool is available in the system's PATH and if possible, determine a version number.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>tool_name</code></strong> :&ensp;<code>str</code></dt>
+<dd>The name of the tool to check.</dd>
+<dt><strong><code>version_switch</code></strong> :&ensp;<code>str</code></dt>
+<dd>The switch to get the tool version. Defaults to '&ndash;version'.</dd>
+<dt><strong><code>only_check_existence</code></strong> :&ensp;<code>bool</code></dt>
+<dd>Only check if the tool exists, don't check version. Defaults to False.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code>ToolAvailabilityResult</code></dt>
+<dd>An object containing the availability and version of the tool.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def call_tool(
+    self, tool_name: str, version_switch: str = &#34;--version&#34;, only_check_existence: bool = False
+) -&gt; ToolAvailabilityResult:
+    &#34;&#34;&#34;
+    Check if a tool is available in the system&#39;s PATH and if possible, determine a version number.
+
+    Args:
+        tool_name (str): The name of the tool to check.
+        version_switch (str): The switch to get the tool version. Defaults to &#39;--version&#39;.
+        only_check_existence (bool): Only check if the tool exists, don&#39;t check version. Defaults to False.
+
+    Returns:
+        ToolAvailabilityResult: An object containing the availability and version of the tool.
+    &#34;&#34;&#34;
+    # Check if the tool is in the system&#39;s PATH
+    is_broken = True
+
+    last_modified = self.get_command_last_modified_date(tool_name)
+    if not last_modified:
+        logger.warning(f&#34;{tool_name} is not on path.&#34;)
+        return ToolAvailabilityResult(False, True, None, last_modified)
+    if only_check_existence:
+        logger.debug(f&#34;{tool_name} exists, but not checking for version.&#34;)
+        return ToolAvailabilityResult(True, False, None, last_modified)
+
+    if version_switch is None or version_switch == &#34;--version&#34;:
+        # override default.
+        # Could be a problem if KNOWN_SWITCHES was ever wrong.
+        version_switch = KNOWN_SWITCHES.get(tool_name, &#34;--version&#34;)
+
+    version = None
+
+    # pylint: disable=broad-exception-caught
+    try:
+        command = [tool_name, version_switch]
+        result = subprocess.run(
+            command, capture_output=True, text=True, timeout=15, shell=False, check=True
+        )  # nosec
+        # Sometimes version is on line 2 or later.
+        version = result.stdout.strip()
+        if not version:
+            # check stderror
+            logger.debug(&#34;Got nothing from stdout, checking stderror&#34;)
+            version = result.stderr.strip()
+
+        logger.debug(f&#34;Called tool with {&#39; &#39;.join(command)}, got  {version}&#34;)
+        is_broken = False
+    except subprocess.CalledProcessError as exception:
+        is_broken = True
+        logger.error(f&#34;{tool_name} failed invocation with {exception}&#34;)
+        logger.error(f&#34;{tool_name} stderr: {exception.stderr}&#34;)
+        logger.error(f&#34;{tool_name} stdout: {exception.stdout}&#34;)
+    except FileNotFoundError:
+        logger.error(f&#34;{tool_name} is not on path.&#34;)
+        return ToolAvailabilityResult(False, True, None, last_modified)
+
+    return ToolAvailabilityResult(True, is_broken, version, last_modified)</code></pre>
+</details>
+</dd>
+<dt id="cli_tool_audit.audit_manager.AuditManager.get_command_last_modified_date"><code class="name flex">
+<span>def <span class="ident">get_command_last_modified_date</span></span>(<span>self, tool_name: str) ‑> Optional[datetime.datetime]</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Get the last modified date of a command's executable.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>tool_name</code></strong> :&ensp;<code>str</code></dt>
+<dd>The name of the command.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code>Optional[datetime.datetime]</code></dt>
+<dd>The last modified date of the command's executable.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def get_command_last_modified_date(self, tool_name: str) -&gt; Optional[datetime.datetime]:
+    &#34;&#34;&#34;
+    Get the last modified date of a command&#39;s executable.
+    Args:
+        tool_name (str): The name of the command.
+
+    Returns:
+        Optional[datetime.datetime]: The last modified date of the command&#39;s executable.
+    &#34;&#34;&#34;
+    # Find the path of the command&#39;s executable
+    result = which(tool_name)
+    if result is None:
+        return None
+
+    executable_path = result
+
+    # Get the last modified time of the executable
+    last_modified_timestamp = os.path.getmtime(executable_path)
+    return datetime.datetime.fromtimestamp(last_modified_timestamp)</code></pre>
+</details>
+</dd>
+</dl>
+</dd>
+<dt id="cli_tool_audit.audit_manager.ExistenceVersionChecker"><code class="flex name class">
+<span>class <span class="ident">ExistenceVersionChecker</span></span>
+<span>(</span><span>version_string: str)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Abstract base class for checking if a version is compatible with a desired version.</p>
+<p>Check if a tool exists.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>version_string</code></strong> :&ensp;<code>str</code></dt>
+<dd>A constant, "Found" or "Not Found"</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class ExistenceVersionChecker(VersionChecker):
+    def __init__(self, version_string: str) -&gt; None:
+        &#34;&#34;&#34;
+        Check if a tool exists.
+        Args:
+            version_string (str): A constant, &#34;Found&#34; or &#34;Not Found&#34;
+        &#34;&#34;&#34;
+        if version_string not in (&#34;Found&#34;, &#34;Not Found&#34;):
+            raise ValueError(f&#34;version_string must be &#39;Found&#39; or &#39;Not Found&#39;, not {version_string}&#34;)
+        self.found_version = version_string
+
+    def check_compatibility(self, desired_version: Optional[str]) -&gt; VersionResult:
+        &#34;&#34;&#34;
+        Check if the tool exists.
+        Args:
+            desired_version (Optional[str]): The desired version. Ignored.
+        Returns:
+            VersionResult: The result of the check.
+        &#34;&#34;&#34;
+        return VersionResult(is_compatible=self.found_version == desired_version, clean_format=self.found_version)
+
+    def format_report(self, desired_version: str) -&gt; str:
+        &#34;&#34;&#34;
+        Format a report on the compatibility of a version with a desired version.
+        Args:
+            desired_version (str): The desired version.
+        Returns:
+            str: The formatted report.
+        &#34;&#34;&#34;
+        return &#34;Compatible&#34; if self.found_version == desired_version else &#34;Not Found&#34;</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="cli_tool_audit.audit_manager.VersionChecker" href="#cli_tool_audit.audit_manager.VersionChecker">VersionChecker</a></li>
+<li>abc.ABC</li>
+</ul>
+<h3>Methods</h3>
+<dl>
+<dt id="cli_tool_audit.audit_manager.ExistenceVersionChecker.check_compatibility"><code class="name flex">
+<span>def <span class="ident">check_compatibility</span></span>(<span>self, desired_version: Optional[str]) ‑> <a title="cli_tool_audit.audit_manager.VersionResult" href="#cli_tool_audit.audit_manager.VersionResult">VersionResult</a></span>
+</code></dt>
+<dd>
+<div class="desc"><p>Check if the tool exists.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>desired_version</code></strong> :&ensp;<code>Optional[str]</code></dt>
+<dd>The desired version. Ignored.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code><a title="cli_tool_audit.audit_manager.VersionResult" href="#cli_tool_audit.audit_manager.VersionResult">VersionResult</a></code></dt>
+<dd>The result of the check.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def check_compatibility(self, desired_version: Optional[str]) -&gt; VersionResult:
+    &#34;&#34;&#34;
+    Check if the tool exists.
+    Args:
+        desired_version (Optional[str]): The desired version. Ignored.
+    Returns:
+        VersionResult: The result of the check.
+    &#34;&#34;&#34;
+    return VersionResult(is_compatible=self.found_version == desired_version, clean_format=self.found_version)</code></pre>
+</details>
+</dd>
+</dl>
+<h3>Inherited members</h3>
+<ul class="hlist">
+<li><code><b><a title="cli_tool_audit.audit_manager.VersionChecker" href="#cli_tool_audit.audit_manager.VersionChecker">VersionChecker</a></b></code>:
+<ul class="hlist">
+<li><code><a title="cli_tool_audit.audit_manager.VersionChecker.format_report" href="#cli_tool_audit.audit_manager.VersionChecker.format_report">format_report</a></code></li>
+</ul>
+</li>
+</ul>
+</dd>
+<dt id="cli_tool_audit.audit_manager.Pep440VersionChecker"><code class="flex name class">
+<span>class <span class="ident">Pep440VersionChecker</span></span>
+<span>(</span><span>version_string: str)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Abstract base class for checking if a version is compatible with a desired version.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class Pep440VersionChecker(VersionChecker):
+    def __init__(self, version_string: str) -&gt; None:
+        self.found_version = self.parse_version(version_string)
+
+    def parse_version(self, version_string: str) -&gt; packaging.Version:
+        return packaging.Version(version_string)
+
+    def check_compatibility(self, desired_version: Optional[str]) -&gt; VersionResult:
+        # Range match
+        if not desired_version:
+            # Treat blank as &#34;*&#34;
+            return VersionResult(is_compatible=True, clean_format=str(self.found_version))
+        if &#34; &#34; in desired_version or &#34;&gt;&#34; in desired_version or &#34;&lt;&#34; in desired_version or &#34;~&#34; in desired_version:
+            specifier = packaging_specifiers.SpecifierSet(desired_version)
+            return VersionResult(
+                is_compatible=specifier.contains(self.found_version), clean_format=str(self.found_version)
+            )
+        # exact match
+        return VersionResult(
+            is_compatible=self.found_version == packaging.Version(desired_version), clean_format=str(self.found_version)
+        )
+
+    def format_report(self, desired_version: str) -&gt; str:
+        return &#34;Compatible&#34; if self.found_version == desired_version else f&#34;{self.found_version} != {desired_version}&#34;</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="cli_tool_audit.audit_manager.VersionChecker" href="#cli_tool_audit.audit_manager.VersionChecker">VersionChecker</a></li>
+<li>abc.ABC</li>
+</ul>
+<h3>Methods</h3>
+<dl>
+<dt id="cli_tool_audit.audit_manager.Pep440VersionChecker.parse_version"><code class="name flex">
+<span>def <span class="ident">parse_version</span></span>(<span>self, version_string: str) ‑> packaging.version.Version</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def parse_version(self, version_string: str) -&gt; packaging.Version:
+    return packaging.Version(version_string)</code></pre>
+</details>
+</dd>
+</dl>
+<h3>Inherited members</h3>
+<ul class="hlist">
+<li><code><b><a title="cli_tool_audit.audit_manager.VersionChecker" href="#cli_tool_audit.audit_manager.VersionChecker">VersionChecker</a></b></code>:
+<ul class="hlist">
+<li><code><a title="cli_tool_audit.audit_manager.VersionChecker.check_compatibility" href="#cli_tool_audit.audit_manager.VersionChecker.check_compatibility">check_compatibility</a></code></li>
+<li><code><a title="cli_tool_audit.audit_manager.VersionChecker.format_report" href="#cli_tool_audit.audit_manager.VersionChecker.format_report">format_report</a></code></li>
+</ul>
+</li>
+</ul>
+</dd>
+<dt id="cli_tool_audit.audit_manager.SemVerChecker"><code class="flex name class">
+<span>class <span class="ident">SemVerChecker</span></span>
+<span>(</span><span>version_string: str)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Abstract base class for checking if a version is compatible with a desired version.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class SemVerChecker(VersionChecker):
+    def __init__(self, version_string: str) -&gt; None:
+        self.found_version = self.parse_version(version_string)
+        self.result: Optional[VersionResult] = None
+
+    def parse_version(self, version_string: str) -&gt; Optional[Version]:
+        &#34;&#34;&#34;
+        Parse a version string into a semver Version object.
+        Args:
+            version_string (str): The version string to parse.
+        Returns:
+            Optional[Version]: The parsed version or None if the version string is invalid.
+        &#34;&#34;&#34;
+        return two_pass_semver_parse(version_string)
+
+    def check_compatibility(self, desired_version: Optional[str]) -&gt; VersionResult:
+        &#34;&#34;&#34;
+        Check if the version is compatible with the desired version.
+        Args:
+            desired_version (Optional[str]): The desired version.
+        Returns:
+            VersionResult: The result of the check.
+        &#34;&#34;&#34;
+        if not self.found_version:
+            return VersionResult(is_compatible=False, clean_format=&#34;Invalid Format&#34;)
+        desired_version = desired_version or &#34;0.0.0&#34;
+        compatible_result, _version_object = check_compatibility(desired_version, str(self.found_version))
+
+        self.result = VersionResult(
+            is_compatible=compatible_result == &#34;Compatible&#34;, clean_format=str(self.found_version)
+        )
+        return self.result
+
+    def format_report(self, desired_version: str) -&gt; str:
+        &#34;&#34;&#34;
+        Format a report on the compatibility of a version with a desired version.
+        Args:
+            desired_version (str): The desired version.
+        Returns:
+            str: The formatted report.
+        &#34;&#34;&#34;
+        if not self.found_version or not self.result:
+            return &#34;Invalid Format&#34;
+        return &#34;Compatible&#34; if self.result.is_compatible else f&#34;{self.found_version} != {desired_version}&#34;</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="cli_tool_audit.audit_manager.VersionChecker" href="#cli_tool_audit.audit_manager.VersionChecker">VersionChecker</a></li>
+<li>abc.ABC</li>
+</ul>
+<h3>Methods</h3>
+<dl>
+<dt id="cli_tool_audit.audit_manager.SemVerChecker.check_compatibility"><code class="name flex">
+<span>def <span class="ident">check_compatibility</span></span>(<span>self, desired_version: Optional[str]) ‑> <a title="cli_tool_audit.audit_manager.VersionResult" href="#cli_tool_audit.audit_manager.VersionResult">VersionResult</a></span>
+</code></dt>
+<dd>
+<div class="desc"><p>Check if the version is compatible with the desired version.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>desired_version</code></strong> :&ensp;<code>Optional[str]</code></dt>
+<dd>The desired version.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code><a title="cli_tool_audit.audit_manager.VersionResult" href="#cli_tool_audit.audit_manager.VersionResult">VersionResult</a></code></dt>
+<dd>The result of the check.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def check_compatibility(self, desired_version: Optional[str]) -&gt; VersionResult:
+    &#34;&#34;&#34;
+    Check if the version is compatible with the desired version.
+    Args:
+        desired_version (Optional[str]): The desired version.
+    Returns:
+        VersionResult: The result of the check.
+    &#34;&#34;&#34;
+    if not self.found_version:
+        return VersionResult(is_compatible=False, clean_format=&#34;Invalid Format&#34;)
+    desired_version = desired_version or &#34;0.0.0&#34;
+    compatible_result, _version_object = check_compatibility(desired_version, str(self.found_version))
+
+    self.result = VersionResult(
+        is_compatible=compatible_result == &#34;Compatible&#34;, clean_format=str(self.found_version)
+    )
+    return self.result</code></pre>
+</details>
+</dd>
+<dt id="cli_tool_audit.audit_manager.SemVerChecker.parse_version"><code class="name flex">
+<span>def <span class="ident">parse_version</span></span>(<span>self, version_string: str) ‑> Optional[semver.version.Version]</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Parse a version string into a semver Version object.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>version_string</code></strong> :&ensp;<code>str</code></dt>
+<dd>The version string to parse.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code>Optional[Version]</code></dt>
+<dd>The parsed version or None if the version string is invalid.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def parse_version(self, version_string: str) -&gt; Optional[Version]:
+    &#34;&#34;&#34;
+    Parse a version string into a semver Version object.
+    Args:
+        version_string (str): The version string to parse.
+    Returns:
+        Optional[Version]: The parsed version or None if the version string is invalid.
+    &#34;&#34;&#34;
+    return two_pass_semver_parse(version_string)</code></pre>
+</details>
+</dd>
+</dl>
+<h3>Inherited members</h3>
+<ul class="hlist">
+<li><code><b><a title="cli_tool_audit.audit_manager.VersionChecker" href="#cli_tool_audit.audit_manager.VersionChecker">VersionChecker</a></b></code>:
+<ul class="hlist">
+<li><code><a title="cli_tool_audit.audit_manager.VersionChecker.format_report" href="#cli_tool_audit.audit_manager.VersionChecker.format_report">format_report</a></code></li>
+</ul>
+</li>
+</ul>
+</dd>
+<dt id="cli_tool_audit.audit_manager.SnapshotVersionChecker"><code class="flex name class">
+<span>class <span class="ident">SnapshotVersionChecker</span></span>
+<span>(</span><span>version_string: str)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Abstract base class for checking if a version is compatible with a desired version.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class SnapshotVersionChecker(VersionChecker):
+    def __init__(self, version_string: str) -&gt; None:
+        self.found_version = self.parse_version(version_string)
+
+    def parse_version(self, version_string: str) -&gt; str:
+        return version_string
+
+    def check_compatibility(self, desired_version: Optional[str]) -&gt; VersionResult:
+        return VersionResult(is_compatible=self.found_version == desired_version, clean_format=self.found_version)
+
+    def format_report(self, desired_version: str) -&gt; str:
+        return &#34;Compatible&#34; if self.found_version == desired_version else &#34;different&#34;</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="cli_tool_audit.audit_manager.VersionChecker" href="#cli_tool_audit.audit_manager.VersionChecker">VersionChecker</a></li>
+<li>abc.ABC</li>
+</ul>
+<h3>Methods</h3>
+<dl>
+<dt id="cli_tool_audit.audit_manager.SnapshotVersionChecker.parse_version"><code class="name flex">
+<span>def <span class="ident">parse_version</span></span>(<span>self, version_string: str) ‑> str</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def parse_version(self, version_string: str) -&gt; str:
+    return version_string</code></pre>
+</details>
+</dd>
+</dl>
+<h3>Inherited members</h3>
+<ul class="hlist">
+<li><code><b><a title="cli_tool_audit.audit_manager.VersionChecker" href="#cli_tool_audit.audit_manager.VersionChecker">VersionChecker</a></b></code>:
+<ul class="hlist">
+<li><code><a title="cli_tool_audit.audit_manager.VersionChecker.check_compatibility" href="#cli_tool_audit.audit_manager.VersionChecker.check_compatibility">check_compatibility</a></code></li>
+<li><code><a title="cli_tool_audit.audit_manager.VersionChecker.format_report" href="#cli_tool_audit.audit_manager.VersionChecker.format_report">format_report</a></code></li>
+</ul>
+</li>
+</ul>
+</dd>
+<dt id="cli_tool_audit.audit_manager.VersionChecker"><code class="flex name class">
+<span>class <span class="ident">VersionChecker</span></span>
+</code></dt>
+<dd>
+<div class="desc"><p>Abstract base class for checking if a version is compatible with a desired version.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class VersionChecker(ABC):
+    &#34;&#34;&#34;
+    Abstract base class for checking if a version is compatible with a desired version.
+    &#34;&#34;&#34;
+    @abstractmethod
+    def check_compatibility(self, desired_version: str) -&gt; VersionResult:
+        &#34;&#34;&#34;
+        Check if the version is compatible with the desired version.
+        Args:
+            desired_version (str): The desired version.
+        Returns:
+            VersionResult: The result of the check.
+        &#34;&#34;&#34;
+
+    @abstractmethod
+    def format_report(self, desired_version: str) -&gt; str:
+        &#34;&#34;&#34;
+        Format a report on the compatibility of a version with a desired version.
+        Args:
+            desired_version (str): The desired version.
+        Returns:
+            str: The formatted report.
+        &#34;&#34;&#34;</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li>abc.ABC</li>
+</ul>
+<h3>Subclasses</h3>
+<ul class="hlist">
+<li><a title="cli_tool_audit.audit_manager.ExistenceVersionChecker" href="#cli_tool_audit.audit_manager.ExistenceVersionChecker">ExistenceVersionChecker</a></li>
+<li><a title="cli_tool_audit.audit_manager.Pep440VersionChecker" href="#cli_tool_audit.audit_manager.Pep440VersionChecker">Pep440VersionChecker</a></li>
+<li><a title="cli_tool_audit.audit_manager.SemVerChecker" href="#cli_tool_audit.audit_manager.SemVerChecker">SemVerChecker</a></li>
+<li><a title="cli_tool_audit.audit_manager.SnapshotVersionChecker" href="#cli_tool_audit.audit_manager.SnapshotVersionChecker">SnapshotVersionChecker</a></li>
+</ul>
+<h3>Methods</h3>
+<dl>
+<dt id="cli_tool_audit.audit_manager.VersionChecker.check_compatibility"><code class="name flex">
+<span>def <span class="ident">check_compatibility</span></span>(<span>self, desired_version: str) ‑> <a title="cli_tool_audit.audit_manager.VersionResult" href="#cli_tool_audit.audit_manager.VersionResult">VersionResult</a></span>
+</code></dt>
+<dd>
+<div class="desc"><p>Check if the version is compatible with the desired version.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>desired_version</code></strong> :&ensp;<code>str</code></dt>
+<dd>The desired version.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code><a title="cli_tool_audit.audit_manager.VersionResult" href="#cli_tool_audit.audit_manager.VersionResult">VersionResult</a></code></dt>
+<dd>The result of the check.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@abstractmethod
+def check_compatibility(self, desired_version: str) -&gt; VersionResult:
+    &#34;&#34;&#34;
+    Check if the version is compatible with the desired version.
+    Args:
+        desired_version (str): The desired version.
+    Returns:
+        VersionResult: The result of the check.
+    &#34;&#34;&#34;</code></pre>
+</details>
+</dd>
+<dt id="cli_tool_audit.audit_manager.VersionChecker.format_report"><code class="name flex">
+<span>def <span class="ident">format_report</span></span>(<span>self, desired_version: str) ‑> str</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Format a report on the compatibility of a version with a desired version.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>desired_version</code></strong> :&ensp;<code>str</code></dt>
+<dd>The desired version.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code>str</code></dt>
+<dd>The formatted report.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@abstractmethod
+def format_report(self, desired_version: str) -&gt; str:
+    &#34;&#34;&#34;
+    Format a report on the compatibility of a version with a desired version.
+    Args:
+        desired_version (str): The desired version.
+    Returns:
+        str: The formatted report.
+    &#34;&#34;&#34;</code></pre>
+</details>
+</dd>
+</dl>
+</dd>
+<dt id="cli_tool_audit.audit_manager.VersionResult"><code class="flex name class">
+<span>class <span class="ident">VersionResult</span></span>
+<span>(</span><span>is_compatible: bool, clean_format: str)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>VersionResult(is_compatible: bool, clean_format: str)</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@dataclass
+class VersionResult:
+    is_compatible: bool
+    clean_format: str</code></pre>
+</details>
+<h3>Class variables</h3>
+<dl>
+<dt id="cli_tool_audit.audit_manager.VersionResult.clean_format"><code class="name">var <span class="ident">clean_format</span> : str</code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="cli_tool_audit.audit_manager.VersionResult.is_compatible"><code class="name">var <span class="ident">is_compatible</span> : bool</code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+</dl>
+</dd>
+</dl>
+</section>
+</article>
+<nav id="sidebar">
+<h1>Index</h1>
+<div class="toc">
+<ul></ul>
+</div>
+<ul id="index">
+<li><h3>Super-module</h3>
+<ul>
+<li><code><a title="cli_tool_audit" href="index.html">cli_tool_audit</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-classes">Classes</a></h3>
+<ul>
+<li>
+<h4><code><a title="cli_tool_audit.audit_manager.AuditManager" href="#cli_tool_audit.audit_manager.AuditManager">AuditManager</a></code></h4>
+<ul class="">
+<li><code><a title="cli_tool_audit.audit_manager.AuditManager.call_and_check" href="#cli_tool_audit.audit_manager.AuditManager.call_and_check">call_and_check</a></code></li>
+<li><code><a title="cli_tool_audit.audit_manager.AuditManager.call_tool" href="#cli_tool_audit.audit_manager.AuditManager.call_tool">call_tool</a></code></li>
+<li><code><a title="cli_tool_audit.audit_manager.AuditManager.get_command_last_modified_date" href="#cli_tool_audit.audit_manager.AuditManager.get_command_last_modified_date">get_command_last_modified_date</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="cli_tool_audit.audit_manager.ExistenceVersionChecker" href="#cli_tool_audit.audit_manager.ExistenceVersionChecker">ExistenceVersionChecker</a></code></h4>
+<ul class="">
+<li><code><a title="cli_tool_audit.audit_manager.ExistenceVersionChecker.check_compatibility" href="#cli_tool_audit.audit_manager.ExistenceVersionChecker.check_compatibility">check_compatibility</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="cli_tool_audit.audit_manager.Pep440VersionChecker" href="#cli_tool_audit.audit_manager.Pep440VersionChecker">Pep440VersionChecker</a></code></h4>
+<ul class="">
+<li><code><a title="cli_tool_audit.audit_manager.Pep440VersionChecker.parse_version" href="#cli_tool_audit.audit_manager.Pep440VersionChecker.parse_version">parse_version</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="cli_tool_audit.audit_manager.SemVerChecker" href="#cli_tool_audit.audit_manager.SemVerChecker">SemVerChecker</a></code></h4>
+<ul class="">
+<li><code><a title="cli_tool_audit.audit_manager.SemVerChecker.check_compatibility" href="#cli_tool_audit.audit_manager.SemVerChecker.check_compatibility">check_compatibility</a></code></li>
+<li><code><a title="cli_tool_audit.audit_manager.SemVerChecker.parse_version" href="#cli_tool_audit.audit_manager.SemVerChecker.parse_version">parse_version</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="cli_tool_audit.audit_manager.SnapshotVersionChecker" href="#cli_tool_audit.audit_manager.SnapshotVersionChecker">SnapshotVersionChecker</a></code></h4>
+<ul class="">
+<li><code><a title="cli_tool_audit.audit_manager.SnapshotVersionChecker.parse_version" href="#cli_tool_audit.audit_manager.SnapshotVersionChecker.parse_version">parse_version</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="cli_tool_audit.audit_manager.VersionChecker" href="#cli_tool_audit.audit_manager.VersionChecker">VersionChecker</a></code></h4>
+<ul class="">
+<li><code><a title="cli_tool_audit.audit_manager.VersionChecker.check_compatibility" href="#cli_tool_audit.audit_manager.VersionChecker.check_compatibility">check_compatibility</a></code></li>
+<li><code><a title="cli_tool_audit.audit_manager.VersionChecker.format_report" href="#cli_tool_audit.audit_manager.VersionChecker.format_report">format_report</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="cli_tool_audit.audit_manager.VersionResult" href="#cli_tool_audit.audit_manager.VersionResult">VersionResult</a></code></h4>
+<ul class="">
+<li><code><a title="cli_tool_audit.audit_manager.VersionResult.clean_format" href="#cli_tool_audit.audit_manager.VersionResult.clean_format">clean_format</a></code></li>
+<li><code><a title="cli_tool_audit.audit_manager.VersionResult.is_compatible" href="#cli_tool_audit.audit_manager.VersionResult.is_compatible">is_compatible</a></code></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</nav>
+</main>
+<footer id="footer">
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.10.0</a>.</p>
+</footer>
+</body>
+</html>

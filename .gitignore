@@ -162,3 +162,5 @@ cython_debug/
 .idea/
 
 .build_history/
+
+.cli_tool_audit_cache/
