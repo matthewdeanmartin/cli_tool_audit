@@ -58,13 +58,19 @@ class CliToolConfig:
     """
 
     name: str
+    # TODO: rename to desired_version
     version: Optional[str] = None
+    # Make this a schema, not a separate field
     version_snapshot: Optional[str] = None
     version_switch: Optional[str] = None
     only_check_existence: Optional[bool] = False
+    
     schema: Optional[str] = None
+    """Snapshot, semver, pep440, existence"""
     if_os: Optional[str] = None
+    # make this same as desired_version
     version_stamp: Optional[str] = None
+    # Forgot why I have this here.
     source: Optional[str] = None
 
     def cache_hash(self) -> str:

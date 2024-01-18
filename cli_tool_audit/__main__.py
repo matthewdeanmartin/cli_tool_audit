@@ -17,7 +17,7 @@ import cli_tool_audit.view_npm_stress_test as demo_npm
 import cli_tool_audit.view_pipx_stress_test as demo_pipx
 import cli_tool_audit.view_venv_stress_test as demo_venv
 import cli_tool_audit.views as views
-from cli_tool_audit.__about__ import __version__
+from cli_tool_audit.__about__ import __version__, __description__
 
 logger = logging.getLogger(__name__)
 
@@ -126,9 +126,20 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         int: The exit code.
     """
     # Create the parser
+    program = "cli-tool-audit"
     parser = argparse.ArgumentParser(
-        prog="cli-tool-audit", allow_abbrev=False, description="Audit version numbers of CLI tools."
-    )
+        prog=program,
+        allow_abbrev=False,
+        description=__description__,
+        epilog=f"""
+    Examples:
+
+        # Audit and report using pyproject.toml
+        {program} audit
+        
+        # Generate config for snapshots
+        {program} freeze python java make rustc
+""")
     parser.add_argument(
         "-V",
         "--version",

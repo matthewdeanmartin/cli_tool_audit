@@ -60,6 +60,7 @@ tomlkit = ">=0.12.3"
 
 # metadata
 importlib-metadata = { version = ">=7.0.1", python = "<3.8" }
+hypothesis = "^6.96.0"
 
 [tool.poetry.dev-dependencies]
 
