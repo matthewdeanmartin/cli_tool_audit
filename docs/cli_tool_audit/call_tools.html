@@ -55,7 +55,7 @@ from typing import Optional
 from whichcraft import which
 
 from cli_tool_audit.known_switches import KNOWN_SWITCHES
-from cli_tool_audit.models import ToolAvailabilityResult
+from cli_tool_audit.models import SchemaType, ToolAvailabilityResult
 
 logger = logging.getLogger(__name__)
 
@@ -82,15 +82,18 @@ def get_command_last_modified_date(tool_name: str) -&gt; Optional[datetime.datet
 
 
 def check_tool_availability(
-    tool_name: str, version_switch: str = &#34;--version&#34;, only_check_existence: bool = False
+    tool_name: str,
+    schema: SchemaType,
+    version_switch: str = &#34;--version&#34;,
 ) -&gt; ToolAvailabilityResult:
     &#34;&#34;&#34;
     Check if a tool is available in the system&#39;s PATH and if possible, determine a version number.
 
     Args:
         tool_name (str): The name of the tool to check.
+        schema (SchemaType): The schema to use for the version.
         version_switch (str): The switch to get the tool version. Defaults to &#39;--version&#39;.
-        only_check_existence (bool): Only check if the tool exists, don&#39;t check version. Defaults to False.
+
 
     Returns:
         ToolAvailabilityResult: An object containing the availability and version of the tool.
@@ -102,7 +105,7 @@ def check_tool_availability(
     if not last_modified:
         logger.warning(f&#34;{tool_name} is not on path.&#34;)
         return ToolAvailabilityResult(False, True, None, last_modified)
-    if only_check_existence:
+    if schema == SchemaType.EXISTENCE:
         logger.debug(f&#34;{tool_name} exists, but not checking for version.&#34;)
         return ToolAvailabilityResult(True, False, None, last_modified)
 
@@ -166,7 +169,7 @@ if __name__ == &#34;__main__&#34;:
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
 <dt id="cli_tool_audit.call_tools.check_tool_availability"><code class="name flex">
-<span>def <span class="ident">check_tool_availability</span></span>(<span>tool_name: str, version_switch: str = '--version', only_check_existence: bool = False) ‑> <a title="cli_tool_audit.models.ToolAvailabilityResult" href="models.html#cli_tool_audit.models.ToolAvailabilityResult">ToolAvailabilityResult</a></span>
+<span>def <span class="ident">check_tool_availability</span></span>(<span>tool_name: str, schema: <a title="cli_tool_audit.models.SchemaType" href="models.html#cli_tool_audit.models.SchemaType">SchemaType</a>, version_switch: str = '--version') ‑> <a title="cli_tool_audit.models.ToolAvailabilityResult" href="models.html#cli_tool_audit.models.ToolAvailabilityResult">ToolAvailabilityResult</a></span>
 </code></dt>
 <dd>
 <div class="desc"><p>Check if a tool is available in the system's PATH and if possible, determine a version number.</p>
@@ -174,10 +177,10 @@ if __name__ == &#34;__main__&#34;:
 <dl>
 <dt><strong><code>tool_name</code></strong> :&ensp;<code>str</code></dt>
 <dd>The name of the tool to check.</dd>
+<dt><strong><code>schema</code></strong> :&ensp;<code>SchemaType</code></dt>
+<dd>The schema to use for the version.</dd>
 <dt><strong><code>version_switch</code></strong> :&ensp;<code>str</code></dt>
 <dd>The switch to get the tool version. Defaults to '&ndash;version'.</dd>
-<dt><strong><code>only_check_existence</code></strong> :&ensp;<code>bool</code></dt>
-<dd>Only check if the tool exists, don't check version. Defaults to False.</dd>
 </dl>
 <h2 id="returns">Returns</h2>
 <dl>
@@ -189,15 +192,18 @@ if __name__ == &#34;__main__&#34;:
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def check_tool_availability(
-    tool_name: str, version_switch: str = &#34;--version&#34;, only_check_existence: bool = False
+    tool_name: str,
+    schema: SchemaType,
+    version_switch: str = &#34;--version&#34;,
 ) -&gt; ToolAvailabilityResult:
     &#34;&#34;&#34;
     Check if a tool is available in the system&#39;s PATH and if possible, determine a version number.
 
     Args:
         tool_name (str): The name of the tool to check.
+        schema (SchemaType): The schema to use for the version.
         version_switch (str): The switch to get the tool version. Defaults to &#39;--version&#39;.
-        only_check_existence (bool): Only check if the tool exists, don&#39;t check version. Defaults to False.
+
 
     Returns:
         ToolAvailabilityResult: An object containing the availability and version of the tool.
@@ -209,7 +215,7 @@ if __name__ == &#34;__main__&#34;:
     if not last_modified:
         logger.warning(f&#34;{tool_name} is not on path.&#34;)
         return ToolAvailabilityResult(False, True, None, last_modified)
-    if only_check_existence:
+    if schema == SchemaType.EXISTENCE:
         logger.debug(f&#34;{tool_name} exists, but not checking for version.&#34;)
         return ToolAvailabilityResult(True, False, None, last_modified)
 

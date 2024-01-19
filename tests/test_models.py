@@ -1,4 +1,4 @@
-from cli_tool_audit.models import CliToolConfig, ToolCheckResult
+from cli_tool_audit.models import CliToolConfig, SchemaType, ToolCheckResult
 
 
 def test_cache_hash():
@@ -25,6 +25,13 @@ def test_is_problem_no():
         is_compatible="Compatible",
         is_broken=False,
         last_modified=None,
+        tool_config=CliToolConfig(
+            name="test_tool",
+            schema=SchemaType.SEMVER,
+            version="0.0.0",
+            version_switch="--version",
+            if_os=None,
+        ),
     )
     assert not result.is_problem()
 
@@ -41,5 +48,12 @@ def test_is_problem_yes():
         is_compatible="Compatible",
         is_broken=False,
         last_modified=None,
+        tool_config=CliToolConfig(
+            name="test_tool",
+            schema=SchemaType.SEMVER,
+            version="0.0.0",
+            version_switch="--version",
+            if_os=None,
+        ),
     )
     assert result.is_problem()

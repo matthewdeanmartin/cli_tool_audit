@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] - 2024-01-19
+
+### Fixed
+- Cache now adds gitingore and clears files older than 30 days on startup
+- Audit is now a sub command with arguments.
+
+### Breaking
+- Gnu options with dashes, no underscores 
+- Global opts that apply to only some commands move to subparser
+- check_only_for_existence is now schema type "existence" snapshot_version is now schema type "snapshot"
+- default action is now "audit" with all defaults.
+
 ## [1.2.0] - 2024-01-17
 
 ### Added

@@ -9,6 +9,8 @@ import sys
 from concurrent.futures import ThreadPoolExecutor
 from threading import Lock
 
+from tqdm import tqdm
+
 # pylint: disable=no-name-in-module
 from whichcraft import which
 
@@ -65,15 +67,18 @@ def report_for_venv_tools(max_count: int = -1) -> None:
     with ThreadPoolExecutor(max_workers=num_cpus) as executor:
         # Submit tasks to the executor
         lock = Lock()
-        futures = [
-            executor.submit(views.check_tool_wrapper, (tool, config, lock, enable_cache))
-            for tool, config in cli_tools.items()
-        ]
-        results = []
-        # Process the results as they are completed
-        for future in concurrent.futures.as_completed(futures):
-            result = future.result()
-            results.append(result)
+        disable = len(cli_tools) < 5 or os.environ.get("CI") or os.environ.get("NO_COLOR")
+        with tqdm(total=len(cli_tools), disable=disable) as progress_bar:
+            futures = [
+                executor.submit(views.check_tool_wrapper, (tool, config, lock, enable_cache))
+                for tool, config in cli_tools.items()
+            ]
+            results = []
+            # Process the results as they are completed
+            for future in concurrent.futures.as_completed(futures):
+                result = future.result()
+                tqdm.update(progress_bar, 1)
+                results.append(result)
         views.pretty_print_results(results)
 
 

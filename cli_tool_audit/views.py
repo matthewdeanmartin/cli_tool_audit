@@ -11,6 +11,7 @@ from threading import Lock
 import colorama
 from prettytable import PrettyTable
 from prettytable.colortable import ColorTable, Themes
+from tqdm import tqdm
 
 import cli_tool_audit.config_reader as config_reader
 import cli_tool_audit.policy as policy
@@ -43,16 +44,20 @@ def validate(file_path: str = "pyproject.toml", no_cache: bool = False) -> list[
     lock = Lock()
     if no_cache:
         enable_cache = False
+
     with ThreadPoolExecutor(max_workers=num_cpus) as executor:
-        # Submit tasks to the executor
-        futures = [
-            executor.submit(check_tool_wrapper, (tool, config, lock, enable_cache))
-            for tool, config in cli_tools.items()
-        ]
-        results = []
-        for future in concurrent.futures.as_completed(futures):
-            result = future.result()
-            results.append(result)
+        disable = len(cli_tools) < 5 or os.environ.get("CI") or os.environ.get("NO_COLOR")
+        with tqdm(total=len(cli_tools), disable=disable) as pbar:
+            # Submit tasks to the executor
+            futures = [
+                executor.submit(check_tool_wrapper, (tool, config, lock, enable_cache))
+                for tool, config in cli_tools.items()
+            ]
+            results = []
+            for future in concurrent.futures.as_completed(futures):
+                result = future.result()
+                pbar.update(1)
+                results.append(result)
     return results
 
 
@@ -130,24 +135,18 @@ def pretty_print_results(results: list[ToolCheckResult]) -> None:
         table = PrettyTable()
     else:
         table = ColorTable(theme=Themes.OCEAN)
-    table.field_names = ["Tool", "Found", "Parsed", "Desired", "Compatible", "Status", "Modified"]
+    table.field_names = ["Tool", "Found", "Parsed", "Desired", "Status", "Modified"]
 
     all_rows: list[list[str]] = []
-    for result in results:
-        if result.is_broken:
-            status = "Can't run"
-        elif not result.is_available:
-            status = "Not available"
-        else:
-            status = "Available"
 
+    for result in results:
         row_data = [
             result.tool,
             result.found_version[0:25].strip() if result.found_version else "",
             result.parsed_version if result.parsed_version else "",
             result.desired_version,
-            "Yes" if result.is_compatible == "Compatible" else result.is_compatible,
-            status,
+            # "Yes" if result.is_compatible == "Compatible" else result.is_compatible,
+            result.status(),
             result.last_modified.strftime("%m/%d/%y") if result.last_modified else "",
         ]
         row_transformed = []

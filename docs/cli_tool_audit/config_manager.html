@@ -33,7 +33,7 @@ from typing import Any, cast
 import toml
 import tomlkit
 
-from cli_tool_audit.models import CliToolConfig
+from cli_tool_audit.models import CliToolConfig, SchemaType
 
 
 class ConfigManager:
@@ -61,7 +61,19 @@ class ConfigManager:
                 config = toml.load(file)
                 tools_config = config.get(&#34;tool&#34;, {}).get(&#34;cli-tools&#34;, {})
                 for tool_name, settings in tools_config.items():
+                    if settings.get(&#34;only_check_existence&#34;):
+                        settings[&#34;schema&#34;] = SchemaType.EXISTENCE
+                        del settings[&#34;only_check_existence&#34;]
+                    elif settings.get(&#34;version_snapshot&#34;):
+                        settings[&#34;schema&#34;] = SchemaType.SNAPSHOT
+                        settings[&#34;version&#34;] = settings.get(&#34;version_snapshot&#34;)
+                        del settings[&#34;version_snapshot&#34;]
+
                     settings[&#34;name&#34;] = tool_name
+                    if settings.get(&#34;schema&#34;):
+                        settings[&#34;schema&#34;] = SchemaType(settings[&#34;schema&#34;].lower())
+                    else:
+                        settings[&#34;schema&#34;] = SchemaType.SEMVER
                     self.tools[tool_name] = CliToolConfig(**settings)
         return bool(self.tools)
 
@@ -116,6 +128,8 @@ class ConfigManager:
             self.tools[tool_name] = CliToolConfig(**config)
         else:
             for key, value in config.items():
+                if key == &#34;schema&#34;:
+                    value = str(SchemaType(value))
                 setattr(self.tools[tool_name], key, value)
         self._save_config()
 
@@ -154,10 +168,10 @@ class ConfigManager:
             inline_table = tomlkit.inline_table()
             for key, value in vars(tool_config).items():
                 if value is not None:
-                    if key == &#34;only_check_existence&#34; and value is False:
-                        pass
-                    else:
-                        inline_table[key] = value
+                    # TODO: could use custom toml encoder here?
+                    if key == &#34;schema&#34;:
+                        value = str(value)
+                    inline_table[key] = value
             cast(Any, cast(Any, config[&#34;tool&#34;])[&#34;cli-tools&#34;])[tool_name] = inline_table
 
         # Handle deletes
@@ -226,7 +240,19 @@ if __name__ == &#34;__main__&#34;:
                 config = toml.load(file)
                 tools_config = config.get(&#34;tool&#34;, {}).get(&#34;cli-tools&#34;, {})
                 for tool_name, settings in tools_config.items():
+                    if settings.get(&#34;only_check_existence&#34;):
+                        settings[&#34;schema&#34;] = SchemaType.EXISTENCE
+                        del settings[&#34;only_check_existence&#34;]
+                    elif settings.get(&#34;version_snapshot&#34;):
+                        settings[&#34;schema&#34;] = SchemaType.SNAPSHOT
+                        settings[&#34;version&#34;] = settings.get(&#34;version_snapshot&#34;)
+                        del settings[&#34;version_snapshot&#34;]
+
                     settings[&#34;name&#34;] = tool_name
+                    if settings.get(&#34;schema&#34;):
+                        settings[&#34;schema&#34;] = SchemaType(settings[&#34;schema&#34;].lower())
+                    else:
+                        settings[&#34;schema&#34;] = SchemaType.SEMVER
                     self.tools[tool_name] = CliToolConfig(**settings)
         return bool(self.tools)
 
@@ -281,6 +307,8 @@ if __name__ == &#34;__main__&#34;:
             self.tools[tool_name] = CliToolConfig(**config)
         else:
             for key, value in config.items():
+                if key == &#34;schema&#34;:
+                    value = str(SchemaType(value))
                 setattr(self.tools[tool_name], key, value)
         self._save_config()
 
@@ -319,10 +347,10 @@ if __name__ == &#34;__main__&#34;:
             inline_table = tomlkit.inline_table()
             for key, value in vars(tool_config).items():
                 if value is not None:
-                    if key == &#34;only_check_existence&#34; and value is False:
-                        pass
-                    else:
-                        inline_table[key] = value
+                    # TODO: could use custom toml encoder here?
+                    if key == &#34;schema&#34;:
+                        value = str(value)
+                    inline_table[key] = value
             cast(Any, cast(Any, config[&#34;tool&#34;])[&#34;cli-tools&#34;])[tool_name] = inline_table
 
         # Handle deletes
@@ -407,6 +435,8 @@ if __name__ == &#34;__main__&#34;:
         self.tools[tool_name] = CliToolConfig(**config)
     else:
         for key, value in config.items():
+            if key == &#34;schema&#34;:
+                value = str(SchemaType(value))
             setattr(self.tools[tool_name], key, value)
     self._save_config()</code></pre>
 </details>
@@ -465,7 +495,19 @@ if __name__ == &#34;__main__&#34;:
             config = toml.load(file)
             tools_config = config.get(&#34;tool&#34;, {}).get(&#34;cli-tools&#34;, {})
             for tool_name, settings in tools_config.items():
+                if settings.get(&#34;only_check_existence&#34;):
+                    settings[&#34;schema&#34;] = SchemaType.EXISTENCE
+                    del settings[&#34;only_check_existence&#34;]
+                elif settings.get(&#34;version_snapshot&#34;):
+                    settings[&#34;schema&#34;] = SchemaType.SNAPSHOT
+                    settings[&#34;version&#34;] = settings.get(&#34;version_snapshot&#34;)
+                    del settings[&#34;version_snapshot&#34;]
+
                 settings[&#34;name&#34;] = tool_name
+                if settings.get(&#34;schema&#34;):
+                    settings[&#34;schema&#34;] = SchemaType(settings[&#34;schema&#34;].lower())
+                else:
+                    settings[&#34;schema&#34;] = SchemaType.SEMVER
                 self.tools[tool_name] = CliToolConfig(**settings)
     return bool(self.tools)</code></pre>
 </details>

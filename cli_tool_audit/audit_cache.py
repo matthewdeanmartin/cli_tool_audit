@@ -5,12 +5,13 @@ This module provides a facade for the audit manager that caches results.
 import datetime
 import json
 import logging
+import pathlib
 from pathlib import Path
 from typing import Any, Optional
 
 import cli_tool_audit.audit_manager as audit_manager
 from cli_tool_audit.json_utils import custom_json_serializer
-from cli_tool_audit.models import CliToolConfig, ToolCheckResult
+from cli_tool_audit.models import CliToolConfig, SchemaType, ToolCheckResult
 
 
 def custom_json_deserializer(data: dict[str, Any]) -> dict[str, Any]:
@@ -24,6 +25,11 @@ def custom_json_deserializer(data: dict[str, Any]) -> dict[str, Any]:
     """
     if "last_modified" in data and data["last_modified"]:
         data["last_modified"] = datetime.datetime.fromisoformat(data["last_modified"])
+    if "tool_config" in data and data["tool_config"]:
+        for key, value in data["tool_config"].items():
+            if isinstance(value, str) and key == "schema":
+                data["tool_config"][key] = SchemaType(value)
+        data["tool_config"] = CliToolConfig(**data["tool_config"])
     return data
 
 
@@ -40,6 +46,23 @@ class AuditFacade:
         self.audit_manager = audit_manager.AuditManager()
         self.cache_dir = Path(cache_dir) if cache_dir else Path.cwd() / ".cli_tool_audit_cache"
         self.cache_dir.mkdir(exist_ok=True)
+        with open(self.cache_dir / ".gitignore", "w", encoding="utf-8") as file:
+            file.write("*\n!.gitignore\n")
+
+        self.clear_old_cache_files()
+        self.cache_hit = False
+
+    def clear_old_cache_files(self) -> None:
+        """
+        Clear cache files that are older than 30 days.
+        """
+        current_time = datetime.datetime.now()
+        expiration_days = 30
+        for cache_file in self.cache_dir.glob("*.json"):
+            file_creation_time = datetime.datetime.fromtimestamp(cache_file.stat().st_mtime)
+            if (current_time - file_creation_time) > datetime.timedelta(days=expiration_days):
+                if cache_file.exists():
+                    cache_file.unlink(missing_ok=True)  # Delete the file
 
     def get_cache_filename(self, tool_config: CliToolConfig) -> Path:
         """
@@ -65,10 +88,18 @@ class AuditFacade:
         """
         cache_file = self.get_cache_filename(tool_config)
         if cache_file.exists():
-            with open(cache_file, encoding="utf-8") as file:
-                logger.debug(f"Cache hit for {tool_config.name}")
-                return ToolCheckResult(**json.load(file, object_hook=custom_json_deserializer))
+            logger.debug(f"Cache hit for {tool_config.name}")
+            try:
+                with open(cache_file, encoding="utf-8") as file:
+                    hit = ToolCheckResult(**json.load(file, object_hook=custom_json_deserializer))
+                    self.cache_hit = True
+                    return hit
+            except TypeError:
+                pathlib.Path(cache_file).unlink()
+                self.cache_hit = False
+                return None
         logger.debug(f"Cache miss for {tool_config.name}")
+        self.cache_hit = False
         return None
 
     def write_to_cache(self, tool_config: CliToolConfig, result: ToolCheckResult) -> None:

@@ -2,9 +2,52 @@
 This module contains dataclasses for the tool audit.
 """
 import datetime
+import enum
 import hashlib
 from dataclasses import asdict, dataclass
 from typing import Optional
+
+
+class SchemaType(enum.Enum):
+    SNAPSHOT = "snapshot"
+    SEMVER = "semver"
+    PEP440 = "pep440"
+    EXISTENCE = "existence"
+
+    def __str__(self):
+        return self.value
+
+
+@dataclass
+class CliToolConfig:
+    """
+    Represents what tool and what version the user wants to audit on their system.
+    """
+
+    name: str
+    """Tool name without path"""
+    version: Optional[str] = None
+    """Desired version"""
+    version_switch: Optional[str] = None
+    """Command line switch to get version, e.g. -V, --version, etc."""
+    schema: Optional[SchemaType] = None
+    """Snapshot, semver, pep440, existence"""
+    if_os: Optional[str] = None
+    """Which OS this tool is needed for. Single value. Comparison evaluated by prefix. Same values as sys.platform"""
+
+    def cache_hash(self) -> str:
+        """
+        Generate a hash for a CliToolConfig instance.
+
+        Returns:
+            str: The hash of the tool configuration.
+        """
+        config_str = ""
+        for key, value in asdict(self).items():
+            config_str += f"{key}={value};"  # Concatenate key-value pairs
+
+        # Use hashlib to compute an MD5 hash of the concatenated string
+        return hashlib.md5(config_str.encode()).hexdigest()  # nosec
 
 
 @dataclass
@@ -26,6 +69,28 @@ class ToolCheckResult:
     is_compatible: str
     is_broken: bool
     last_modified: Optional[datetime.datetime]
+    tool_config: CliToolConfig
+
+    def status(self):
+        # Status compression
+        # Wrong OS. If wrong OS "Wrong OS"
+        # Found/Not. If not found "Not Found"
+        # If schema = existence, "Found"
+        # Runnable/Not. If not, "Not Runnable"
+        # Compatible/Not. If yes, "Compatible"
+        # If no "Incompatible"
+        if not self.is_needed_for_os:
+            status = "Wrong OS"
+        elif not self.is_available:
+            status = "Not available"
+        # need schema!
+        elif self.tool_config.schema == "existence":
+            status = "Available"
+        elif self.is_broken:
+            status = "Can't run"
+        else:
+            status = self.is_compatible
+        return status
 
     def is_problem(self) -> bool:
         """Is this tool's state a problem?
@@ -49,43 +114,6 @@ class ToolAvailabilityResult:
     version: Optional[str]
     """Desired version"""
     last_modified: Optional[datetime.datetime]
-
-
-@dataclass
-class CliToolConfig:
-    """
-    Represents what tool and what version the user wants to audit on their system.
-    """
-
-    name: str
-    # TODO: rename to desired_version
-    version: Optional[str] = None
-    # Make this a schema, not a separate field
-    version_snapshot: Optional[str] = None
-    version_switch: Optional[str] = None
-    only_check_existence: Optional[bool] = False
-    
-    schema: Optional[str] = None
-    """Snapshot, semver, pep440, existence"""
-    if_os: Optional[str] = None
-    # make this same as desired_version
-    version_stamp: Optional[str] = None
-    # Forgot why I have this here.
-    source: Optional[str] = None
-
-    def cache_hash(self) -> str:
-        """
-        Generate a hash for a CliToolConfig instance.
-
-        Returns:
-            str: The hash of the tool configuration.
-        """
-        config_str = ""
-        for key, value in asdict(self).items():
-            config_str += f"{key}={value};"  # Concatenate key-value pairs
-
-        # Use hashlib to compute an MD5 hash of the concatenated string
-        return hashlib.md5(config_str.encode()).hexdigest()  # nosec
 
 
 if __name__ == "__main__":

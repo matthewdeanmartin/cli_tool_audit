@@ -1,7 +1,10 @@
 """
 Interactively manage tool configurations.
 """
+from typing import Union
+
 from cli_tool_audit.config_manager import ConfigManager
+from cli_tool_audit.models import SchemaType
 
 
 def interactive_config_manager(config_manager: ConfigManager) -> None:
@@ -20,18 +23,18 @@ def interactive_config_manager(config_manager: ConfigManager) -> None:
 
         if choice == "1":
             tool_name = input("\nEnter the name of the tool or enter to accept default: ")
-            config = {}
+            config: dict[str, Union[str, SchemaType]] = {}
 
             # Check existence only
             only_check_existence = input("Check existence only? (yes/no) Default no: ").lower()
             if only_check_existence.startswith("y"):
-                config["only_check_existence"] = only_check_existence
+                config["schema"] = SchemaType.EXISTENCE
 
             if not only_check_existence.startswith("y"):
                 # Schema
                 schema = input("Enter schema, semver or snapshot (default is semver): ")
                 if schema:
-                    config["schema"] = schema
+                    config["schema"] = SchemaType[schema.upper()]
 
                 # Version
                 if schema != "snapshot":

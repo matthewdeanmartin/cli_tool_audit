@@ -39,6 +39,7 @@ def check_tool_wrapper(
             is_compatible=f"{sys.platform}, not {config.if_os}",
             is_broken=False,
             last_modified=None,
+            tool_config=config,
         )
 
     config.name = tool
@@ -51,34 +52,3 @@ def check_tool_wrapper(
 
     manager = AuditManager()
     return manager.call_and_check(tool_config=config)
-
-    # result = cli_availability.check_tool_availability(
-    #     tool, config.version_switch or "--version", cast(bool, config.only_check_existence or False)
-    # )
-
-    # parsed_version = None
-    # if config.version_snapshot:
-    #     desired_version = config.version_snapshot if result.version != config.version_snapshot else "Same"
-    #     if config.version_snapshot and result.version == config.version_snapshot:
-    #         is_compatible = "Compatible"
-    #     else:
-    #         is_compatible = "Snapshot differs"
-    # else:
-    #     desired_version = config.version or "0.0.0"
-    #     parsed_version = None
-    #     if config.only_check_existence and result.is_available:
-    #         is_compatible = "Compatible"
-    #     else:
-    #         is_compatible, parsed_version = check_compatibility(desired_version, found_version=result.version)
-    #
-    # return ToolCheckResult(
-    #     tool=tool,
-    #     desired_version=desired_version,
-    #     is_available=result.is_available,
-    #     is_snapshot=bool(config.version_snapshot),
-    #     found_version=result.version,
-    #     parsed_version=parsed_version,
-    #     is_compatible=is_compatible,
-    #     is_broken=result.is_broken,
-    #     last_modified=result.last_modified,
-    # )

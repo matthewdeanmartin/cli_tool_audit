@@ -40,6 +40,7 @@ from threading import Lock
 import colorama
 from prettytable import PrettyTable
 from prettytable.colortable import ColorTable, Themes
+from tqdm import tqdm
 
 import cli_tool_audit.config_reader as config_reader
 import cli_tool_audit.policy as policy
@@ -72,16 +73,20 @@ def validate(file_path: str = &#34;pyproject.toml&#34;, no_cache: bool = False) 
     lock = Lock()
     if no_cache:
         enable_cache = False
+
     with ThreadPoolExecutor(max_workers=num_cpus) as executor:
-        # Submit tasks to the executor
-        futures = [
-            executor.submit(check_tool_wrapper, (tool, config, lock, enable_cache))
-            for tool, config in cli_tools.items()
-        ]
-        results = []
-        for future in concurrent.futures.as_completed(futures):
-            result = future.result()
-            results.append(result)
+        disable = len(cli_tools) &lt; 5 or os.environ.get(&#34;CI&#34;) or os.environ.get(&#34;NO_COLOR&#34;)
+        with tqdm(total=len(cli_tools), disable=disable) as pbar:
+            # Submit tasks to the executor
+            futures = [
+                executor.submit(check_tool_wrapper, (tool, config, lock, enable_cache))
+                for tool, config in cli_tools.items()
+            ]
+            results = []
+            for future in concurrent.futures.as_completed(futures):
+                result = future.result()
+                pbar.update(1)
+                results.append(result)
     return results
 
 
@@ -159,24 +164,18 @@ def pretty_print_results(results: list[ToolCheckResult]) -&gt; None:
         table = PrettyTable()
     else:
         table = ColorTable(theme=Themes.OCEAN)
-    table.field_names = [&#34;Tool&#34;, &#34;Found&#34;, &#34;Parsed&#34;, &#34;Desired&#34;, &#34;Compatible&#34;, &#34;Status&#34;, &#34;Modified&#34;]
+    table.field_names = [&#34;Tool&#34;, &#34;Found&#34;, &#34;Parsed&#34;, &#34;Desired&#34;, &#34;Status&#34;, &#34;Modified&#34;]
 
     all_rows: list[list[str]] = []
-    for result in results:
-        if result.is_broken:
-            status = &#34;Can&#39;t run&#34;
-        elif not result.is_available:
-            status = &#34;Not available&#34;
-        else:
-            status = &#34;Available&#34;
 
+    for result in results:
         row_data = [
             result.tool,
             result.found_version[0:25].strip() if result.found_version else &#34;&#34;,
             result.parsed_version if result.parsed_version else &#34;&#34;,
             result.desired_version,
-            &#34;Yes&#34; if result.is_compatible == &#34;Compatible&#34; else result.is_compatible,
-            status,
+            # &#34;Yes&#34; if result.is_compatible == &#34;Compatible&#34; else result.is_compatible,
+            result.status(),
             result.last_modified.strftime(&#34;%m/%d/%y&#34;) if result.last_modified else &#34;&#34;,
         ]
         row_transformed = []
@@ -230,24 +229,18 @@ if __name__ == &#34;__main__&#34;:
         table = PrettyTable()
     else:
         table = ColorTable(theme=Themes.OCEAN)
-    table.field_names = [&#34;Tool&#34;, &#34;Found&#34;, &#34;Parsed&#34;, &#34;Desired&#34;, &#34;Compatible&#34;, &#34;Status&#34;, &#34;Modified&#34;]
+    table.field_names = [&#34;Tool&#34;, &#34;Found&#34;, &#34;Parsed&#34;, &#34;Desired&#34;, &#34;Status&#34;, &#34;Modified&#34;]
 
     all_rows: list[list[str]] = []
-    for result in results:
-        if result.is_broken:
-            status = &#34;Can&#39;t run&#34;
-        elif not result.is_available:
-            status = &#34;Not available&#34;
-        else:
-            status = &#34;Available&#34;
 
+    for result in results:
         row_data = [
             result.tool,
             result.found_version[0:25].strip() if result.found_version else &#34;&#34;,
             result.parsed_version if result.parsed_version else &#34;&#34;,
             result.desired_version,
-            &#34;Yes&#34; if result.is_compatible == &#34;Compatible&#34; else result.is_compatible,
-            status,
+            # &#34;Yes&#34; if result.is_compatible == &#34;Compatible&#34; else result.is_compatible,
+            result.status(),
             result.last_modified.strftime(&#34;%m/%d/%y&#34;) if result.last_modified else &#34;&#34;,
         ]
         row_transformed = []
@@ -395,16 +388,20 @@ if __name__ == &#34;__main__&#34;:
     lock = Lock()
     if no_cache:
         enable_cache = False
+
     with ThreadPoolExecutor(max_workers=num_cpus) as executor:
-        # Submit tasks to the executor
-        futures = [
-            executor.submit(check_tool_wrapper, (tool, config, lock, enable_cache))
-            for tool, config in cli_tools.items()
-        ]
-        results = []
-        for future in concurrent.futures.as_completed(futures):
-            result = future.result()
-            results.append(result)
+        disable = len(cli_tools) &lt; 5 or os.environ.get(&#34;CI&#34;) or os.environ.get(&#34;NO_COLOR&#34;)
+        with tqdm(total=len(cli_tools), disable=disable) as pbar:
+            # Submit tasks to the executor
+            futures = [
+                executor.submit(check_tool_wrapper, (tool, config, lock, enable_cache))
+                for tool, config in cli_tools.items()
+            ]
+            results = []
+            for future in concurrent.futures.as_completed(futures):
+                result = future.result()
+                pbar.update(1)
+                results.append(result)
     return results</code></pre>
 </details>
 </dd>

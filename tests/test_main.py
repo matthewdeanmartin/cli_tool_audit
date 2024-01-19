@@ -46,7 +46,7 @@ def test_default_behavior(mock_report_from_pyproject_toml):
 def test_freeze_command(mock_freeze_to_screen):
     argv = ["freeze", "tool1", "tool2"]
     app.main(argv)
-    mock_freeze_to_screen.assert_called_once_with(["tool1", "tool2"])
+    mock_freeze_to_screen.assert_called_once_with(["tool1", "tool2"], "snapshot")
 
 
 # Test audit command

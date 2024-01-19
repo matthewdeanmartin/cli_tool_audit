@@ -3,7 +3,6 @@
 
 __all__ = [
     "__title__",
-    "__name__",
     "__version__",
     "__description__",
     "__author__",
@@ -15,8 +14,7 @@ __all__ = [
 ]
 
 __title__ = "cli_tool_audit"
-__name__ = "cli_tool_audit"
-__version__ = "1.2.0"
+__version__ = "2.0.0"
 __description__ = "Audit for existence and version number of cli tools."
 __author__ = "Matthew Martin"
 __author_email__ = "matthewdeanmartin@gmail.com"

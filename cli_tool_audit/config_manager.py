@@ -5,7 +5,7 @@ from typing import Any, cast
 import toml
 import tomlkit
 
-from cli_tool_audit.models import CliToolConfig
+from cli_tool_audit.models import CliToolConfig, SchemaType
 
 
 class ConfigManager:
@@ -33,7 +33,19 @@ class ConfigManager:
                 config = toml.load(file)
                 tools_config = config.get("tool", {}).get("cli-tools", {})
                 for tool_name, settings in tools_config.items():
+                    if settings.get("only_check_existence"):
+                        settings["schema"] = SchemaType.EXISTENCE
+                        del settings["only_check_existence"]
+                    elif settings.get("version_snapshot"):
+                        settings["schema"] = SchemaType.SNAPSHOT
+                        settings["version"] = settings.get("version_snapshot")
+                        del settings["version_snapshot"]
+
                     settings["name"] = tool_name
+                    if settings.get("schema"):
+                        settings["schema"] = SchemaType(settings["schema"].lower())
+                    else:
+                        settings["schema"] = SchemaType.SEMVER
                     self.tools[tool_name] = CliToolConfig(**settings)
         return bool(self.tools)
 
@@ -88,6 +100,8 @@ class ConfigManager:
             self.tools[tool_name] = CliToolConfig(**config)
         else:
             for key, value in config.items():
+                if key == "schema":
+                    value = str(SchemaType(value))
                 setattr(self.tools[tool_name], key, value)
         self._save_config()
 
@@ -126,10 +140,10 @@ class ConfigManager:
             inline_table = tomlkit.inline_table()
             for key, value in vars(tool_config).items():
                 if value is not None:
-                    if key == "only_check_existence" and value is False:
-                        pass
-                    else:
-                        inline_table[key] = value
+                    # TODO: could use custom toml encoder here?
+                    if key == "schema":
+                        value = str(value)
+                    inline_table[key] = value
             cast(Any, cast(Any, config["tool"])["cli-tools"])[tool_name] = inline_table
 
         # Handle deletes

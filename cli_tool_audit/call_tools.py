@@ -20,7 +20,7 @@ from typing import Optional
 from whichcraft import which
 
 from cli_tool_audit.known_switches import KNOWN_SWITCHES
-from cli_tool_audit.models import ToolAvailabilityResult
+from cli_tool_audit.models import SchemaType, ToolAvailabilityResult
 
 logger = logging.getLogger(__name__)
 
@@ -47,15 +47,18 @@ def get_command_last_modified_date(tool_name: str) -> Optional[datetime.datetime
 
 
 def check_tool_availability(
-    tool_name: str, version_switch: str = "--version", only_check_existence: bool = False
+    tool_name: str,
+    schema: SchemaType,
+    version_switch: str = "--version",
 ) -> ToolAvailabilityResult:
     """
     Check if a tool is available in the system's PATH and if possible, determine a version number.
 
     Args:
         tool_name (str): The name of the tool to check.
+        schema (SchemaType): The schema to use for the version.
         version_switch (str): The switch to get the tool version. Defaults to '--version'.
-        only_check_existence (bool): Only check if the tool exists, don't check version. Defaults to False.
+
 
     Returns:
         ToolAvailabilityResult: An object containing the availability and version of the tool.
@@ -67,7 +70,7 @@ def check_tool_availability(
     if not last_modified:
         logger.warning(f"{tool_name} is not on path.")
         return ToolAvailabilityResult(False, True, None, last_modified)
-    if only_check_existence:
+    if schema == SchemaType.EXISTENCE:
         logger.debug(f"{tool_name} exists, but not checking for version.")
         return ToolAvailabilityResult(True, False, None, last_modified)
 

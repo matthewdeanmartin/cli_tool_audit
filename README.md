@@ -29,15 +29,15 @@ version number system, so the outcome of many check may be limited to an existen
 Here is an example run.
 
 ```text
-❯ cli_tool_audit
-+-----------+-------------------------------------+-----------------+------------+-----------+
-|    Tool   |            Found Version            | Desired Version | Compatible |   Status  |
-+-----------+-------------------------------------+-----------------+------------+-----------+
-|   python  |            Python 3.11.1            |     >=3.11.1    |    Yes     | Available |
-|    java   | openjdk version "17.0.6" 2023-01-17 |     >=17.0.6    |    Yes     | Available |
-|           |            OpenJDK Runtim           |                 |            |           |
-|    make   |            GNU Make 3.81            |      >=3.81     |    Yes     | Available |
-+-----------+-------------------------------------+-----------------+------------+-----------+
+❯ cli_tool_audit audit
++--------+--------------------------+--------+----------+------------+----------+
+|  Tool  |          Found           | Parsed | Desired  |   Status   | Modified |
++--------+--------------------------+--------+----------+------------+----------+
+|  java  | openjdk version "17.0.6" | 17.0.6 | >=17.0.6 | Compatible | 01/18/23 |
+|  make  |      GNU Make 3.81       | 3.81.0 |  >=3.81  | Compatible | 11/24/06 |
+|        |       Copyright (        |        |          |            |          |
+| python |      Python 3.11.1       | 3.11.1 | >=3.11.1 | Compatible | 01/13/24 |
++--------+--------------------------+--------+----------+------------+----------+
 ```
 
 ## Installation
@@ -70,36 +70,35 @@ All commands
 
 ```text
 ❯ cli_tool_audit --help
-usage: cli-tool-audit [-h] [-V] [-c CONFIG] [-nc] [-ff {json,json-compact,xml,table,csv}] [-nf] [--verbose] [--demo {pipx,venv,npm}]
-                      {interactive,read,create,update,delete,freeze,audit} ...
+usage: cli_tool_audit [-h] [-V] [--verbose] [--demo {pipx,venv,npm}] {interactive,freeze,audit,read,create,update,delete} ...
 
-Audit version numbers of CLI tools.
+Audit for existence and version number of cli tools.
 
 positional arguments:
-  {interactive,read,create,update,delete,freeze,audit}
-                        Edit configuration from terminal.
+  {interactive,freeze,audit,read,create,update,delete}
+                        Subcommands.
     interactive         Interactively edit configuration
+    freeze              Freeze the versions of specified tools
+    audit               Audit environment with current configuration
     read                Read and list all tool configurations
     create              Create a new tool configuration
     update              Update an existing tool configuration
     delete              Delete a tool configuration
-    freeze              Freeze the versions of specified tools
-    audit               Audit environment with current configuration (default)
 
 options:
   -h, --help            show this help message and exit
   -V, --version         Show program's version number and exit.
-  -c CONFIG, --config CONFIG
-                        Path to the configuration file in TOML format. (default is pyproject.toml)
-  -nc, --no-cache, --no_cache
-                        Disable caching of results.
-  -ff {json,json-compact,xml,table,csv}, --file-format {json,json-compact,xml,table,csv}, --file_format {json,json-compact,xml,table,csv}
-                        Output results in the specified format. (default is table)
-  -nf, --never-fail, --never_fail
-                        Never return a non-zero exit code
   --verbose             verbose output
   --demo {pipx,venv,npm}
                         Demo for values of npm, pipx or venv
+
+    Examples:
+
+        # Audit and report using pyproject.toml
+        cli_tool_audit audit
+
+        # Generate config for snapshots
+        cli_tool_audit freeze python java make rustc
 ```
 
 Note. If you use the create/update commands and specify the `--version` switch, it must have an equal sign.
@@ -128,9 +127,9 @@ pipx = { version = ">=1.0.0", version_switch = "--version" }
 # Restrict to specific OS
 brew = { version = ">=0.1.0", if_os="darwin" }
 # Pin to a snapshot of the output of `poetry --version`
-poetry = {version_snapshot = "Poetry (version 1.5.1)"}
+poetry = {version = "Poetry (version 1.5.1)", schema="snapshot"}
 # Don't attempt to run `notepad --version`, just check if it is on the path
-notepad = { only_check_existence = true }
+notepad = { schema = "existence" }
 # Any version.
 vulture = { version = "*" }
 # Supports ^ and ~ version ranges.

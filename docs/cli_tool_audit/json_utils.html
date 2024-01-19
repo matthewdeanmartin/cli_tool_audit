@@ -30,11 +30,13 @@
 <pre><code class="python">&#34;&#34;&#34;
 JSON utility functions.
 &#34;&#34;&#34;
+import dataclasses
+import enum
 from datetime import date, datetime
 from typing import Any
 
 
-def custom_json_serializer(o: Any) -&gt; str:
+def custom_json_serializer(o: Any) -&gt; Any:
     &#34;&#34;&#34;
     Custom JSON serializer for objects not serializable by default json code.
 
@@ -42,11 +44,29 @@ def custom_json_serializer(o: Any) -&gt; str:
         o (Any): The object to serialize.
 
     Returns:
-        str: A JSON serializable representation of the object.
+        Any: A JSON serializable representation of the object.
+
+    Raises:
+        TypeError: If the object is not serializable.
     &#34;&#34;&#34;
     if isinstance(o, (date, datetime)):
         return o.isoformat()
-    return str(o)</code></pre>
+    if dataclasses.is_dataclass(o):
+        return dataclasses.asdict(o)
+    if isinstance(o, enum.Enum):
+        return o.value
+    # Development time
+    raise TypeError(f&#34;Object of type {o.__class__.__name__} is not JSON serializable&#34;)
+    # Production time
+    # return str(o)
+
+
+# def json_to_enum(cls, json_obj):
+#     if isinstance(json_obj, dict):
+#         for key, value in json_obj.items():
+#             if isinstance(value, str) and key == &#39;schema&#39;:
+#                 json_obj[key] = SchemaType(value)
+#     return cls(**json_obj)</code></pre>
 </details>
 </section>
 <section>
@@ -57,7 +77,7 @@ def custom_json_serializer(o: Any) -&gt; str:
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
 <dt id="cli_tool_audit.json_utils.custom_json_serializer"><code class="name flex">
-<span>def <span class="ident">custom_json_serializer</span></span>(<span>o: Any) ‑> str</span>
+<span>def <span class="ident">custom_json_serializer</span></span>(<span>o: Any) ‑> Any</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Custom JSON serializer for objects not serializable by default json code.</p>
@@ -68,14 +88,19 @@ def custom_json_serializer(o: Any) -&gt; str:
 </dl>
 <h2 id="returns">Returns</h2>
 <dl>
-<dt><code>str</code></dt>
+<dt><code>Any</code></dt>
 <dd>A JSON serializable representation of the object.</dd>
+</dl>
+<h2 id="raises">Raises</h2>
+<dl>
+<dt><code>TypeError</code></dt>
+<dd>If the object is not serializable.</dd>
 </dl></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def custom_json_serializer(o: Any) -&gt; str:
+<pre><code class="python">def custom_json_serializer(o: Any) -&gt; Any:
     &#34;&#34;&#34;
     Custom JSON serializer for objects not serializable by default json code.
 
@@ -83,11 +108,21 @@ def custom_json_serializer(o: Any) -&gt; str:
         o (Any): The object to serialize.
 
     Returns:
-        str: A JSON serializable representation of the object.
+        Any: A JSON serializable representation of the object.
+
+    Raises:
+        TypeError: If the object is not serializable.
     &#34;&#34;&#34;
     if isinstance(o, (date, datetime)):
         return o.isoformat()
-    return str(o)</code></pre>
+    if dataclasses.is_dataclass(o):
+        return dataclasses.asdict(o)
+    if isinstance(o, enum.Enum):
+        return o.value
+    # Development time
+    raise TypeError(f&#34;Object of type {o.__class__.__name__} is not JSON serializable&#34;)
+    # Production time
+    # return str(o)</code></pre>
 </details>
 </dd>
 </dl>

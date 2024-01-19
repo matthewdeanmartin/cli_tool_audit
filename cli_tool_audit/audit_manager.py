@@ -10,7 +10,7 @@ import subprocess  # nosec
 import sys
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Optional, cast
+from typing import Optional
 
 import packaging.specifiers as packaging_specifiers
 import packaging.version as packaging
@@ -19,7 +19,7 @@ from whichcraft import which
 
 from cli_tool_audit.compatibility import check_compatibility
 from cli_tool_audit.known_switches import KNOWN_SWITCHES
-from cli_tool_audit.models import CliToolConfig, ToolAvailabilityResult, ToolCheckResult
+from cli_tool_audit.models import CliToolConfig, SchemaType, ToolAvailabilityResult, ToolCheckResult
 from cli_tool_audit.version_parsing import two_pass_semver_parse
 
 logger = logging.getLogger(__name__)
@@ -281,22 +281,25 @@ class AuditManager:
                 is_compatible=f"{sys.platform}, not {config.if_os}",
                 is_broken=False,
                 last_modified=None,
+                tool_config=config,
             )
         result = self.call_tool(
-            tool, config.version_switch or "--version", cast(bool, config.only_check_existence or False)
+            tool,
+            config.schema or SchemaType.SEMVER,
+            config.version_switch or "--version",
         )
 
         # Not pretty.
-        if config.only_check_existence:
+        if config.schema == SchemaType.EXISTENCE:
             existence_checker = ExistenceVersionChecker("Found" if result.is_available else "Not Found")
             version_result = existence_checker.check_compatibility("Found")
             compatibility_report = existence_checker.format_report("Found")
             desired_version = "*"
-        elif config.version_snapshot:
+        elif config.schema == SchemaType.SNAPSHOT:
             snapshot_checker = SnapshotVersionChecker(result.version or "")
-            version_result = snapshot_checker.check_compatibility(config.version_snapshot)
-            compatibility_report = snapshot_checker.format_report(config.version_snapshot or "")
-            desired_version = config.version_snapshot
+            version_result = snapshot_checker.check_compatibility(config.version)
+            compatibility_report = snapshot_checker.format_report(config.version or "")
+            desired_version = config.version or ""
         elif config.schema == "pep440":
             pep440_checker = Pep440VersionChecker(result.version or "")
             version_result = pep440_checker.check_compatibility(config.version or "0.0.0")
@@ -313,24 +316,29 @@ class AuditManager:
             desired_version=desired_version,
             is_needed_for_os=True,
             is_available=result.is_available,
-            is_snapshot=bool(config.version_snapshot),
+            is_snapshot=bool(config.schema == SchemaType.SNAPSHOT),
             found_version=result.version,
             parsed_version=version_result.clean_format,
             is_compatible=compatibility_report,
             is_broken=result.is_broken,
             last_modified=result.last_modified,
+            tool_config=config,
         )
 
     def call_tool(
-        self, tool_name: str, version_switch: str = "--version", only_check_existence: bool = False
+        self,
+        tool_name: str,
+        schema: SchemaType,
+        version_switch: str = "--version",
     ) -> ToolAvailabilityResult:
         """
         Check if a tool is available in the system's PATH and if possible, determine a version number.
 
         Args:
             tool_name (str): The name of the tool to check.
+            schema (SchemaType): The version schema to use.
             version_switch (str): The switch to get the tool version. Defaults to '--version'.
-            only_check_existence (bool): Only check if the tool exists, don't check version. Defaults to False.
+
 
         Returns:
             ToolAvailabilityResult: An object containing the availability and version of the tool.
@@ -342,7 +350,7 @@ class AuditManager:
         if not last_modified:
             logger.warning(f"{tool_name} is not on path.")
             return ToolAvailabilityResult(False, True, None, last_modified)
-        if only_check_existence:
+        if schema == SchemaType.EXISTENCE:
             logger.debug(f"{tool_name} exists, but not checking for version.")
             return ToolAvailabilityResult(True, False, None, last_modified)
 

@@ -3,7 +3,8 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from cli_tool_audit.audit_cache import AuditFacade, CliToolConfig, ToolCheckResult
+from cli_tool_audit.audit_cache import AuditFacade, CliToolConfig, ToolCheckResult, custom_json_deserializer
+from cli_tool_audit.models import SchemaType
 
 
 @pytest.fixture
@@ -28,6 +29,13 @@ def test_audit_facade_caching(tmp_path, mock_audit_manager):
         is_compatible="Compatible",
         is_broken=False,
         last_modified=None,
+        tool_config=CliToolConfig(
+            name="test_tool",
+            schema=SchemaType.SEMVER,
+            version="0.0.0",
+            version_switch="--version",
+            if_os=None,
+        ),
     )
     mock_audit_manager.call_and_check.return_value = expected_result
 
@@ -44,10 +52,13 @@ def test_audit_facade_caching(tmp_path, mock_audit_manager):
 
     # Read the cached result directly and verify its content
     with open(cache_file, encoding="utf-8") as file:
-        cached_data = json.load(file)
-    assert cached_data == expected_result.__dict__
+        # dupe code.
+        hit = ToolCheckResult(**json.load(file, object_hook=custom_json_deserializer))
+    assert not facade.cache_hit
+    assert hit == expected_result
 
     # Call and check again - should read from cache this time
     result = facade.call_and_check(tool_config)
+    assert facade.cache_hit
     assert result == expected_result
     mock_audit_manager.call_and_check.assert_called_once()  # Ensure it was called only once

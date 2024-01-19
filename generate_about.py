@@ -62,6 +62,7 @@ def write_metadata_to_file(poetry_data: dict[str, Any]) -> None:
         if key == "name":
             # __name__ is a reserved name.
             content.append(f'__title__ = "{value}"')
+            continue
         if key == "authors" and isinstance(value, list):
             if len(value) == 1:
                 scalar = value[0].strip("[]' ")

@@ -17,7 +17,7 @@ import cli_tool_audit.view_npm_stress_test as demo_npm
 import cli_tool_audit.view_pipx_stress_test as demo_pipx
 import cli_tool_audit.view_venv_stress_test as demo_venv
 import cli_tool_audit.views as views
-from cli_tool_audit.__about__ import __version__, __description__
+from cli_tool_audit.__about__ import __description__, __version__
 
 logger = logging.getLogger(__name__)
 
@@ -33,9 +33,7 @@ def handle_read(args: argparse.Namespace) -> None:
     for tool, config in manager.tools.items():
         print(f"{tool}")
         for key, value in vars(config).items():
-            if key == "only_check_existence" and value is False:
-                pass
-            elif value is not None:
+            if value is not None:
                 print(f"  {key}: {value}")
 
 
@@ -106,15 +104,23 @@ def add_update_args(parser: argparse.ArgumentParser) -> None:
     """
     parser.add_argument("--version", help="Version of the tool")
     parser.add_argument("--version-switch", "--version_switch", help="Version switch for the tool")
-    parser.add_argument("--version-snapshot", "--version_snapshot", help="Entire capture of version is version string.")
-    parser.add_argument("--if-os", "--if_os", help="Check only on this os.")
-    parser.add_argument(
-        "--only-check-existence",
-        "--only_check_existence",
-        action="store_true",
-        help="Check only the existence of the tool",
-    )
+    add_schema_argument(parser)
+    parser.add_argument("--if-os", help="Check only on this os.")
+
     # TODO: Add more arguments
+
+
+def handle_audit(args: argparse.Namespace) -> None:
+    """
+    Audit environment with current configuration.
+
+    Args:
+        args: The args from the command line.
+    """
+    print(args)
+    views.report_from_pyproject_toml(
+        file_path=args.config, exit_code_on_failure=not args.never_fail, file_format=args.format, no_cache=args.no_cache
+    )
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
@@ -126,7 +132,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         int: The exit code.
     """
     # Create the parser
-    program = "cli-tool-audit"
+    program = "cli_tool_audit"
     parser = argparse.ArgumentParser(
         prog=program,
         allow_abbrev=False,
@@ -139,7 +145,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         
         # Generate config for snapshots
         {program} freeze python java make rustc
-""")
+""",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
     parser.add_argument(
         "-V",
         "--version",
@@ -147,33 +155,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         version=f"%(prog)s {__version__}",
         help="Show program's version number and exit.",
     )
-    parser.add_argument(
-        "-c",
-        "--config",
-        default="pyproject.toml",
-        type=str,
-        help="Path to the configuration file in TOML format. (default is %(default)s)",
-    )
-    parser.add_argument(
-        "-nc",
-        "--no-cache",
-        "--no_cache",
-        action="store_true",
-        help="Disable caching of results.",
-    )
-    parser.add_argument(
-        "-ff",
-        "--file-format",
-        "--file_format",
-        default="table",
-        type=str,
-        choices=("json", "json-compact", "xml", "table", "csv"),
-        help="Output results in the specified format. (default is %(default)s)",
-    )
 
-    parser.add_argument(
-        "-nf", "--never-fail", "--never_fail", action="store_true", help="Never return a non-zero exit code"
-    )
     parser.add_argument("--verbose", action="store_true", help="verbose output")
 
     parser.add_argument(
@@ -183,25 +165,57 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         help="Demo for values of npm, pipx or venv",
     )
 
-    subparsers = parser.add_subparsers(help="Edit configuration from terminal.")
+    subparsers = parser.add_subparsers(help="Subcommands.")
 
-    # Read command
+    # Interactive command
     interactive_parser = subparsers.add_parser("interactive", help="Interactively edit configuration")
+    add_config_to_subparser(interactive_parser)
     interactive_parser.set_defaults(func=handle_interactive)
+
+    # Add 'freeze' sub-command
+    freeze_parser = subparsers.add_parser("freeze", help="Freeze the versions of specified tools")
+    freeze_parser.add_argument("tools", nargs="+", help="List of tool names to freeze")
+    add_schema_argument(freeze_parser)
+    add_config_to_subparser(freeze_parser)
+
+    # Add 'audit' sub-command
+    audit_parser = subparsers.add_parser("audit", help="Audit environment with current configuration")
+    # audit_parser.add_argument("tools", nargs="+", help="...")
+    audit_parser.add_argument(
+        "-f",
+        "--format",
+        default="table",
+        type=str,
+        choices=("json", "json-compact", "xml", "table", "csv"),
+        help="Output results in the specified format. (default is %(default)s)",
+    )
+    add_config_to_subparser(audit_parser)
+    audit_parser.add_argument("-nf", "--never-fail", action="store_true", help="Never return a non-zero exit code")
+    audit_parser.add_argument(
+        "-nc",
+        "--no-cache",
+        "--no_cache",
+        action="store_true",
+        help="Disable caching of results.",
+    )
+    audit_parser.set_defaults(func=handle_audit)
 
     # Read command
     read_parser = subparsers.add_parser("read", help="Read and list all tool configurations")
+    add_config_to_subparser(read_parser)
     read_parser.set_defaults(func=handle_read)
 
     # Create command
     create_parser = subparsers.add_parser("create", help="Create a new tool configuration")
     create_parser.add_argument("tool", help="Name of the tool")
     add_update_args(create_parser)
+    add_config_to_subparser(create_parser)
     create_parser.set_defaults(func=handle_create)
 
     # Update command
     update_parser = subparsers.add_parser("update", help="Update an existing tool configuration")
     update_parser.add_argument("tool", help="Name of the tool")
+    add_config_to_subparser(update_parser)
     add_update_args(update_parser)
 
     update_parser.set_defaults(func=handle_update)
@@ -209,15 +223,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     # Delete command
     delete_parser = subparsers.add_parser("delete", help="Delete a tool configuration")
     delete_parser.add_argument("tool", help="Name of the tool")
+    add_config_to_subparser(delete_parser)
     delete_parser.set_defaults(func=handle_delete)
-
-    # Add 'freeze' sub-command
-    freeze_parser = subparsers.add_parser("freeze", help="Freeze the versions of specified tools")
-    freeze_parser.add_argument("tools", nargs="+", help="List of tool names to freeze")
-
-    # Add 'audit' sub-command
-    _audit_parser = subparsers.add_parser("audit", help="Audit environment with current configuration (default)")
-    # audit_parser.add_argument("tools", nargs="+", help="...")
 
     # --------------------------------------------------------------------------
 
@@ -250,18 +257,31 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     # Namespace doesn't have word "freeze" in it.
     if hasattr(args, "tools") and args.tools:
-        freeze.freeze_to_screen(args.tools)
+        freeze.freeze_to_screen(args.tools, args.schema)
         return 0
 
+    # Audit
+
     # Default behavior
-    if args.config:
-        return views.report_from_pyproject_toml(
-            args.config, exit_code_on_failure=not args.never_fail, file_format=args.file_format, no_cache=args.no_cache
-        )
-    return views.report_from_pyproject_toml(
-        exit_code_on_failure=not args.never_fail, file_format=args.file_format, no_cache=args.no_cache
+    print("No command specified. Auditing environment with pyproject.toml configuration.")
+    return views.report_from_pyproject_toml(exit_code_on_failure=True, file_format="table", no_cache=True)
+
+
+def add_schema_argument(parser):
+    parser.add_argument(
+        "--schema", choices=("semver", "snapshot", "pep440", "existence"), default="snapshot", help="version schema"
+    )
+
+
+def add_config_to_subparser(interactive_parser):
+    interactive_parser.add_argument(
+        "-c",
+        "--config",
+        default="pyproject.toml",
+        type=str,
+        help="Path to the configuration file in TOML format. (default is %(default)s)",
     )
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(main(["audit"]))
