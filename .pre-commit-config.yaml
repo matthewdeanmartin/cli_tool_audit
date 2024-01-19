@@ -43,11 +43,12 @@ repos:
           - --remove-all-unused-imports
           - --remove-duplicate-keys
           - --remove-unused-variables
-  - repo: https://github.com/psf/black
-    rev: 23.12.1
-    hooks:
-      - id: black
-        language_version: python3.10
+# black is conflicting with something else
+#  - repo: https://github.com/psf/black
+#    rev: 23.12.1
+#    hooks:
+#      - id: black
+#        language_version: python3.10
   #    -   repo: https://github.com/pycqa/isort
   #        rev: 5.11.4
   #        hooks:
