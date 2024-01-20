@@ -13,8 +13,9 @@ from tqdm import tqdm
 # pylint: disable=no-name-in-module
 from whichcraft import which
 
+import cli_tool_audit.call_and_compatible as call_and_compatible
+import cli_tool_audit.models as models
 import cli_tool_audit.views as views
-from cli_tool_audit.models import CliToolConfig
 
 
 def get_executables_in_venv(venv_path: str) -> list[str]:
@@ -51,7 +52,7 @@ def report_for_venv_tools(max_count: int = -1) -> None:
     cli_tools = {}
     count = 0
     for executable in get_executables_in_venv(str(venv_dir)):
-        config = CliToolConfig(executable)
+        config = models.CliToolConfig(executable)
         config.version_switch = "--version"
         config.version = ">=0.0.0"
         cli_tools[executable] = config
@@ -69,10 +70,10 @@ def report_for_venv_tools(max_count: int = -1) -> None:
         # Submit tasks to the executor
         lock = Lock()
         # lock = Dummy()
-        disable = len(cli_tools) < 5 or os.environ.get("CI") or os.environ.get("NO_COLOR")
+        disable = views.should_show_progress_bar(cli_tools)
         with tqdm(total=len(cli_tools), disable=disable) as progress_bar:
             futures = [
-                executor.submit(views.check_tool_wrapper, (tool, config, lock, enable_cache))
+                executor.submit(call_and_compatible.check_tool_wrapper, (tool, config, lock, enable_cache))
                 for tool, config in cli_tools.items()
             ]
             results = []

@@ -32,11 +32,11 @@ Interactively manage tool configurations.
 &#34;&#34;&#34;
 from typing import Union
 
-from cli_tool_audit.config_manager import ConfigManager
+import cli_tool_audit.config_manager as cm
 from cli_tool_audit.models import SchemaType
 
 
-def interactive_config_manager(config_manager: ConfigManager) -&gt; None:
+def interactive_config_manager(config_manager: cm.ConfigManager) -&gt; None:
     &#34;&#34;&#34;
     Interactively manage tool configurations.
 
@@ -124,7 +124,7 @@ def interactive_config_manager(config_manager: ConfigManager) -&gt; None:
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def interactive_config_manager(config_manager: ConfigManager) -&gt; None:
+<pre><code class="python">def interactive_config_manager(config_manager: cm.ConfigManager) -&gt; None:
     &#34;&#34;&#34;
     Interactively manage tool configurations.
 

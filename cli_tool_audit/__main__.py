@@ -7,18 +7,19 @@ import logging.config
 import sys
 from collections.abc import Sequence
 from dataclasses import fields
+from pathlib import Path
 from typing import Any, Optional
 
 import cli_tool_audit.config_manager as config_manager
 import cli_tool_audit.freeze as freeze
 import cli_tool_audit.interactive as interactive
 import cli_tool_audit.logging_config as logging_config
+import cli_tool_audit.models as models
 import cli_tool_audit.view_npm_stress_test as demo_npm
 import cli_tool_audit.view_pipx_stress_test as demo_pipx
 import cli_tool_audit.view_venv_stress_test as demo_venv
 import cli_tool_audit.views as views
 from cli_tool_audit.__about__ import __description__, __version__
-from cli_tool_audit.models import CliToolConfig
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +30,7 @@ def handle_read(args: argparse.Namespace) -> None:
     Args:
         args: The args from the command line.
     """
-    manager = config_manager.ConfigManager(args.config)
+    manager = config_manager.ConfigManager(Path(args.config))
     manager.read_config()
     for tool, config in manager.tools.items():
         print(f"{tool}")
@@ -46,7 +47,7 @@ def handle_create(args: argparse.Namespace) -> None:
     """
     kwargs = reduce_args_tool_cli_tool_config_args(args)
 
-    manager = config_manager.ConfigManager(args.config)
+    manager = config_manager.ConfigManager(Path(args.config))
     manager.create_tool_config(args.tool, kwargs)
     print(f"Tool {args.tool} created.")
 
@@ -62,7 +63,7 @@ def reduce_args_tool_cli_tool_config_args(args: argparse.Namespace) -> dict[str,
     """
     kwargs = {}
     args_dict = vars(args)
-    cli_tool_fields = {f.name for f in fields(config_manager.CliToolConfig)}
+    cli_tool_fields = {f.name for f in fields(models.CliToolConfig)}
     for key, value in args_dict.items():
         if key in cli_tool_fields:
             kwargs[key] = value
@@ -71,7 +72,7 @@ def reduce_args_tool_cli_tool_config_args(args: argparse.Namespace) -> dict[str,
 
 def handle_update(args: argparse.Namespace) -> None:
     kwargs = reduce_args_tool_cli_tool_config_args(args)
-    manager = config_manager.ConfigManager(args.config)
+    manager = config_manager.ConfigManager(Path(args.config))
     manager.update_tool_config(args.tool, {k: v for k, v in kwargs.items() if k != "tool"})
     print(f"Tool {args.tool} updated.")
 
@@ -82,7 +83,7 @@ def handle_delete(args: argparse.Namespace) -> None:
     Args:
         args: The args from the command line.
     """
-    manager = config_manager.ConfigManager(args.config)
+    manager = config_manager.ConfigManager(Path(args.config))
     manager.delete_tool_config(args.tool)
     print(f"Tool {args.tool} deleted.")
 
@@ -93,7 +94,7 @@ def handle_interactive(args: argparse.Namespace) -> None:
     Args:
         args: The args from the command line.
     """
-    manager = config_manager.ConfigManager(args.config)
+    manager = config_manager.ConfigManager(Path(args.config))
     interactive.interactive_config_manager(manager)
 
 
@@ -119,7 +120,7 @@ def handle_audit(args: argparse.Namespace) -> None:
         args: The args from the command line.
     """
     views.report_from_pyproject_toml(
-        file_path=args.config,
+        file_path=Path(args.config),
         exit_code_on_failure=not args.never_fail,
         file_format=args.format,
         no_cache=args.no_cache,
@@ -135,7 +136,7 @@ def handle_single(args):
     Args:
         args: The args from the command line.
     """
-    config = CliToolConfig(
+    config = models.CliToolConfig(
         name=args.tool, version=args.version, version_switch=args.version_switch, schema=args.schema, if_os=args.if_os
     )
     views.report_from_pyproject_toml(

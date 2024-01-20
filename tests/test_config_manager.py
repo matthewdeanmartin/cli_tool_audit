@@ -22,7 +22,7 @@ def config_file(tmp_path):
 
 
 def test_read_config(config_file):
-    config_manager = ConfigManager(str(config_file))
+    config_manager = ConfigManager(config_file)
     config_manager.read_config()
     assert config_manager.tools["foobar"].version == ">=1.0.0"
     assert config_manager.tools["foo"].version_switch == "version"
@@ -30,21 +30,21 @@ def test_read_config(config_file):
 
 
 def test_create_tool_config(config_file):
-    config_manager = ConfigManager(str(config_file))
+    config_manager = ConfigManager(config_file)
     config_manager.create_tool_config("newtool", {"version": ">=2.0.0"})
     assert "newtool" in config_manager.tools
     assert config_manager.tools["newtool"].version == ">=2.0.0"
 
 
 def test_update_tool_config(config_file):
-    config_manager = ConfigManager(str(config_file))
+    config_manager = ConfigManager(config_file)
     # config_manager.read_config()
     config_manager.update_tool_config("foobar", {"version": ">=1.1.0"})
     assert config_manager.tools["foobar"].version == ">=1.1.0"
 
 
 def test_delete_tool_config(config_file):
-    config_manager = ConfigManager(str(config_file))
+    config_manager = ConfigManager(config_file)
     # config_manager.read_config()
     config_manager.delete_tool_config("foobar")
     assert "foobar" not in config_manager.tools

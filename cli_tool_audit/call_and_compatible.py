@@ -4,31 +4,31 @@ Merge tool call and compatibility check results.
 import sys
 import threading
 
-from cli_tool_audit.audit_cache import AuditFacade
-from cli_tool_audit.audit_manager import AuditManager
-from cli_tool_audit.models import CliToolConfig, ToolCheckResult
+import cli_tool_audit.audit_cache as audit_cache
+import cli_tool_audit.audit_manager as audit_manager
+import cli_tool_audit.models as models
 
 # Old interface
 
 
 def check_tool_wrapper(
-    tool_info: tuple[str, CliToolConfig, threading.Lock, bool],
-) -> ToolCheckResult:
+    tool_info: tuple[str, models.CliToolConfig, threading.Lock, bool],
+) -> models.ToolCheckResult:
     """
     Wrapper function for check_tool_availability() that returns a ToolCheckResult object.
 
     Args:
-        tool_info (tuple[str, CliToolConfig, threading.Lock, bool]): A tuple containing the tool name, the
+        tool_info (tuple[str, models.CliToolConfig, threading.Lock, bool]): A tuple containing the tool name, the
         CliToolConfig object, a lock, and a boolean indicating if the cache is enabled.
 
     Returns:
-        ToolCheckResult: A ToolCheckResult object.
+        models.ToolCheckResult: A ToolCheckResult object.
     """
     tool, config, lock, enable_cache = tool_info
 
     if config.if_os and not sys.platform.startswith(config.if_os):
         # This isn't very transparent about what just happened
-        return ToolCheckResult(
+        return models.ToolCheckResult(
             is_needed_for_os=False,
             tool=tool,
             desired_version=config.version or "0.0.0",
@@ -46,9 +46,9 @@ def check_tool_wrapper(
     config.version_switch = config.version_switch or "--version"
 
     if enable_cache:
-        cached_manager = AuditFacade()
+        cached_manager = audit_cache.AuditFacade()
         with lock:
             return cached_manager.call_and_check(tool_config=config)
 
-    manager = AuditManager()
+    manager = audit_manager.AuditManager()
     return manager.call_and_check(tool_config=config)

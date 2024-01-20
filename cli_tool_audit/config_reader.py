@@ -1,29 +1,29 @@
 """
 Read list of tools from config.
 """
-
 import logging
+from pathlib import Path
 
-from cli_tool_audit.config_manager import ConfigManager
-from cli_tool_audit.models import CliToolConfig
+import cli_tool_audit.config_manager as config_manager
+import cli_tool_audit.models as models
 
 logger = logging.getLogger(__name__)
 
 
-def read_config(file_path: str) -> dict[str, CliToolConfig]:
+def read_config(file_path: Path) -> dict[str, models.CliToolConfig]:
     """
     Read the cli-tools section from a pyproject.toml file.
 
     Args:
-        file_path (str): The path to the pyproject.toml file.
+        file_path (Path): The path to the pyproject.toml file.
 
     Returns:
-        dict[str, CliToolConfig]: A dictionary with the cli-tools section.
+        dict[str, models.CliToolConfig]: A dictionary with the cli-tools section.
     """
     # pylint: disable=broad-exception-caught
     try:
         logger.debug(f"Loading config from {file_path}")
-        manager = ConfigManager(file_path)
+        manager = config_manager.ConfigManager(file_path)
         found = manager.read_config()
         if not found:
             logger.warning("Config section not found, expected [tool.cli-tools] with values")

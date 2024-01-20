@@ -10,7 +10,7 @@ def test_interactive_config_manager(tmp_path):
     config_path.write_text("")
 
     # Instantiate ConfigManager with the temporary config file path
-    config_manager = ConfigManager(str(config_path))
+    config_manager = ConfigManager(config_path)
 
     # Mock inputs for the interactive_config_manager function
     user_inputs = iter(
@@ -30,7 +30,7 @@ def test_interactive_config_manager(tmp_path):
         interactive_config_manager(config_manager)
 
     # Read the config file to verify changes
-    with open(config_path) as file:
+    with open(config_path, encoding="utf-8") as file:
         config_data = file.read()
 
     # Asserts to validate if the config file was updated correctly

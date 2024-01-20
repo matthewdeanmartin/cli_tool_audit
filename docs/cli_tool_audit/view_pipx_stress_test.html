@@ -40,16 +40,20 @@ from typing import Any
 
 from tqdm import tqdm
 
+import cli_tool_audit.call_and_compatible as call_and_compatible
+import cli_tool_audit.models as models
 import cli_tool_audit.views as views
-from cli_tool_audit.models import CliToolConfig
+
 
 #  Dummy lock for switch to ProcessPoolExecutor
-# class Dummy:
-#     def __enter__(self):
-#         pass
-#
-#     def __exit__(self, exc_type, exc_value, traceback):
-#         pass
+class DummyLock:
+    &#34;&#34;&#34;For testing&#34;&#34;&#34;
+
+    def __enter__(self):
+        &#34;&#34;&#34;For testing&#34;&#34;&#34;
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        &#34;&#34;&#34;For testing&#34;&#34;&#34;
 
 
 def get_pipx_list() -&gt; Any:
@@ -105,7 +109,7 @@ def report_for_pipx_tools(max_count: int = -1) -&gt; None:
         if app in (&#34;yated.exe&#34;, &#34;calcure.exe&#34;, &#34;yated&#34;, &#34;calcure&#34;, &#34;dedlin.exe&#34;, &#34;dedlin&#34;):
             # These launch interactive process &amp; then time out.
             continue
-        config = CliToolConfig(app)
+        config = models.CliToolConfig(app)
         config.version_switch = &#34;--version&#34;
         config.version = f&#34;&gt;={expected_version}&#34;
         cli_tools[app] = config
@@ -124,10 +128,10 @@ def report_for_pipx_tools(max_count: int = -1) -&gt; None:
         # lock = Dummy()
         # with ProcessPoolExecutor(max_workers=num_cpus) as executor:
         # Submit tasks to the executor
-        disable = len(cli_tools) &lt; 5 or os.environ.get(&#34;CI&#34;) or os.environ.get(&#34;NO_COLOR&#34;)
+        disable = views.should_show_progress_bar(cli_tools)
         with tqdm(total=len(cli_tools), disable=disable) as progress_bar:
             futures = [
-                executor.submit(views.check_tool_wrapper, (tool, config, lock, enable_cache))
+                executor.submit(call_and_compatible.check_tool_wrapper, (tool, config, lock, enable_cache))
                 for tool, config in cli_tools.items()
             ]
 
@@ -251,7 +255,7 @@ if __name__ == &#34;__main__&#34;:
         if app in (&#34;yated.exe&#34;, &#34;calcure.exe&#34;, &#34;yated&#34;, &#34;calcure&#34;, &#34;dedlin.exe&#34;, &#34;dedlin&#34;):
             # These launch interactive process &amp; then time out.
             continue
-        config = CliToolConfig(app)
+        config = models.CliToolConfig(app)
         config.version_switch = &#34;--version&#34;
         config.version = f&#34;&gt;={expected_version}&#34;
         cli_tools[app] = config
@@ -270,10 +274,10 @@ if __name__ == &#34;__main__&#34;:
         # lock = Dummy()
         # with ProcessPoolExecutor(max_workers=num_cpus) as executor:
         # Submit tasks to the executor
-        disable = len(cli_tools) &lt; 5 or os.environ.get(&#34;CI&#34;) or os.environ.get(&#34;NO_COLOR&#34;)
+        disable = views.should_show_progress_bar(cli_tools)
         with tqdm(total=len(cli_tools), disable=disable) as progress_bar:
             futures = [
-                executor.submit(views.check_tool_wrapper, (tool, config, lock, enable_cache))
+                executor.submit(call_and_compatible.check_tool_wrapper, (tool, config, lock, enable_cache))
                 for tool, config in cli_tools.items()
             ]
 
@@ -289,6 +293,28 @@ if __name__ == &#34;__main__&#34;:
 </dl>
 </section>
 <section>
+<h2 class="section-title" id="header-classes">Classes</h2>
+<dl>
+<dt id="cli_tool_audit.view_pipx_stress_test.DummyLock"><code class="flex name class">
+<span>class <span class="ident">DummyLock</span></span>
+</code></dt>
+<dd>
+<div class="desc"><p>For testing</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class DummyLock:
+    &#34;&#34;&#34;For testing&#34;&#34;&#34;
+
+    def __enter__(self):
+        &#34;&#34;&#34;For testing&#34;&#34;&#34;
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        &#34;&#34;&#34;For testing&#34;&#34;&#34;</code></pre>
+</details>
+</dd>
+</dl>
 </section>
 </article>
 <nav id="sidebar">
@@ -307,6 +333,13 @@ if __name__ == &#34;__main__&#34;:
 <li><code><a title="cli_tool_audit.view_pipx_stress_test.extract_apps" href="#cli_tool_audit.view_pipx_stress_test.extract_apps">extract_apps</a></code></li>
 <li><code><a title="cli_tool_audit.view_pipx_stress_test.get_pipx_list" href="#cli_tool_audit.view_pipx_stress_test.get_pipx_list">get_pipx_list</a></code></li>
 <li><code><a title="cli_tool_audit.view_pipx_stress_test.report_for_pipx_tools" href="#cli_tool_audit.view_pipx_stress_test.report_for_pipx_tools">report_for_pipx_tools</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-classes">Classes</a></h3>
+<ul>
+<li>
+<h4><code><a title="cli_tool_audit.view_pipx_stress_test.DummyLock" href="#cli_tool_audit.view_pipx_stress_test.DummyLock">DummyLock</a></code></h4>
+</li>
 </ul>
 </li>
 </ul>

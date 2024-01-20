@@ -29,11 +29,11 @@ clean: clean-pyc clean-test
 
 # tests can't be expected to pass if dependencies aren't installed.
 # tests are often slow and linting is fast, so run tests on linted code.
-test: clean .build_history/pylint .build_history/bandit poetry.lock
+test: clean poetry.lock
 	@echo "Running unit tests"
 	$(VENV) pytest --doctest-modules cli_tool_audit
 	$(VENV) python -m unittest discover
-	$(VENV) py.test tests --cov=cli_tool_audit --cov-report=html --cov-fail-under 63
+	$(VENV) py.test tests -vv -n auto --cov=cli_tool_audit --cov-report=html --cov-fail-under 75
 	$(VENV) bash basic_test.sh
 
 
@@ -123,8 +123,12 @@ check_changelog:
 	# pipx install keepachangelog-manager
 	$(VENV) changelogmanager validate
 
-check_all: check_docs check_md check_spelling
+check_all: check_docs check_md check_spelling check_changelog audit
 
 check_own_ver:
 	# Can it verify itself?
 	$(VENV) python dog_food_check.py
+
+audit:
+	# $(VENV) python -m cli_tool_audit audit
+	$(VENV) tool_audit single cli_tool_audit --version=">=2.0.0"

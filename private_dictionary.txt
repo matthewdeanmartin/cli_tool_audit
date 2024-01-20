@@ -29,3 +29,8 @@ dataclasses
 schemas
 CHANGELOG
 UseCases
+PrettyTable
+CliToolConfig
+ToolAvailabilityResult
+SchemaType
+EnvironmentVariables

@@ -5,7 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.1] - 2024-01-19
+
+### Fixed
+- More unit tests, fix link in meta, uses Path instead of str for paths
+
 ## [3.0.0] - 2024-01-19
+
+### Fixed
+- only truncate long version on console output
+- removed three dependencies (toml, hypothesis, importlib-metadata)
 
 ### Added
 - filter an audit by tags
@@ -13,18 +22,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `single` to validate one tool without a config file
 - `.html` output
 
-## Fixed
-- only truncate long version on console output
-- removed three dependencies (toml, hypothesis, importlib-metadata)
-
-
 ## [2.0.0] - 2024-01-19
 
 ### Fixed
 - Cache now adds gitingore and clears files older than 30 days on startup
 - Audit is now a sub command with arguments.
 
-### Breaking
+### Changed
 - Gnu options with dashes, no underscores 
 - Global opts that apply to only some commands move to subparser
 - check_only_for_existence is now schema type "existence" snapshot_version is now schema type "snapshot"

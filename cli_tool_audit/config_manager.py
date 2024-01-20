@@ -1,11 +1,12 @@
 import copy
 import os
+from pathlib import Path
 from typing import Any, cast
 
 import toml
 import tomlkit
 
-from cli_tool_audit.models import CliToolConfig, SchemaType
+import cli_tool_audit.models as models
 
 
 class ConfigManager:
@@ -13,13 +14,13 @@ class ConfigManager:
     Manage the config file.
     """
 
-    def __init__(self, config_path: str) -> None:
+    def __init__(self, config_path: Path) -> None:
         """
         Args:
-            config_path (str): The path to the toml file.
+            config_path (Path): The path to the toml file.
         """
         self.config_path = config_path
-        self.tools: dict[str, CliToolConfig] = {}
+        self.tools: dict[str, models.CliToolConfig] = {}
 
     def read_config(self) -> bool:
         """
@@ -28,8 +29,8 @@ class ConfigManager:
         Returns:
             bool: True if the cli-tools section exists, False otherwise.
         """
-        if os.path.exists(self.config_path):
-            with open(self.config_path, encoding="utf-8") as file:
+        if self.config_path.exists():
+            with open(str(self.config_path), encoding="utf-8") as file:
                 # okay this is too hard.
                 # from tomlkit.items import Item
                 # class SchemaTypeItem(Item):
@@ -49,19 +50,19 @@ class ConfigManager:
                 tools_config = config.get("tool", {}).get("cli-tools", {})
                 for tool_name, settings in tools_config.items():
                     if settings.get("only_check_existence"):
-                        settings["schema"] = SchemaType.EXISTENCE
+                        settings["schema"] = models.SchemaType.EXISTENCE
                         del settings["only_check_existence"]
                     elif settings.get("version_snapshot"):
-                        settings["schema"] = SchemaType.SNAPSHOT
+                        settings["schema"] = models.SchemaType.SNAPSHOT
                         settings["version"] = settings.get("version_snapshot")
                         del settings["version_snapshot"]
 
                     settings["name"] = tool_name
                     if settings.get("schema"):
-                        settings["schema"] = SchemaType(settings["schema"].lower())
+                        settings["schema"] = models.SchemaType(settings["schema"].lower())
                     else:
-                        settings["schema"] = SchemaType.SEMVER
-                    self.tools[tool_name] = CliToolConfig(**settings)
+                        settings["schema"] = models.SchemaType.SEMVER
+                    self.tools[tool_name] = models.CliToolConfig(**settings)
         return bool(self.tools)
 
     def create_tool_config(self, tool_name: str, config: dict) -> None:
@@ -80,7 +81,7 @@ class ConfigManager:
         if tool_name in self.tools:
             raise ValueError(f"Tool {tool_name} already exists")
         config["name"] = tool_name
-        self.tools[tool_name] = CliToolConfig(**config)
+        self.tools[tool_name] = models.CliToolConfig(**config)
         self._save_config()
 
     def update_tool_config(self, tool_name: str, config: dict) -> None:
@@ -112,11 +113,11 @@ class ConfigManager:
             self.read_config()
         if tool_name not in self.tools:
             config["name"] = tool_name
-            self.tools[tool_name] = CliToolConfig(**config)
+            self.tools[tool_name] = models.CliToolConfig(**config)
         else:
             for key, value in config.items():
                 if key == "schema":
-                    value = str(SchemaType(value))
+                    value = str(models.SchemaType(value))
                 setattr(self.tools[tool_name], key, value)
         self._save_config()
 
@@ -173,6 +174,10 @@ class ConfigManager:
 
 if __name__ == "__main__":
     # Usage example
-    config_manager = ConfigManager("../pyproject.toml")
-    c = config_manager.read_config()
-    print(c)
+    def run() -> None:
+        """Example"""
+        config_manager = ConfigManager(Path("../pyproject.toml"))
+        c = config_manager.read_config()
+        print(c)
+
+    run()

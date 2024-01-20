@@ -30,15 +30,15 @@
 <pre><code class="python">&#34;&#34;&#34;
 Apply various policies to the results of the tool checks.
 &#34;&#34;&#34;
-from cli_tool_audit.call_and_compatible import ToolCheckResult
+import cli_tool_audit.models as models
 
 
-def apply_policy(results: list[ToolCheckResult]) -&gt; bool:
+def apply_policy(results: list[models.ToolCheckResult]) -&gt; bool:
     &#34;&#34;&#34;
     Pretty print the results of the validation.
 
     Args:
-        results (list[ToolCheckResult]): A list of ToolCheckResult objects.
+        results (list[models.ToolCheckResult]): A list of ToolCheckResult objects.
 
     Returns:
         bool: True if any of the tools failed validation, False otherwise.
@@ -70,7 +70,7 @@ def apply_policy(results: list[ToolCheckResult]) -&gt; bool:
 <div class="desc"><p>Pretty print the results of the validation.</p>
 <h2 id="args">Args</h2>
 <dl>
-<dt><strong><code>results</code></strong> :&ensp;<code>list[ToolCheckResult]</code></dt>
+<dt><strong><code>results</code></strong> :&ensp;<code>list[models.ToolCheckResult]</code></dt>
 <dd>A list of ToolCheckResult objects.</dd>
 </dl>
 <h2 id="returns">Returns</h2>
@@ -82,12 +82,12 @@ def apply_policy(results: list[ToolCheckResult]) -&gt; bool:
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def apply_policy(results: list[ToolCheckResult]) -&gt; bool:
+<pre><code class="python">def apply_policy(results: list[models.ToolCheckResult]) -&gt; bool:
     &#34;&#34;&#34;
     Pretty print the results of the validation.
 
     Args:
-        results (list[ToolCheckResult]): A list of ToolCheckResult objects.
+        results (list[models.ToolCheckResult]): A list of ToolCheckResult objects.
 
     Returns:
         bool: True if any of the tools failed validation, False otherwise.

@@ -11,16 +11,20 @@ from typing import Any
 
 from tqdm import tqdm
 
+import cli_tool_audit.call_and_compatible as call_and_compatible
+import cli_tool_audit.models as models
 import cli_tool_audit.views as views
-from cli_tool_audit.models import CliToolConfig
+
 
 #  Dummy lock for switch to ProcessPoolExecutor
-# class Dummy:
-#     def __enter__(self):
-#         pass
-#
-#     def __exit__(self, exc_type, exc_value, traceback):
-#         pass
+class DummyLock:
+    """For testing"""
+
+    def __enter__(self):
+        """For testing"""
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        """For testing"""
 
 
 def get_pipx_list() -> Any:
@@ -76,7 +80,7 @@ def report_for_pipx_tools(max_count: int = -1) -> None:
         if app in ("yated.exe", "calcure.exe", "yated", "calcure", "dedlin.exe", "dedlin"):
             # These launch interactive process & then time out.
             continue
-        config = CliToolConfig(app)
+        config = models.CliToolConfig(app)
         config.version_switch = "--version"
         config.version = f">={expected_version}"
         cli_tools[app] = config
@@ -95,10 +99,10 @@ def report_for_pipx_tools(max_count: int = -1) -> None:
         # lock = Dummy()
         # with ProcessPoolExecutor(max_workers=num_cpus) as executor:
         # Submit tasks to the executor
-        disable = len(cli_tools) < 5 or os.environ.get("CI") or os.environ.get("NO_COLOR")
+        disable = views.should_show_progress_bar(cli_tools)
         with tqdm(total=len(cli_tools), disable=disable) as progress_bar:
             futures = [
-                executor.submit(views.check_tool_wrapper, (tool, config, lock, enable_cache))
+                executor.submit(call_and_compatible.check_tool_wrapper, (tool, config, lock, enable_cache))
                 for tool, config in cli_tools.items()
             ]
 

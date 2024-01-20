@@ -10,8 +10,10 @@ from pathlib import Path
 from typing import Any, Optional
 
 import cli_tool_audit.audit_manager as audit_manager
-from cli_tool_audit.json_utils import custom_json_serializer
-from cli_tool_audit.models import CliToolConfig, SchemaType, ToolCheckResult
+import cli_tool_audit.json_utils as json_utils
+import cli_tool_audit.models as models
+
+__all__ = ["AuditFacade"]
 
 
 def custom_json_deserializer(data: dict[str, Any]) -> dict[str, Any]:
@@ -28,8 +30,8 @@ def custom_json_deserializer(data: dict[str, Any]) -> dict[str, Any]:
     if "tool_config" in data and data["tool_config"]:
         for key, value in data["tool_config"].items():
             if isinstance(value, str) and key == "schema":
-                data["tool_config"][key] = SchemaType(value)
-        data["tool_config"] = CliToolConfig(**data["tool_config"])
+                data["tool_config"][key] = models.SchemaType(value)
+        data["tool_config"] = models.CliToolConfig(**data["tool_config"])
     return data
 
 
@@ -37,14 +39,14 @@ logger = logging.getLogger(__name__)
 
 
 class AuditFacade:
-    def __init__(self, cache_dir: Optional[str] = None) -> None:
+    def __init__(self, cache_dir: Optional[Path] = None) -> None:
         """
         Initialize the facade.
         Args:
             cache_dir (Optional[str], optional): The directory to use for caching. Defaults to None.
         """
         self.audit_manager = audit_manager.AuditManager()
-        self.cache_dir = Path(cache_dir) if cache_dir else Path.cwd() / ".cli_tool_audit_cache"
+        self.cache_dir = cache_dir if cache_dir else Path.cwd() / ".cli_tool_audit_cache"
         self.cache_dir.mkdir(exist_ok=True)
         with open(self.cache_dir / ".gitignore", "w", encoding="utf-8") as file:
             file.write("*\n!.gitignore\n")
@@ -64,11 +66,11 @@ class AuditFacade:
                 if cache_file.exists():
                     cache_file.unlink(missing_ok=True)  # Delete the file
 
-    def get_cache_filename(self, tool_config: CliToolConfig) -> Path:
+    def get_cache_filename(self, tool_config: models.CliToolConfig) -> Path:
         """
         Get the cache filename for the given tool.
         Args:
-            tool_config (CliToolConfig): The tool to get the cache filename for.
+            tool_config (models.CliToolConfig): The tool to get the cache filename for.
 
         Returns:
             Path: The cache filename.
@@ -77,21 +79,21 @@ class AuditFacade:
         the_hash = tool_config.cache_hash()
         return self.cache_dir / f"{sanitized_name}_{the_hash}.json"
 
-    def read_from_cache(self, tool_config: CliToolConfig) -> Optional[ToolCheckResult]:
+    def read_from_cache(self, tool_config: models.CliToolConfig) -> Optional[models.ToolCheckResult]:
         """
         Read the cached result for the given tool.
         Args:
-            tool_config (CliToolConfig): The tool to get the cached result for.
+            tool_config (models.CliToolConfig): The tool to get the cached result for.
 
         Returns:
-            Optional[ToolCheckResult]: The cached result or None if not found.
+            Optional[models.ToolCheckResult]: The cached result or None if not found.
         """
         cache_file = self.get_cache_filename(tool_config)
         if cache_file.exists():
             logger.debug(f"Cache hit for {tool_config.name}")
             try:
                 with open(cache_file, encoding="utf-8") as file:
-                    hit = ToolCheckResult(**json.load(file, object_hook=custom_json_deserializer))
+                    hit = models.ToolCheckResult(**json.load(file, object_hook=custom_json_deserializer))
                     self.cache_hit = True
                     return hit
             except TypeError:
@@ -102,26 +104,26 @@ class AuditFacade:
         self.cache_hit = False
         return None
 
-    def write_to_cache(self, tool_config: CliToolConfig, result: ToolCheckResult) -> None:
+    def write_to_cache(self, tool_config: models.CliToolConfig, result: models.ToolCheckResult) -> None:
         """
         Write the given result to the cache.
         Args:
-            tool_config (CliToolConfig): The tool to write the result for.
-            result (ToolCheckResult): The result to write.
+            tool_config (models.CliToolConfig): The tool to write the result for.
+            result (models.ToolCheckResult): The result to write.
         """
         cache_file = self.get_cache_filename(tool_config)
         with open(cache_file, "w", encoding="utf-8") as file:
             logger.debug(f"Caching {tool_config.name}")
-            json.dump(result.__dict__, file, ensure_ascii=False, indent=4, default=custom_json_serializer)
+            json.dump(result.__dict__, file, ensure_ascii=False, indent=4, default=json_utils.custom_json_serializer)
 
-    def call_and_check(self, tool_config: CliToolConfig) -> ToolCheckResult:
+    def call_and_check(self, tool_config: models.CliToolConfig) -> models.ToolCheckResult:
         """
         Call and check the given tool.
         Args:
-            tool_config (CliToolConfig): The tool to call and check.
+            tool_config (models.CliToolConfig): The tool to call and check.
 
         Returns:
-            ToolCheckResult: The result of the check.
+            models.ToolCheckResult: The result of the check.
         """
         cached_result = self.read_from_cache(tool_config)
         if cached_result:

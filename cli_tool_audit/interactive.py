@@ -3,11 +3,11 @@ Interactively manage tool configurations.
 """
 from typing import Union
 
-from cli_tool_audit.config_manager import ConfigManager
+import cli_tool_audit.config_manager as cm
 from cli_tool_audit.models import SchemaType
 
 
-def interactive_config_manager(config_manager: ConfigManager) -> None:
+def interactive_config_manager(config_manager: cm.ConfigManager) -> None:
     """
     Interactively manage tool configurations.
 

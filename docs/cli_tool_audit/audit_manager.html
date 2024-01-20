@@ -40,17 +40,19 @@ import subprocess  # nosec
 import sys
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Optional
+from typing import Literal, Optional
 
 import packaging.specifiers as packaging_specifiers
 import packaging.version as packaging
 from semver import Version
 from whichcraft import which
 
-from cli_tool_audit.compatibility import check_compatibility
+import cli_tool_audit.compatibility as compatibility
+import cli_tool_audit.models as models
+import cli_tool_audit.version_parsing as version_parsing
 from cli_tool_audit.known_switches import KNOWN_SWITCHES
-from cli_tool_audit.models import CliToolConfig, SchemaType, ToolAvailabilityResult, ToolCheckResult
-from cli_tool_audit.version_parsing import two_pass_semver_parse
+
+ExistenceVersionStatus = Literal[&#34;Found&#34;, &#34;Not Found&#34;]
 
 logger = logging.getLogger(__name__)
 
@@ -103,7 +105,7 @@ class SemVerChecker(VersionChecker):
         Returns:
             Optional[Version]: The parsed version or None if the version string is invalid.
         &#34;&#34;&#34;
-        return two_pass_semver_parse(version_string)
+        return version_parsing.two_pass_semver_parse(version_string)
 
     def check_compatibility(self, desired_version: Optional[str]) -&gt; VersionResult:
         &#34;&#34;&#34;
@@ -117,7 +119,7 @@ class SemVerChecker(VersionChecker):
         if not self.found_version:
             return VersionResult(is_compatible=False, clean_format=&#34;Invalid Format&#34;)
         desired_version = desired_version or &#34;0.0.0&#34;
-        compatible_result, _version_object = check_compatibility(desired_version, str(self.found_version))
+        compatible_result, _version_object = compatibility.check_compatibility(desired_version, str(self.found_version))
 
         self.result = VersionResult(
             is_compatible=compatible_result == &#34;Compatible&#34;, clean_format=str(self.found_version)
@@ -139,7 +141,7 @@ class SemVerChecker(VersionChecker):
 
 
 class ExistenceVersionChecker(VersionChecker):
-    def __init__(self, version_string: str) -&gt; None:
+    def __init__(self, version_string: ExistenceVersionStatus) -&gt; None:
         &#34;&#34;&#34;
         Check if a tool exists.
         Args:
@@ -149,7 +151,7 @@ class ExistenceVersionChecker(VersionChecker):
             raise ValueError(f&#34;version_string must be &#39;Found&#39; or &#39;Not Found&#39;, not {version_string}&#34;)
         self.found_version = version_string
 
-    def check_compatibility(self, desired_version: Optional[str]) -&gt; VersionResult:
+    def check_compatibility(self, desired_version: str) -&gt; VersionResult:
         &#34;&#34;&#34;
         Check if the tool exists.
         Args:
@@ -287,20 +289,20 @@ class AuditManager:
     Class to audit a tool, abstract base class to allow for supporting different version schemas.
     &#34;&#34;&#34;
 
-    def call_and_check(self, tool_config: CliToolConfig) -&gt; ToolCheckResult:
+    def call_and_check(self, tool_config: models.CliToolConfig) -&gt; models.ToolCheckResult:
         &#34;&#34;&#34;
         Call and check the given tool.
         Args:
-            tool_config (CliToolConfig): The tool to call and check.
+            tool_config (models.CliToolConfig): The tool to call and check.
 
         Returns:
-            ToolCheckResult: The result of the check.
+            models.ToolCheckResult: The result of the check.
         &#34;&#34;&#34;
         tool, config = tool_config.name, tool_config
 
         if config.if_os and not sys.platform.startswith(config.if_os):
             # This isn&#39;t very transparent about what just happened
-            return ToolCheckResult(
+            return models.ToolCheckResult(
                 tool=tool,
                 is_needed_for_os=False,
                 desired_version=config.version or &#34;0.0.0&#34;,
@@ -315,17 +317,17 @@ class AuditManager:
             )
         result = self.call_tool(
             tool,
-            config.schema or SchemaType.SEMVER,
+            config.schema or models.SchemaType.SEMVER,
             config.version_switch or &#34;--version&#34;,
         )
 
         # Not pretty.
-        if config.schema == SchemaType.EXISTENCE:
+        if config.schema == models.SchemaType.EXISTENCE:
             existence_checker = ExistenceVersionChecker(&#34;Found&#34; if result.is_available else &#34;Not Found&#34;)
             version_result = existence_checker.check_compatibility(&#34;Found&#34;)
             compatibility_report = existence_checker.format_report(&#34;Found&#34;)
             desired_version = &#34;*&#34;
-        elif config.schema == SchemaType.SNAPSHOT:
+        elif config.schema == models.SchemaType.SNAPSHOT:
             snapshot_checker = SnapshotVersionChecker(result.version or &#34;&#34;)
             version_result = snapshot_checker.check_compatibility(config.version)
             compatibility_report = snapshot_checker.format_report(config.version or &#34;&#34;)
@@ -341,12 +343,12 @@ class AuditManager:
             compatibility_report = semver_checker.format_report(config.version or &#34;0.0.0&#34;)
             desired_version = config.version or &#34;*&#34;
 
-        return ToolCheckResult(
+        return models.ToolCheckResult(
             tool=tool,
             desired_version=desired_version,
             is_needed_for_os=True,
             is_available=result.is_available,
-            is_snapshot=bool(config.schema == SchemaType.SNAPSHOT),
+            is_snapshot=bool(config.schema == models.SchemaType.SNAPSHOT),
             found_version=result.version,
             parsed_version=version_result.clean_format,
             is_compatible=compatibility_report,
@@ -358,9 +360,9 @@ class AuditManager:
     def call_tool(
         self,
         tool_name: str,
-        schema: SchemaType,
+        schema: models.SchemaType,
         version_switch: str = &#34;--version&#34;,
-    ) -&gt; ToolAvailabilityResult:
+    ) -&gt; models.ToolAvailabilityResult:
         &#34;&#34;&#34;
         Check if a tool is available in the system&#39;s PATH and if possible, determine a version number.
 
@@ -379,10 +381,10 @@ class AuditManager:
         last_modified = self.get_command_last_modified_date(tool_name)
         if not last_modified:
             logger.warning(f&#34;{tool_name} is not on path.&#34;)
-            return ToolAvailabilityResult(False, True, None, last_modified)
-        if schema == SchemaType.EXISTENCE:
+            return models.ToolAvailabilityResult(False, True, None, last_modified)
+        if schema == models.SchemaType.EXISTENCE:
             logger.debug(f&#34;{tool_name} exists, but not checking for version.&#34;)
-            return ToolAvailabilityResult(True, False, None, last_modified)
+            return models.ToolAvailabilityResult(True, False, None, last_modified)
 
         if version_switch is None or version_switch == &#34;--version&#34;:
             # override default.
@@ -394,7 +396,7 @@ class AuditManager:
         # pylint: disable=broad-exception-caught
         try:
             command = [tool_name, version_switch]
-            timeout= int(os.environ.get(&#34;CLI_TOOL_AUDIT_TIMEOUT&#34;, 15))
+            timeout = int(os.environ.get(&#34;CLI_TOOL_AUDIT_TIMEOUT&#34;, 15))
             result = subprocess.run(
                 command, capture_output=True, text=True, timeout=timeout, shell=False, check=True
             )  # nosec
@@ -414,9 +416,9 @@ class AuditManager:
             logger.error(f&#34;{tool_name} stdout: {exception.stdout}&#34;)
         except FileNotFoundError:
             logger.error(f&#34;{tool_name} is not on path.&#34;)
-            return ToolAvailabilityResult(False, True, None, last_modified)
+            return models.ToolAvailabilityResult(False, True, None, last_modified)
 
-        return ToolAvailabilityResult(True, is_broken, version, last_modified)
+        return models.ToolAvailabilityResult(True, is_broken, version, last_modified)
 
     def get_command_last_modified_date(self, tool_name: str) -&gt; Optional[datetime.datetime]:
         &#34;&#34;&#34;
@@ -462,20 +464,20 @@ class AuditManager:
     Class to audit a tool, abstract base class to allow for supporting different version schemas.
     &#34;&#34;&#34;
 
-    def call_and_check(self, tool_config: CliToolConfig) -&gt; ToolCheckResult:
+    def call_and_check(self, tool_config: models.CliToolConfig) -&gt; models.ToolCheckResult:
         &#34;&#34;&#34;
         Call and check the given tool.
         Args:
-            tool_config (CliToolConfig): The tool to call and check.
+            tool_config (models.CliToolConfig): The tool to call and check.
 
         Returns:
-            ToolCheckResult: The result of the check.
+            models.ToolCheckResult: The result of the check.
         &#34;&#34;&#34;
         tool, config = tool_config.name, tool_config
 
         if config.if_os and not sys.platform.startswith(config.if_os):
             # This isn&#39;t very transparent about what just happened
-            return ToolCheckResult(
+            return models.ToolCheckResult(
                 tool=tool,
                 is_needed_for_os=False,
                 desired_version=config.version or &#34;0.0.0&#34;,
@@ -490,17 +492,17 @@ class AuditManager:
             )
         result = self.call_tool(
             tool,
-            config.schema or SchemaType.SEMVER,
+            config.schema or models.SchemaType.SEMVER,
             config.version_switch or &#34;--version&#34;,
         )
 
         # Not pretty.
-        if config.schema == SchemaType.EXISTENCE:
+        if config.schema == models.SchemaType.EXISTENCE:
             existence_checker = ExistenceVersionChecker(&#34;Found&#34; if result.is_available else &#34;Not Found&#34;)
             version_result = existence_checker.check_compatibility(&#34;Found&#34;)
             compatibility_report = existence_checker.format_report(&#34;Found&#34;)
             desired_version = &#34;*&#34;
-        elif config.schema == SchemaType.SNAPSHOT:
+        elif config.schema == models.SchemaType.SNAPSHOT:
             snapshot_checker = SnapshotVersionChecker(result.version or &#34;&#34;)
             version_result = snapshot_checker.check_compatibility(config.version)
             compatibility_report = snapshot_checker.format_report(config.version or &#34;&#34;)
@@ -516,12 +518,12 @@ class AuditManager:
             compatibility_report = semver_checker.format_report(config.version or &#34;0.0.0&#34;)
             desired_version = config.version or &#34;*&#34;
 
-        return ToolCheckResult(
+        return models.ToolCheckResult(
             tool=tool,
             desired_version=desired_version,
             is_needed_for_os=True,
             is_available=result.is_available,
-            is_snapshot=bool(config.schema == SchemaType.SNAPSHOT),
+            is_snapshot=bool(config.schema == models.SchemaType.SNAPSHOT),
             found_version=result.version,
             parsed_version=version_result.clean_format,
             is_compatible=compatibility_report,
@@ -533,9 +535,9 @@ class AuditManager:
     def call_tool(
         self,
         tool_name: str,
-        schema: SchemaType,
+        schema: models.SchemaType,
         version_switch: str = &#34;--version&#34;,
-    ) -&gt; ToolAvailabilityResult:
+    ) -&gt; models.ToolAvailabilityResult:
         &#34;&#34;&#34;
         Check if a tool is available in the system&#39;s PATH and if possible, determine a version number.
 
@@ -554,10 +556,10 @@ class AuditManager:
         last_modified = self.get_command_last_modified_date(tool_name)
         if not last_modified:
             logger.warning(f&#34;{tool_name} is not on path.&#34;)
-            return ToolAvailabilityResult(False, True, None, last_modified)
-        if schema == SchemaType.EXISTENCE:
+            return models.ToolAvailabilityResult(False, True, None, last_modified)
+        if schema == models.SchemaType.EXISTENCE:
             logger.debug(f&#34;{tool_name} exists, but not checking for version.&#34;)
-            return ToolAvailabilityResult(True, False, None, last_modified)
+            return models.ToolAvailabilityResult(True, False, None, last_modified)
 
         if version_switch is None or version_switch == &#34;--version&#34;:
             # override default.
@@ -569,7 +571,7 @@ class AuditManager:
         # pylint: disable=broad-exception-caught
         try:
             command = [tool_name, version_switch]
-            timeout= int(os.environ.get(&#34;CLI_TOOL_AUDIT_TIMEOUT&#34;, 15))
+            timeout = int(os.environ.get(&#34;CLI_TOOL_AUDIT_TIMEOUT&#34;, 15))
             result = subprocess.run(
                 command, capture_output=True, text=True, timeout=timeout, shell=False, check=True
             )  # nosec
@@ -589,9 +591,9 @@ class AuditManager:
             logger.error(f&#34;{tool_name} stdout: {exception.stdout}&#34;)
         except FileNotFoundError:
             logger.error(f&#34;{tool_name} is not on path.&#34;)
-            return ToolAvailabilityResult(False, True, None, last_modified)
+            return models.ToolAvailabilityResult(False, True, None, last_modified)
 
-        return ToolAvailabilityResult(True, is_broken, version, last_modified)
+        return models.ToolAvailabilityResult(True, is_broken, version, last_modified)
 
     def get_command_last_modified_date(self, tool_name: str) -&gt; Optional[datetime.datetime]:
         &#34;&#34;&#34;
@@ -622,32 +624,32 @@ class AuditManager:
 <div class="desc"><p>Call and check the given tool.</p>
 <h2 id="args">Args</h2>
 <dl>
-<dt><strong><code>tool_config</code></strong> :&ensp;<code>CliToolConfig</code></dt>
+<dt><strong><code>tool_config</code></strong> :&ensp;<code>models.CliToolConfig</code></dt>
 <dd>The tool to call and check.</dd>
 </dl>
 <h2 id="returns">Returns</h2>
 <dl>
-<dt><code>ToolCheckResult</code></dt>
+<dt><code>models.ToolCheckResult</code></dt>
 <dd>The result of the check.</dd>
 </dl></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def call_and_check(self, tool_config: CliToolConfig) -&gt; ToolCheckResult:
+<pre><code class="python">def call_and_check(self, tool_config: models.CliToolConfig) -&gt; models.ToolCheckResult:
     &#34;&#34;&#34;
     Call and check the given tool.
     Args:
-        tool_config (CliToolConfig): The tool to call and check.
+        tool_config (models.CliToolConfig): The tool to call and check.
 
     Returns:
-        ToolCheckResult: The result of the check.
+        models.ToolCheckResult: The result of the check.
     &#34;&#34;&#34;
     tool, config = tool_config.name, tool_config
 
     if config.if_os and not sys.platform.startswith(config.if_os):
         # This isn&#39;t very transparent about what just happened
-        return ToolCheckResult(
+        return models.ToolCheckResult(
             tool=tool,
             is_needed_for_os=False,
             desired_version=config.version or &#34;0.0.0&#34;,
@@ -662,17 +664,17 @@ class AuditManager:
         )
     result = self.call_tool(
         tool,
-        config.schema or SchemaType.SEMVER,
+        config.schema or models.SchemaType.SEMVER,
         config.version_switch or &#34;--version&#34;,
     )
 
     # Not pretty.
-    if config.schema == SchemaType.EXISTENCE:
+    if config.schema == models.SchemaType.EXISTENCE:
         existence_checker = ExistenceVersionChecker(&#34;Found&#34; if result.is_available else &#34;Not Found&#34;)
         version_result = existence_checker.check_compatibility(&#34;Found&#34;)
         compatibility_report = existence_checker.format_report(&#34;Found&#34;)
         desired_version = &#34;*&#34;
-    elif config.schema == SchemaType.SNAPSHOT:
+    elif config.schema == models.SchemaType.SNAPSHOT:
         snapshot_checker = SnapshotVersionChecker(result.version or &#34;&#34;)
         version_result = snapshot_checker.check_compatibility(config.version)
         compatibility_report = snapshot_checker.format_report(config.version or &#34;&#34;)
@@ -688,12 +690,12 @@ class AuditManager:
         compatibility_report = semver_checker.format_report(config.version or &#34;0.0.0&#34;)
         desired_version = config.version or &#34;*&#34;
 
-    return ToolCheckResult(
+    return models.ToolCheckResult(
         tool=tool,
         desired_version=desired_version,
         is_needed_for_os=True,
         is_available=result.is_available,
-        is_snapshot=bool(config.schema == SchemaType.SNAPSHOT),
+        is_snapshot=bool(config.schema == models.SchemaType.SNAPSHOT),
         found_version=result.version,
         parsed_version=version_result.clean_format,
         is_compatible=compatibility_report,
@@ -729,9 +731,9 @@ class AuditManager:
 <pre><code class="python">def call_tool(
     self,
     tool_name: str,
-    schema: SchemaType,
+    schema: models.SchemaType,
     version_switch: str = &#34;--version&#34;,
-) -&gt; ToolAvailabilityResult:
+) -&gt; models.ToolAvailabilityResult:
     &#34;&#34;&#34;
     Check if a tool is available in the system&#39;s PATH and if possible, determine a version number.
 
@@ -750,10 +752,10 @@ class AuditManager:
     last_modified = self.get_command_last_modified_date(tool_name)
     if not last_modified:
         logger.warning(f&#34;{tool_name} is not on path.&#34;)
-        return ToolAvailabilityResult(False, True, None, last_modified)
-    if schema == SchemaType.EXISTENCE:
+        return models.ToolAvailabilityResult(False, True, None, last_modified)
+    if schema == models.SchemaType.EXISTENCE:
         logger.debug(f&#34;{tool_name} exists, but not checking for version.&#34;)
-        return ToolAvailabilityResult(True, False, None, last_modified)
+        return models.ToolAvailabilityResult(True, False, None, last_modified)
 
     if version_switch is None or version_switch == &#34;--version&#34;:
         # override default.
@@ -765,7 +767,7 @@ class AuditManager:
     # pylint: disable=broad-exception-caught
     try:
         command = [tool_name, version_switch]
-        timeout= int(os.environ.get(&#34;CLI_TOOL_AUDIT_TIMEOUT&#34;, 15))
+        timeout = int(os.environ.get(&#34;CLI_TOOL_AUDIT_TIMEOUT&#34;, 15))
         result = subprocess.run(
             command, capture_output=True, text=True, timeout=timeout, shell=False, check=True
         )  # nosec
@@ -785,9 +787,9 @@ class AuditManager:
         logger.error(f&#34;{tool_name} stdout: {exception.stdout}&#34;)
     except FileNotFoundError:
         logger.error(f&#34;{tool_name} is not on path.&#34;)
-        return ToolAvailabilityResult(False, True, None, last_modified)
+        return models.ToolAvailabilityResult(False, True, None, last_modified)
 
-    return ToolAvailabilityResult(True, is_broken, version, last_modified)</code></pre>
+    return models.ToolAvailabilityResult(True, is_broken, version, last_modified)</code></pre>
 </details>
 </dd>
 <dt id="cli_tool_audit.audit_manager.AuditManager.get_command_last_modified_date"><code class="name flex">
@@ -834,7 +836,7 @@ class AuditManager:
 </dd>
 <dt id="cli_tool_audit.audit_manager.ExistenceVersionChecker"><code class="flex name class">
 <span>class <span class="ident">ExistenceVersionChecker</span></span>
-<span>(</span><span>version_string: str)</span>
+<span>(</span><span>version_string: Literal['Found', 'Not Found'])</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Abstract base class for checking if a version is compatible with a desired version.</p>
@@ -849,7 +851,7 @@ class AuditManager:
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">class ExistenceVersionChecker(VersionChecker):
-    def __init__(self, version_string: str) -&gt; None:
+    def __init__(self, version_string: ExistenceVersionStatus) -&gt; None:
         &#34;&#34;&#34;
         Check if a tool exists.
         Args:
@@ -859,7 +861,7 @@ class AuditManager:
             raise ValueError(f&#34;version_string must be &#39;Found&#39; or &#39;Not Found&#39;, not {version_string}&#34;)
         self.found_version = version_string
 
-    def check_compatibility(self, desired_version: Optional[str]) -&gt; VersionResult:
+    def check_compatibility(self, desired_version: str) -&gt; VersionResult:
         &#34;&#34;&#34;
         Check if the tool exists.
         Args:
@@ -889,7 +891,7 @@ class AuditManager:
 <h3>Methods</h3>
 <dl>
 <dt id="cli_tool_audit.audit_manager.ExistenceVersionChecker.check_compatibility"><code class="name flex">
-<span>def <span class="ident">check_compatibility</span></span>(<span>self, desired_version: Optional[str]) ‑> <a title="cli_tool_audit.audit_manager.VersionResult" href="#cli_tool_audit.audit_manager.VersionResult">VersionResult</a></span>
+<span>def <span class="ident">check_compatibility</span></span>(<span>self, desired_version: str) ‑> <a title="cli_tool_audit.audit_manager.VersionResult" href="#cli_tool_audit.audit_manager.VersionResult">VersionResult</a></span>
 </code></dt>
 <dd>
 <div class="desc"><p>Check if the tool exists.</p>
@@ -907,7 +909,7 @@ class AuditManager:
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def check_compatibility(self, desired_version: Optional[str]) -&gt; VersionResult:
+<pre><code class="python">def check_compatibility(self, desired_version: str) -&gt; VersionResult:
     &#34;&#34;&#34;
     Check if the tool exists.
     Args:
@@ -1120,7 +1122,7 @@ class AuditManager:
         Returns:
             Optional[Version]: The parsed version or None if the version string is invalid.
         &#34;&#34;&#34;
-        return two_pass_semver_parse(version_string)
+        return version_parsing.two_pass_semver_parse(version_string)
 
     def check_compatibility(self, desired_version: Optional[str]) -&gt; VersionResult:
         &#34;&#34;&#34;
@@ -1134,7 +1136,7 @@ class AuditManager:
         if not self.found_version:
             return VersionResult(is_compatible=False, clean_format=&#34;Invalid Format&#34;)
         desired_version = desired_version or &#34;0.0.0&#34;
-        compatible_result, _version_object = check_compatibility(desired_version, str(self.found_version))
+        compatible_result, _version_object = compatibility.check_compatibility(desired_version, str(self.found_version))
 
         self.result = VersionResult(
             is_compatible=compatible_result == &#34;Compatible&#34;, clean_format=str(self.found_version)
@@ -1192,7 +1194,7 @@ class AuditManager:
     if not self.found_version:
         return VersionResult(is_compatible=False, clean_format=&#34;Invalid Format&#34;)
     desired_version = desired_version or &#34;0.0.0&#34;
-    compatible_result, _version_object = check_compatibility(desired_version, str(self.found_version))
+    compatible_result, _version_object = compatibility.check_compatibility(desired_version, str(self.found_version))
 
     self.result = VersionResult(
         is_compatible=compatible_result == &#34;Compatible&#34;, clean_format=str(self.found_version)
@@ -1228,7 +1230,7 @@ class AuditManager:
     Returns:
         Optional[Version]: The parsed version or None if the version string is invalid.
     &#34;&#34;&#34;
-    return two_pass_semver_parse(version_string)</code></pre>
+    return version_parsing.two_pass_semver_parse(version_string)</code></pre>
 </details>
 </dd>
 </dl>

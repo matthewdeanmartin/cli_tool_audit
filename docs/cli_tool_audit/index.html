@@ -232,6 +232,11 @@ results = cli_tool_audit.validate(file_path=&quot;path/to/your/config.toml&quot;
 <p>The format is based on <a href="https://keepachangelog.com/en/1.0.0/">Keep a Changelog</a>,
 and this project adheres to <a href="https://semver.org/spec/v2.0.0.html">Semantic Versioning</a>.</p>
 <h2 id="300-2024-01-19">[3.0.0] - 2024-01-19</h2>
+<h3 id="fixed">Fixed</h3>
+<ul>
+<li>only truncate long version on console output</li>
+<li>removed three dependencies (toml, hypothesis, importlib-metadata)</li>
+</ul>
 <h3 id="added">Added</h3>
 <ul>
 <li>filter an audit by tags</li>
@@ -239,18 +244,13 @@ and this project adheres to <a href="https://semver.org/spec/v2.0.0.html">Semant
 <li><code>single</code> to validate one tool without a config file</li>
 <li><code>.html</code> output</li>
 </ul>
-<h2 id="fixed">Fixed</h2>
-<ul>
-<li>only truncate long version on console output</li>
-<li>removed three dependencies (toml, hypothesis, importlib-metadata)</li>
-</ul>
 <h2 id="200-2024-01-19">[2.0.0] - 2024-01-19</h2>
 <h3 id="fixed_1">Fixed</h3>
 <ul>
 <li>Cache now adds gitingore and clears files older than 30 days on startup</li>
 <li>Audit is now a sub command with arguments.</li>
 </ul>
-<h3 id="breaking">Breaking</h3>
+<h3 id="changed">Changed</h3>
 <ul>
 <li>Gnu options with dashes, no underscores </li>
 <li>Global opts that apply to only some commands move to subparser</li>
@@ -359,13 +359,14 @@ Audit CLI tool version numbers.
 
 .. include:: ../CHANGELOG.md
 &#34;&#34;&#34;
-__all__ = [&#34;validate&#34;, &#34;read_config&#34;, &#34;check_tool_availability&#34;, &#34;__version__&#34;, &#34;__about__&#34;]
+__all__ = [&#34;validate&#34;, &#34;process_tools&#34;, &#34;read_config&#34;, &#34;check_tool_availability&#34;, &#34;models&#34;, &#34;__version__&#34;, &#34;__about__&#34;]
 
 import cli_tool_audit.__about__ as __about__
+import cli_tool_audit.models as models
 from cli_tool_audit.__about__ import __version__
 from cli_tool_audit.call_tools import check_tool_availability
 from cli_tool_audit.config_reader import read_config
-from cli_tool_audit.views import validate</code></pre>
+from cli_tool_audit.views import process_tools, validate</code></pre>
 </details>
 </section>
 <section>
@@ -467,14 +468,14 @@ from cli_tool_audit.views import validate</code></pre>
 <dl>
 <dt><strong><code>tool_name</code></strong> :&ensp;<code>str</code></dt>
 <dd>The name of the tool to check.</dd>
-<dt><strong><code>schema</code></strong> :&ensp;<code>SchemaType</code></dt>
+<dt><strong><code>schema</code></strong> :&ensp;<code><a title="cli_tool_audit.models.SchemaType" href="models.html#cli_tool_audit.models.SchemaType">SchemaType</a></code></dt>
 <dd>The schema to use for the version.</dd>
 <dt><strong><code>version_switch</code></strong> :&ensp;<code>str</code></dt>
 <dd>The switch to get the tool version. Defaults to '&ndash;version'.</dd>
 </dl>
 <h2 id="returns">Returns</h2>
 <dl>
-<dt><code>ToolAvailabilityResult</code></dt>
+<dt><code><a title="cli_tool_audit.models.ToolAvailabilityResult" href="models.html#cli_tool_audit.models.ToolAvailabilityResult">ToolAvailabilityResult</a></code></dt>
 <dd>An object containing the availability and version of the tool.</dd>
 </dl></div>
 <details class="source">
@@ -483,20 +484,20 @@ from cli_tool_audit.views import validate</code></pre>
 </summary>
 <pre><code class="python">def check_tool_availability(
     tool_name: str,
-    schema: SchemaType,
+    schema: models.SchemaType,
     version_switch: str = &#34;--version&#34;,
-) -&gt; ToolAvailabilityResult:
+) -&gt; models.ToolAvailabilityResult:
     &#34;&#34;&#34;
     Check if a tool is available in the system&#39;s PATH and if possible, determine a version number.
 
     Args:
         tool_name (str): The name of the tool to check.
-        schema (SchemaType): The schema to use for the version.
+        schema (models.SchemaType): The schema to use for the version.
         version_switch (str): The switch to get the tool version. Defaults to &#39;--version&#39;.
 
 
     Returns:
-        ToolAvailabilityResult: An object containing the availability and version of the tool.
+        models.ToolAvailabilityResult: An object containing the availability and version of the tool.
     &#34;&#34;&#34;
     # Check if the tool is in the system&#39;s PATH
     is_broken = True
@@ -504,10 +505,10 @@ from cli_tool_audit.views import validate</code></pre>
     last_modified = get_command_last_modified_date(tool_name)
     if not last_modified:
         logger.warning(f&#34;{tool_name} is not on path.&#34;)
-        return ToolAvailabilityResult(False, True, None, last_modified)
-    if schema == SchemaType.EXISTENCE:
+        return models.ToolAvailabilityResult(False, True, None, last_modified)
+    if schema == models.SchemaType.EXISTENCE:
         logger.debug(f&#34;{tool_name} exists, but not checking for version.&#34;)
-        return ToolAvailabilityResult(True, False, None, last_modified)
+        return models.ToolAvailabilityResult(True, False, None, last_modified)
 
     if version_switch is None or version_switch == &#34;--version&#34;:
         # override default.
@@ -520,7 +521,9 @@ from cli_tool_audit.views import validate</code></pre>
     try:
         command = [tool_name, version_switch]
         timeout = int(os.environ.get(&#34;CLI_TOOL_AUDIT_TIMEOUT&#34;, 15))
-        result = subprocess.run(command, capture_output=True, text=True, timeout=timeout, shell=False, check=True)  # nosec
+        result = subprocess.run(
+            command, capture_output=True, text=True, timeout=timeout, shell=False, check=True
+        )  # nosec
         # Sometimes version is on line 2 or later.
         version = result.stdout.strip()
         if not version:
@@ -537,44 +540,123 @@ from cli_tool_audit.views import validate</code></pre>
         logger.error(f&#34;{tool_name} stdout: {exception.stdout}&#34;)
     except FileNotFoundError:
         logger.error(f&#34;{tool_name} is not on path.&#34;)
-        return ToolAvailabilityResult(False, True, None, last_modified)
+        return models.ToolAvailabilityResult(False, True, None, last_modified)
 
-    return ToolAvailabilityResult(True, is_broken, version, last_modified)</code></pre>
+    return models.ToolAvailabilityResult(True, is_broken, version, last_modified)</code></pre>
+</details>
+</dd>
+<dt id="cli_tool_audit.process_tools"><code class="name flex">
+<span>def <span class="ident">process_tools</span></span>(<span>cli_tools: dict[str, <a title="cli_tool_audit.models.CliToolConfig" href="models.html#cli_tool_audit.models.CliToolConfig">CliToolConfig</a>], no_cache: bool = False, tags: Optional[list[str]] = None, disable_progress_bar: bool = False) ‑> list[<a title="cli_tool_audit.models.ToolCheckResult" href="models.html#cli_tool_audit.models.ToolCheckResult">ToolCheckResult</a>]</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Process the tools from a dictionary of CliToolConfig objects.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>cli_tools</code></strong> :&ensp;<code>dict[str, <a title="cli_tool_audit.models.CliToolConfig" href="models.html#cli_tool_audit.models.CliToolConfig">CliToolConfig</a>]</code></dt>
+<dd>A dictionary of tool names and CliToolConfig objects.</dd>
+<dt><strong><code>no_cache</code></strong> :&ensp;<code>bool</code>, optional</dt>
+<dd>If True, don't use the cache. Defaults to False.</dd>
+<dt><strong><code>tags</code></strong> :&ensp;<code>Optional[list[str]]</code>, optional</dt>
+<dd>Only check tools with these tags. Defaults to None.</dd>
+<dt><strong><code>disable_progress_bar</code></strong> :&ensp;<code>bool</code>, optional</dt>
+<dd>If True, disable the progress bar. Defaults to False.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code>list[<a title="cli_tool_audit.models.ToolCheckResult" href="models.html#cli_tool_audit.models.ToolCheckResult">ToolCheckResult</a>]</code></dt>
+<dd>A list of ToolCheckResult objects.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def process_tools(
+    cli_tools: dict[str, models.CliToolConfig],
+    no_cache: bool = False,
+    tags: Optional[list[str]] = None,
+    disable_progress_bar: bool = False,
+) -&gt; list[models.ToolCheckResult]:
+    &#34;&#34;&#34;
+    Process the tools from a dictionary of CliToolConfig objects.
+
+    Args:
+        cli_tools (dict[str, models.CliToolConfig]): A dictionary of tool names and CliToolConfig objects.
+        no_cache (bool, optional): If True, don&#39;t use the cache. Defaults to False.
+        tags (Optional[list[str]], optional): Only check tools with these tags. Defaults to None.
+        disable_progress_bar (bool, optional): If True, disable the progress bar. Defaults to False.
+
+    Returns:
+        list[models.ToolCheckResult]: A list of ToolCheckResult objects.
+    &#34;&#34;&#34;
+    if tags:
+        print(tags)
+        cli_tools = {
+            tool: config
+            for tool, config in cli_tools.items()
+            if config.tags and any(tag in config.tags for tag in tags)
+        }
+
+    # Determine the number of available CPUs
+    num_cpus = os.cpu_count()
+
+    enable_cache = len(cli_tools) &gt;= 5
+    # Create a ThreadPoolExecutor with one thread per CPU
+
+    if no_cache:
+        enable_cache = False
+    lock = Lock()
+    # Threaded appears faster.
+    # lock = Dummy()
+    # with ProcessPoolExecutor(max_workers=num_cpus) as executor:
+    with ThreadPoolExecutor(max_workers=num_cpus) as executor:
+        disable = should_show_progress_bar(cli_tools)
+        with tqdm(total=len(cli_tools), disable=disable) as pbar:
+            # Submit tasks to the executor
+            futures = [
+                executor.submit(call_and_compatible.check_tool_wrapper, (tool, config, lock, enable_cache))
+                for tool, config in cli_tools.items()
+            ]
+            results = []
+            for future in concurrent.futures.as_completed(futures):
+                result = future.result()
+                pbar.update(1)
+                results.append(result)
+    return results</code></pre>
 </details>
 </dd>
 <dt id="cli_tool_audit.read_config"><code class="name flex">
-<span>def <span class="ident">read_config</span></span>(<span>file_path: str) ‑> dict[str, <a title="cli_tool_audit.models.CliToolConfig" href="models.html#cli_tool_audit.models.CliToolConfig">CliToolConfig</a>]</span>
+<span>def <span class="ident">read_config</span></span>(<span>file_path: pathlib.Path) ‑> dict[str, <a title="cli_tool_audit.models.CliToolConfig" href="models.html#cli_tool_audit.models.CliToolConfig">CliToolConfig</a>]</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Read the cli-tools section from a pyproject.toml file.</p>
 <h2 id="args">Args</h2>
 <dl>
-<dt><strong><code>file_path</code></strong> :&ensp;<code>str</code></dt>
+<dt><strong><code>file_path</code></strong> :&ensp;<code>Path</code></dt>
 <dd>The path to the pyproject.toml file.</dd>
 </dl>
 <h2 id="returns">Returns</h2>
 <dl>
-<dt><code>dict[str, CliToolConfig]</code></dt>
+<dt><code>dict[str, <a title="cli_tool_audit.models.CliToolConfig" href="models.html#cli_tool_audit.models.CliToolConfig">CliToolConfig</a>]</code></dt>
 <dd>A dictionary with the cli-tools section.</dd>
 </dl></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def read_config(file_path: str) -&gt; dict[str, CliToolConfig]:
+<pre><code class="python">def read_config(file_path: Path) -&gt; dict[str, models.CliToolConfig]:
     &#34;&#34;&#34;
     Read the cli-tools section from a pyproject.toml file.
 
     Args:
-        file_path (str): The path to the pyproject.toml file.
+        file_path (Path): The path to the pyproject.toml file.
 
     Returns:
-        dict[str, CliToolConfig]: A dictionary with the cli-tools section.
+        dict[str, models.CliToolConfig]: A dictionary with the cli-tools section.
     &#34;&#34;&#34;
     # pylint: disable=broad-exception-caught
     try:
         logger.debug(f&#34;Loading config from {file_path}&#34;)
-        manager = ConfigManager(file_path)
+        manager = config_manager.ConfigManager(file_path)
         found = manager.read_config()
         if not found:
             logger.warning(&#34;Config section not found, expected [tool.cli-tools] with values&#34;)
@@ -586,13 +668,13 @@ from cli_tool_audit.views import validate</code></pre>
 </details>
 </dd>
 <dt id="cli_tool_audit.validate"><code class="name flex">
-<span>def <span class="ident">validate</span></span>(<span>file_path: str = 'pyproject.toml', no_cache: bool = False, tags: Optional[list[str]] = None, disable_progress_bar: bool = False) ‑> list[<a title="cli_tool_audit.models.ToolCheckResult" href="models.html#cli_tool_audit.models.ToolCheckResult">ToolCheckResult</a>]</span>
+<span>def <span class="ident">validate</span></span>(<span>file_path: pathlib.Path = WindowsPath('pyproject.toml'), no_cache: bool = False, tags: Optional[list[str]] = None, disable_progress_bar: bool = False) ‑> list[<a title="cli_tool_audit.models.ToolCheckResult" href="models.html#cli_tool_audit.models.ToolCheckResult">ToolCheckResult</a>]</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Validate the tools in the pyproject.toml file.</p>
 <h2 id="args">Args</h2>
 <dl>
-<dt><strong><code>file_path</code></strong> :&ensp;<code>str</code>, optional</dt>
+<dt><strong><code>file_path</code></strong> :&ensp;<code>Path</code>, optional</dt>
 <dd>The path to the pyproject.toml file. Defaults to "pyproject.toml".</dd>
 <dt><strong><code>no_cache</code></strong> :&ensp;<code>bool</code>, optional</dt>
 <dd>If True, don't use the cache. Defaults to False.</dd>
@@ -603,7 +685,7 @@ from cli_tool_audit.views import validate</code></pre>
 </dl>
 <h2 id="returns">Returns</h2>
 <dl>
-<dt><code>list[ToolCheckResult]</code></dt>
+<dt><code>list[<a title="cli_tool_audit.models.ToolCheckResult" href="models.html#cli_tool_audit.models.ToolCheckResult">ToolCheckResult</a>]</code></dt>
 <dd>A list of ToolCheckResult objects.</dd>
 </dl></div>
 <details class="source">
@@ -611,22 +693,22 @@ from cli_tool_audit.views import validate</code></pre>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def validate(
-    file_path: str = &#34;pyproject.toml&#34;,
+    file_path: Path = Path(&#34;pyproject.toml&#34;),
     no_cache: bool = False,
     tags: Optional[list[str]] = None,
     disable_progress_bar: bool = False,
-) -&gt; list[ToolCheckResult]:
+) -&gt; list[models.ToolCheckResult]:
     &#34;&#34;&#34;
     Validate the tools in the pyproject.toml file.
 
     Args:
-        file_path (str, optional): The path to the pyproject.toml file. Defaults to &#34;pyproject.toml&#34;.
+        file_path (Path, optional): The path to the pyproject.toml file. Defaults to &#34;pyproject.toml&#34;.
         no_cache (bool, optional): If True, don&#39;t use the cache. Defaults to False.
         tags (Optional[list[str]], optional): Only check tools with these tags. Defaults to None.
         disable_progress_bar (bool, optional): If True, disable the progress bar. Defaults to False.
 
     Returns:
-        list[ToolCheckResult]: A list of ToolCheckResult objects.
+        list[models.ToolCheckResult]: A list of ToolCheckResult objects.
     &#34;&#34;&#34;
     if tags is None:
         tags = []
@@ -670,13 +752,13 @@ from cli_tool_audit.views import validate</code></pre>
 </li>
 <li><a href="#changelog">Changelog</a><ul>
 <li><a href="#300-2024-01-19">[3.0.0] - 2024-01-19</a><ul>
+<li><a href="#fixed">Fixed</a></li>
 <li><a href="#added">Added</a></li>
 </ul>
 </li>
-<li><a href="#fixed">Fixed</a></li>
 <li><a href="#200-2024-01-19">[2.0.0] - 2024-01-19</a><ul>
 <li><a href="#fixed_1">Fixed</a></li>
-<li><a href="#breaking">Breaking</a></li>
+<li><a href="#changed">Changed</a></li>
 </ul>
 </li>
 <li><a href="#120-2024-01-17">[1.2.0] - 2024-01-17</a><ul>
@@ -756,6 +838,7 @@ from cli_tool_audit.views import validate</code></pre>
 <li><h3><a href="#header-functions">Functions</a></h3>
 <ul class="">
 <li><code><a title="cli_tool_audit.check_tool_availability" href="#cli_tool_audit.check_tool_availability">check_tool_availability</a></code></li>
+<li><code><a title="cli_tool_audit.process_tools" href="#cli_tool_audit.process_tools">process_tools</a></code></li>
 <li><code><a title="cli_tool_audit.read_config" href="#cli_tool_audit.read_config">read_config</a></code></li>
 <li><code><a title="cli_tool_audit.validate" href="#cli_tool_audit.validate">validate</a></code></li>
 </ul>

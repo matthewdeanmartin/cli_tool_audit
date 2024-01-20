@@ -54,8 +54,8 @@ from typing import Optional
 # pylint: disable=no-name-in-module
 from whichcraft import which
 
+import cli_tool_audit.models as models
 from cli_tool_audit.known_switches import KNOWN_SWITCHES
-from cli_tool_audit.models import SchemaType, ToolAvailabilityResult
 
 logger = logging.getLogger(__name__)
 
@@ -83,20 +83,20 @@ def get_command_last_modified_date(tool_name: str) -&gt; Optional[datetime.datet
 
 def check_tool_availability(
     tool_name: str,
-    schema: SchemaType,
+    schema: models.SchemaType,
     version_switch: str = &#34;--version&#34;,
-) -&gt; ToolAvailabilityResult:
+) -&gt; models.ToolAvailabilityResult:
     &#34;&#34;&#34;
     Check if a tool is available in the system&#39;s PATH and if possible, determine a version number.
 
     Args:
         tool_name (str): The name of the tool to check.
-        schema (SchemaType): The schema to use for the version.
+        schema (models.SchemaType): The schema to use for the version.
         version_switch (str): The switch to get the tool version. Defaults to &#39;--version&#39;.
 
 
     Returns:
-        ToolAvailabilityResult: An object containing the availability and version of the tool.
+        models.ToolAvailabilityResult: An object containing the availability and version of the tool.
     &#34;&#34;&#34;
     # Check if the tool is in the system&#39;s PATH
     is_broken = True
@@ -104,10 +104,10 @@ def check_tool_availability(
     last_modified = get_command_last_modified_date(tool_name)
     if not last_modified:
         logger.warning(f&#34;{tool_name} is not on path.&#34;)
-        return ToolAvailabilityResult(False, True, None, last_modified)
-    if schema == SchemaType.EXISTENCE:
+        return models.ToolAvailabilityResult(False, True, None, last_modified)
+    if schema == models.SchemaType.EXISTENCE:
         logger.debug(f&#34;{tool_name} exists, but not checking for version.&#34;)
-        return ToolAvailabilityResult(True, False, None, last_modified)
+        return models.ToolAvailabilityResult(True, False, None, last_modified)
 
     if version_switch is None or version_switch == &#34;--version&#34;:
         # override default.
@@ -120,7 +120,9 @@ def check_tool_availability(
     try:
         command = [tool_name, version_switch]
         timeout = int(os.environ.get(&#34;CLI_TOOL_AUDIT_TIMEOUT&#34;, 15))
-        result = subprocess.run(command, capture_output=True, text=True, timeout=timeout, shell=False, check=True)  # nosec
+        result = subprocess.run(
+            command, capture_output=True, text=True, timeout=timeout, shell=False, check=True
+        )  # nosec
         # Sometimes version is on line 2 or later.
         version = result.stdout.strip()
         if not version:
@@ -137,29 +139,13 @@ def check_tool_availability(
         logger.error(f&#34;{tool_name} stdout: {exception.stdout}&#34;)
     except FileNotFoundError:
         logger.error(f&#34;{tool_name} is not on path.&#34;)
-        return ToolAvailabilityResult(False, True, None, last_modified)
+        return models.ToolAvailabilityResult(False, True, None, last_modified)
 
-    return ToolAvailabilityResult(True, is_broken, version, last_modified)
+    return models.ToolAvailabilityResult(True, is_broken, version, last_modified)
 
 
 if __name__ == &#34;__main__&#34;:
-    print(get_command_last_modified_date(&#34;asdfpipx&#34;))
-    # check_tool_availability(&#34;isort&#34;)
-    #
-    # def run() -&gt; None:
-    #     &#34;&#34;&#34;Example&#34;&#34;&#34;
-    #     # Example usage
-    #     file_path = &#34;../pyproject.toml&#34;
-    #     cli_tools = read_config(file_path)
-    #
-    #     for tool, config in cli_tools.items():
-    #         result = check_tool_availability(tool, config.version_switch or &#34;--version&#34;)
-    #         print(
-    #             f&#34;{tool}: {&#39;Available&#39; if result.is_available else &#39;Not Available&#39;}&#34;
-    #             f&#34; - Version:\n{result.version if result.version else &#39;N/A&#39;}&#34;
-    #         )
-    #
-    # run()</code></pre>
+    print(get_command_last_modified_date(&#34;asdfpipx&#34;))</code></pre>
 </details>
 </section>
 <section>
@@ -178,14 +164,14 @@ if __name__ == &#34;__main__&#34;:
 <dl>
 <dt><strong><code>tool_name</code></strong> :&ensp;<code>str</code></dt>
 <dd>The name of the tool to check.</dd>
-<dt><strong><code>schema</code></strong> :&ensp;<code>SchemaType</code></dt>
+<dt><strong><code>schema</code></strong> :&ensp;<code>models.SchemaType</code></dt>
 <dd>The schema to use for the version.</dd>
 <dt><strong><code>version_switch</code></strong> :&ensp;<code>str</code></dt>
 <dd>The switch to get the tool version. Defaults to '&ndash;version'.</dd>
 </dl>
 <h2 id="returns">Returns</h2>
 <dl>
-<dt><code>ToolAvailabilityResult</code></dt>
+<dt><code>models.ToolAvailabilityResult</code></dt>
 <dd>An object containing the availability and version of the tool.</dd>
 </dl></div>
 <details class="source">
@@ -194,20 +180,20 @@ if __name__ == &#34;__main__&#34;:
 </summary>
 <pre><code class="python">def check_tool_availability(
     tool_name: str,
-    schema: SchemaType,
+    schema: models.SchemaType,
     version_switch: str = &#34;--version&#34;,
-) -&gt; ToolAvailabilityResult:
+) -&gt; models.ToolAvailabilityResult:
     &#34;&#34;&#34;
     Check if a tool is available in the system&#39;s PATH and if possible, determine a version number.
 
     Args:
         tool_name (str): The name of the tool to check.
-        schema (SchemaType): The schema to use for the version.
+        schema (models.SchemaType): The schema to use for the version.
         version_switch (str): The switch to get the tool version. Defaults to &#39;--version&#39;.
 
 
     Returns:
-        ToolAvailabilityResult: An object containing the availability and version of the tool.
+        models.ToolAvailabilityResult: An object containing the availability and version of the tool.
     &#34;&#34;&#34;
     # Check if the tool is in the system&#39;s PATH
     is_broken = True
@@ -215,10 +201,10 @@ if __name__ == &#34;__main__&#34;:
     last_modified = get_command_last_modified_date(tool_name)
     if not last_modified:
         logger.warning(f&#34;{tool_name} is not on path.&#34;)
-        return ToolAvailabilityResult(False, True, None, last_modified)
-    if schema == SchemaType.EXISTENCE:
+        return models.ToolAvailabilityResult(False, True, None, last_modified)
+    if schema == models.SchemaType.EXISTENCE:
         logger.debug(f&#34;{tool_name} exists, but not checking for version.&#34;)
-        return ToolAvailabilityResult(True, False, None, last_modified)
+        return models.ToolAvailabilityResult(True, False, None, last_modified)
 
     if version_switch is None or version_switch == &#34;--version&#34;:
         # override default.
@@ -231,7 +217,9 @@ if __name__ == &#34;__main__&#34;:
     try:
         command = [tool_name, version_switch]
         timeout = int(os.environ.get(&#34;CLI_TOOL_AUDIT_TIMEOUT&#34;, 15))
-        result = subprocess.run(command, capture_output=True, text=True, timeout=timeout, shell=False, check=True)  # nosec
+        result = subprocess.run(
+            command, capture_output=True, text=True, timeout=timeout, shell=False, check=True
+        )  # nosec
         # Sometimes version is on line 2 or later.
         version = result.stdout.strip()
         if not version:
@@ -248,9 +236,9 @@ if __name__ == &#34;__main__&#34;:
         logger.error(f&#34;{tool_name} stdout: {exception.stdout}&#34;)
     except FileNotFoundError:
         logger.error(f&#34;{tool_name} is not on path.&#34;)
-        return ToolAvailabilityResult(False, True, None, last_modified)
+        return models.ToolAvailabilityResult(False, True, None, last_modified)
 
-    return ToolAvailabilityResult(True, is_broken, version, last_modified)</code></pre>
+    return models.ToolAvailabilityResult(True, is_broken, version, last_modified)</code></pre>
 </details>
 </dd>
 <dt id="cli_tool_audit.call_tools.get_command_last_modified_date"><code class="name flex">

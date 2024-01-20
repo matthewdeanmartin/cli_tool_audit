@@ -7,8 +7,8 @@ from typing import Any, Optional
 
 from semver import Version
 
-from cli_tool_audit.compatibility_complex import check_range_compatibility
-from cli_tool_audit.version_parsing import two_pass_semver_parse
+import cli_tool_audit.compatibility_complex as compatibility_complex
+import cli_tool_audit.version_parsing as version_parsing
 
 logger = logging.getLogger(__name__)
 
@@ -86,13 +86,13 @@ def check_compatibility(desired_version: str, found_version: Optional[str]) -> t
 
     # Handle non-semver match patterns
     symbols, desired_version_text = split_version_match_pattern(desired_version)
-    clean_desired_version = two_pass_semver_parse(desired_version_text)
+    clean_desired_version = version_parsing.two_pass_semver_parse(desired_version_text)
     if clean_desired_version:
         desired_version = f"{symbols}{clean_desired_version}"
 
     found_semversion = None
     try:
-        found_semversion = two_pass_semver_parse(found_version)
+        found_semversion = version_parsing.two_pass_semver_parse(found_version)
         if found_semversion is None:
             logger.warning(f"SemVer failed to parse {desired_version}/{found_version}")
             is_compatible = CANT_TELL
@@ -100,7 +100,7 @@ def check_compatibility(desired_version: str, found_version: Optional[str]) -> t
             # not picky, short circuit the logic.
             is_compatible = "Compatible"
         elif desired_version.startswith("^") or desired_version.startswith("~") or "*" in desired_version:
-            is_compatible = check_range_compatibility(desired_version, found_semversion)
+            is_compatible = compatibility_complex.check_range_compatibility(desired_version, found_semversion)
         elif found_semversion.match(desired_version):
             is_compatible = "Compatible"
         else:

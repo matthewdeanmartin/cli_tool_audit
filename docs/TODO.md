@@ -2,12 +2,8 @@
 
 ## Docs
 
-- examples in epilogue
+- examples in epilogue for each subcommand
 - Separate out the huge subcommand --help text with examples
-
-## Split out about/metadata creation tool?
-
-- Generate metadata for more source documents? (e.g. setup.cfg, setup.py, PEP pyproject toml meta)
 
 ## policies
 
@@ -17,7 +13,13 @@
 
 ## features
 
-- check against current app (pyproject vs --version), i.e. dogfooding, let cli_tool_audit check if verstrings are right.
+- Freeze
+- import from known formats, e.g. pyproject.toml, cargo.toml, etc.
+
+## Build
+
+- dog fooding: check against current app (pyproject vs --version), i.e. dogfooding, let cli_tool_audit check if
+  verstrings are right. FAILED. subprocess.run() can't see the cli command
 
 ## version sources
 
@@ -31,7 +33,5 @@
 
 ## Tests
 
-- hypothesis testing
-  - switch to pathlib so that hypothesis testing isn't against a string
 - include some tools that don't exist
 - These scenarios: https://packaging.python.org/en/latest/specifications/version-specifiers/

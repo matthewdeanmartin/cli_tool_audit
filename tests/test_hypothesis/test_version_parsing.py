@@ -1,15 +1,17 @@
 # This test code was written by the `hypothesis.extra.ghostwriter` module
 # and is provided under the Creative Commons Zero public domain dedication.
 
+import packaging.version
 from hypothesis import given
 from hypothesis import strategies as st
+from packaging.version import Version
 
 import cli_tool_audit.version_parsing
 
-# Random strings are not valid versions, duh.
-# @given(version=st.builds(Version, version=st.text()))
-# def test_fuzz_convert2semver(version: packaging.version.Version) -> None:
-#     cli_tool_audit.version_parsing.convert2semver(version=version)
+
+@given(version=st.builds(Version, version=st.sampled_from(["0.1.2", "2.3.4"])))
+def test_fuzz_convert2semver(version: packaging.version.Version) -> None:
+    cli_tool_audit.version_parsing.convert2semver(version=version)
 
 
 @given(input_string=st.text())

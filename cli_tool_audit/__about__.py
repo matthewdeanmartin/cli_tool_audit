@@ -14,7 +14,7 @@ __all__ = [
 ]
 
 __title__ = "cli_tool_audit"
-__version__ = "3.0.0"
+__version__ = "3.0.1"
 __description__ = "Audit for existence and version number of cli tools."
 __author__ = "Matthew Martin"
 __author_email__ = "matthewdeanmartin@gmail.com"

@@ -11,8 +11,9 @@ from threading import Lock
 
 from tqdm import tqdm
 
+import cli_tool_audit.call_and_compatible as call_and_compatible
+import cli_tool_audit.models as models
 import cli_tool_audit.views as views
-from cli_tool_audit.models import CliToolConfig
 
 
 def list_global_npm_executables() -> list[str]:
@@ -52,7 +53,7 @@ def report_for_npm_tools(max_count: int = -1) -> None:
             app_cmd = app + ".cmd"
         else:
             app_cmd = app
-        config = CliToolConfig(app_cmd)
+        config = models.CliToolConfig(app_cmd)
         config.version_switch = "--version"
         config.version = ">=0.0.0"
         cli_tools[app_cmd] = config
@@ -70,10 +71,10 @@ def report_for_npm_tools(max_count: int = -1) -> None:
         # Submit tasks to the executor
         lock = Lock()
         # lock = Dummy()
-        disable = len(cli_tools) < 5 or os.environ.get("CI") or os.environ.get("NO_COLOR")
+        disable = views.should_show_progress_bar(cli_tools)
         with tqdm(total=len(cli_tools), disable=disable) as progress_bar:
             futures = [
-                executor.submit(views.check_tool_wrapper, (tool, config, lock, enable_cache))
+                executor.submit(call_and_compatible.check_tool_wrapper, (tool, config, lock, enable_cache))
                 for tool, config in cli_tools.items()
             ]
 

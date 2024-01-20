@@ -3,8 +3,8 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from cli_tool_audit.audit_cache import AuditFacade, CliToolConfig, ToolCheckResult, custom_json_deserializer
-from cli_tool_audit.models import SchemaType
+from cli_tool_audit.audit_cache import AuditFacade, custom_json_deserializer
+from cli_tool_audit.models import CliToolConfig, SchemaType, ToolCheckResult
 
 
 @pytest.fixture

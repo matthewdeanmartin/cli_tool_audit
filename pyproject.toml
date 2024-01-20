@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "cli_tool_audit"
-version = "3.0.0"
+version = "3.0.1"
 description = "Audit for existence and version number of cli tools."
 authors = ["Matthew Martin <matthewdeanmartin@gmail.com>"]
 keywords = ["cli tooling", "version numbers", ]
@@ -33,7 +33,7 @@ documentation = "https://matthewdeanmartin.github.io/cli_tool_audit/cli_tool_aud
 
 [tool.poetry.urls]
 "Bug Tracker" = "https://github.com/matthewdeanmartin/cli_tool_audit/issues"
-"Change Log" = "https://github.com/matthewdeanmartin/cli_tool_audit/blob/main/CHANGES.md"
+"Change Log" = "https://github.com/matthewdeanmartin/cli_tool_audit/blob/main/CHANGELOG.md"
 
 [tool.poetry.scripts]
 cli_tool_audit = 'cli_tool_audit.__main__:main'
@@ -69,6 +69,10 @@ tomlkit = ">=0.12.3"
 black = ">=23.11.0"
 pytest = ">=7.4.3"
 pytest-cov = ">=4.1.0"
+pytest-xdist =">=3.5.0"
+pytest-randomly=">=3.15.0"
+pytest-sugar =">=0.9.7"
+
 hypothesis = ">=6.96.0"
 tox = "*"
 pylint = ">=3.0.2"
@@ -78,6 +82,7 @@ ruff = ">=0.1.9"
 mypy = ">=1.8.0"
 types-toml = "*"
 types-colorama = "*"
+types-tqdm = "*"
 
 # more testing
 # pytest-snapshot = ">=0.9.0"

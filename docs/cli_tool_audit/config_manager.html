@@ -28,11 +28,13 @@
 </summary>
 <pre><code class="python">import copy
 import os
+from pathlib import Path
 from typing import Any, cast
 
+import toml
 import tomlkit
 
-from cli_tool_audit.models import CliToolConfig, SchemaType
+import cli_tool_audit.models as models
 
 
 class ConfigManager:
@@ -40,13 +42,13 @@ class ConfigManager:
     Manage the config file.
     &#34;&#34;&#34;
 
-    def __init__(self, config_path: str) -&gt; None:
+    def __init__(self, config_path: Path) -&gt; None:
         &#34;&#34;&#34;
         Args:
-            config_path (str): The path to the toml file.
+            config_path (Path): The path to the toml file.
         &#34;&#34;&#34;
         self.config_path = config_path
-        self.tools: dict[str, CliToolConfig] = {}
+        self.tools: dict[str, models.CliToolConfig] = {}
 
     def read_config(self) -&gt; bool:
         &#34;&#34;&#34;
@@ -55,25 +57,40 @@ class ConfigManager:
         Returns:
             bool: True if the cli-tools section exists, False otherwise.
         &#34;&#34;&#34;
-        if os.path.exists(self.config_path):
-            with open(self.config_path, encoding=&#34;utf-8&#34;) as file:
-                config = tomlkit.load(file)
+        if self.config_path.exists():
+            with open(str(self.config_path), encoding=&#34;utf-8&#34;) as file:
+                # okay this is too hard.
+                # from tomlkit.items import Item
+                # class SchemaTypeItem(Item):
+                #     def __init__(self, value:SchemaType):
+                #         self.value = value
+                #     def as_string(self):
+                #         return str(self.value)
+                #
+                # def encoder(value):
+                #     if isinstance(value, SchemaType):
+                #         return SchemaTypeItem(value.value)
+                #     raise TypeError(f&#34;Unknown type {type(value)}&#34;)
+                # tomlkit.register_encoder(lambda x: x.value)
+                # TODO: switch to tomkit and clone the config/settings
+                # so that we can use it like ordinary python
+                config = toml.load(file)
                 tools_config = config.get(&#34;tool&#34;, {}).get(&#34;cli-tools&#34;, {})
                 for tool_name, settings in tools_config.items():
                     if settings.get(&#34;only_check_existence&#34;):
-                        settings[&#34;schema&#34;] = SchemaType.EXISTENCE
+                        settings[&#34;schema&#34;] = models.SchemaType.EXISTENCE
                         del settings[&#34;only_check_existence&#34;]
                     elif settings.get(&#34;version_snapshot&#34;):
-                        settings[&#34;schema&#34;] = SchemaType.SNAPSHOT
+                        settings[&#34;schema&#34;] = models.SchemaType.SNAPSHOT
                         settings[&#34;version&#34;] = settings.get(&#34;version_snapshot&#34;)
                         del settings[&#34;version_snapshot&#34;]
 
                     settings[&#34;name&#34;] = tool_name
                     if settings.get(&#34;schema&#34;):
-                        settings[&#34;schema&#34;] = SchemaType(settings[&#34;schema&#34;].lower())
+                        settings[&#34;schema&#34;] = models.SchemaType(settings[&#34;schema&#34;].lower())
                     else:
-                        settings[&#34;schema&#34;] = SchemaType.SEMVER
-                    self.tools[tool_name] = CliToolConfig(**settings)
+                        settings[&#34;schema&#34;] = models.SchemaType.SEMVER
+                    self.tools[tool_name] = models.CliToolConfig(**settings)
         return bool(self.tools)
 
     def create_tool_config(self, tool_name: str, config: dict) -&gt; None:
@@ -92,7 +109,7 @@ class ConfigManager:
         if tool_name in self.tools:
             raise ValueError(f&#34;Tool {tool_name} already exists&#34;)
         config[&#34;name&#34;] = tool_name
-        self.tools[tool_name] = CliToolConfig(**config)
+        self.tools[tool_name] = models.CliToolConfig(**config)
         self._save_config()
 
     def update_tool_config(self, tool_name: str, config: dict) -&gt; None:
@@ -124,11 +141,11 @@ class ConfigManager:
             self.read_config()
         if tool_name not in self.tools:
             config[&#34;name&#34;] = tool_name
-            self.tools[tool_name] = CliToolConfig(**config)
+            self.tools[tool_name] = models.CliToolConfig(**config)
         else:
             for key, value in config.items():
                 if key == &#34;schema&#34;:
-                    value = str(SchemaType(value))
+                    value = str(models.SchemaType(value))
                 setattr(self.tools[tool_name], key, value)
         self._save_config()
 
@@ -185,9 +202,13 @@ class ConfigManager:
 
 if __name__ == &#34;__main__&#34;:
     # Usage example
-    config_manager = ConfigManager(&#34;../pyproject.toml&#34;)
-    c = config_manager.read_config()
-    print(c)</code></pre>
+    def run() -&gt; None:
+        &#34;&#34;&#34;Example&#34;&#34;&#34;
+        config_manager = ConfigManager(Path(&#34;../pyproject.toml&#34;))
+        c = config_manager.read_config()
+        print(c)
+
+    run()</code></pre>
 </details>
 </section>
 <section>
@@ -201,13 +222,13 @@ if __name__ == &#34;__main__&#34;:
 <dl>
 <dt id="cli_tool_audit.config_manager.ConfigManager"><code class="flex name class">
 <span>class <span class="ident">ConfigManager</span></span>
-<span>(</span><span>config_path: str)</span>
+<span>(</span><span>config_path: pathlib.Path)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Manage the config file.</p>
 <h2 id="args">Args</h2>
 <dl>
-<dt><strong><code>config_path</code></strong> :&ensp;<code>str</code></dt>
+<dt><strong><code>config_path</code></strong> :&ensp;<code>Path</code></dt>
 <dd>The path to the toml file.</dd>
 </dl></div>
 <details class="source">
@@ -219,13 +240,13 @@ if __name__ == &#34;__main__&#34;:
     Manage the config file.
     &#34;&#34;&#34;
 
-    def __init__(self, config_path: str) -&gt; None:
+    def __init__(self, config_path: Path) -&gt; None:
         &#34;&#34;&#34;
         Args:
-            config_path (str): The path to the toml file.
+            config_path (Path): The path to the toml file.
         &#34;&#34;&#34;
         self.config_path = config_path
-        self.tools: dict[str, CliToolConfig] = {}
+        self.tools: dict[str, models.CliToolConfig] = {}
 
     def read_config(self) -&gt; bool:
         &#34;&#34;&#34;
@@ -234,25 +255,40 @@ if __name__ == &#34;__main__&#34;:
         Returns:
             bool: True if the cli-tools section exists, False otherwise.
         &#34;&#34;&#34;
-        if os.path.exists(self.config_path):
-            with open(self.config_path, encoding=&#34;utf-8&#34;) as file:
-                config = tomlkit.load(file)
+        if self.config_path.exists():
+            with open(str(self.config_path), encoding=&#34;utf-8&#34;) as file:
+                # okay this is too hard.
+                # from tomlkit.items import Item
+                # class SchemaTypeItem(Item):
+                #     def __init__(self, value:SchemaType):
+                #         self.value = value
+                #     def as_string(self):
+                #         return str(self.value)
+                #
+                # def encoder(value):
+                #     if isinstance(value, SchemaType):
+                #         return SchemaTypeItem(value.value)
+                #     raise TypeError(f&#34;Unknown type {type(value)}&#34;)
+                # tomlkit.register_encoder(lambda x: x.value)
+                # TODO: switch to tomkit and clone the config/settings
+                # so that we can use it like ordinary python
+                config = toml.load(file)
                 tools_config = config.get(&#34;tool&#34;, {}).get(&#34;cli-tools&#34;, {})
                 for tool_name, settings in tools_config.items():
                     if settings.get(&#34;only_check_existence&#34;):
-                        settings[&#34;schema&#34;] = SchemaType.EXISTENCE
+                        settings[&#34;schema&#34;] = models.SchemaType.EXISTENCE
                         del settings[&#34;only_check_existence&#34;]
                     elif settings.get(&#34;version_snapshot&#34;):
-                        settings[&#34;schema&#34;] = SchemaType.SNAPSHOT
+                        settings[&#34;schema&#34;] = models.SchemaType.SNAPSHOT
                         settings[&#34;version&#34;] = settings.get(&#34;version_snapshot&#34;)
                         del settings[&#34;version_snapshot&#34;]
 
                     settings[&#34;name&#34;] = tool_name
                     if settings.get(&#34;schema&#34;):
-                        settings[&#34;schema&#34;] = SchemaType(settings[&#34;schema&#34;].lower())
+                        settings[&#34;schema&#34;] = models.SchemaType(settings[&#34;schema&#34;].lower())
                     else:
-                        settings[&#34;schema&#34;] = SchemaType.SEMVER
-                    self.tools[tool_name] = CliToolConfig(**settings)
+                        settings[&#34;schema&#34;] = models.SchemaType.SEMVER
+                    self.tools[tool_name] = models.CliToolConfig(**settings)
         return bool(self.tools)
 
     def create_tool_config(self, tool_name: str, config: dict) -&gt; None:
@@ -271,7 +307,7 @@ if __name__ == &#34;__main__&#34;:
         if tool_name in self.tools:
             raise ValueError(f&#34;Tool {tool_name} already exists&#34;)
         config[&#34;name&#34;] = tool_name
-        self.tools[tool_name] = CliToolConfig(**config)
+        self.tools[tool_name] = models.CliToolConfig(**config)
         self._save_config()
 
     def update_tool_config(self, tool_name: str, config: dict) -&gt; None:
@@ -303,11 +339,11 @@ if __name__ == &#34;__main__&#34;:
             self.read_config()
         if tool_name not in self.tools:
             config[&#34;name&#34;] = tool_name
-            self.tools[tool_name] = CliToolConfig(**config)
+            self.tools[tool_name] = models.CliToolConfig(**config)
         else:
             for key, value in config.items():
                 if key == &#34;schema&#34;:
-                    value = str(SchemaType(value))
+                    value = str(models.SchemaType(value))
                 setattr(self.tools[tool_name], key, value)
         self._save_config()
 
@@ -400,7 +436,7 @@ if __name__ == &#34;__main__&#34;:
     if tool_name in self.tools:
         raise ValueError(f&#34;Tool {tool_name} already exists&#34;)
     config[&#34;name&#34;] = tool_name
-    self.tools[tool_name] = CliToolConfig(**config)
+    self.tools[tool_name] = models.CliToolConfig(**config)
     self._save_config()</code></pre>
 </details>
 </dd>
@@ -431,11 +467,11 @@ if __name__ == &#34;__main__&#34;:
         self.read_config()
     if tool_name not in self.tools:
         config[&#34;name&#34;] = tool_name
-        self.tools[tool_name] = CliToolConfig(**config)
+        self.tools[tool_name] = models.CliToolConfig(**config)
     else:
         for key, value in config.items():
             if key == &#34;schema&#34;:
-                value = str(SchemaType(value))
+                value = str(models.SchemaType(value))
             setattr(self.tools[tool_name], key, value)
     self._save_config()</code></pre>
 </details>
@@ -489,25 +525,40 @@ if __name__ == &#34;__main__&#34;:
     Returns:
         bool: True if the cli-tools section exists, False otherwise.
     &#34;&#34;&#34;
-    if os.path.exists(self.config_path):
-        with open(self.config_path, encoding=&#34;utf-8&#34;) as file:
-            config = tomlkit.load(file)
+    if self.config_path.exists():
+        with open(str(self.config_path), encoding=&#34;utf-8&#34;) as file:
+            # okay this is too hard.
+            # from tomlkit.items import Item
+            # class SchemaTypeItem(Item):
+            #     def __init__(self, value:SchemaType):
+            #         self.value = value
+            #     def as_string(self):
+            #         return str(self.value)
+            #
+            # def encoder(value):
+            #     if isinstance(value, SchemaType):
+            #         return SchemaTypeItem(value.value)
+            #     raise TypeError(f&#34;Unknown type {type(value)}&#34;)
+            # tomlkit.register_encoder(lambda x: x.value)
+            # TODO: switch to tomkit and clone the config/settings
+            # so that we can use it like ordinary python
+            config = toml.load(file)
             tools_config = config.get(&#34;tool&#34;, {}).get(&#34;cli-tools&#34;, {})
             for tool_name, settings in tools_config.items():
                 if settings.get(&#34;only_check_existence&#34;):
-                    settings[&#34;schema&#34;] = SchemaType.EXISTENCE
+                    settings[&#34;schema&#34;] = models.SchemaType.EXISTENCE
                     del settings[&#34;only_check_existence&#34;]
                 elif settings.get(&#34;version_snapshot&#34;):
-                    settings[&#34;schema&#34;] = SchemaType.SNAPSHOT
+                    settings[&#34;schema&#34;] = models.SchemaType.SNAPSHOT
                     settings[&#34;version&#34;] = settings.get(&#34;version_snapshot&#34;)
                     del settings[&#34;version_snapshot&#34;]
 
                 settings[&#34;name&#34;] = tool_name
                 if settings.get(&#34;schema&#34;):
-                    settings[&#34;schema&#34;] = SchemaType(settings[&#34;schema&#34;].lower())
+                    settings[&#34;schema&#34;] = models.SchemaType(settings[&#34;schema&#34;].lower())
                 else:
-                    settings[&#34;schema&#34;] = SchemaType.SEMVER
-                self.tools[tool_name] = CliToolConfig(**settings)
+                    settings[&#34;schema&#34;] = models.SchemaType.SEMVER
+                self.tools[tool_name] = models.CliToolConfig(**settings)
     return bool(self.tools)</code></pre>
 </details>
 </dd>
