@@ -30,6 +30,21 @@ class ConfigManager:
         """
         if os.path.exists(self.config_path):
             with open(self.config_path, encoding="utf-8") as file:
+                # okay this is too hard.
+                # from tomlkit.items import Item
+                # class SchemaTypeItem(Item):
+                #     def __init__(self, value:SchemaType):
+                #         self.value = value
+                #     def as_string(self):
+                #         return str(self.value)
+                #
+                # def encoder(value):
+                #     if isinstance(value, SchemaType):
+                #         return SchemaTypeItem(value.value)
+                #     raise TypeError(f"Unknown type {type(value)}")
+                # tomlkit.register_encoder(lambda x: x.value)
+                # TODO: switch to tomkit and clone the config/settings
+                # so that we can use it like ordinary python
                 config = toml.load(file)
                 tools_config = config.get("tool", {}).get("cli-tools", {})
                 for tool_name, settings in tools_config.items():

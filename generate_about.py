@@ -86,6 +86,8 @@ def write_metadata_to_file(poetry_data: dict[str, Any]) -> None:
             content.append(f"__keywords__ = {value}")
         elif key in meta:
             content.append(f'__{key}__ = "{value}"')
+        else:
+            print(f"Skipping: {key}")
 
     all_header = "__all__ = [\n" + ",\n".join([f'    "{item.split("=")[0].strip()}"' for item in content]) + "\n]"
     # Define the content to write to the __about__.py file

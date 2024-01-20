@@ -10,9 +10,13 @@ from typing import Optional
 
 class SchemaType(enum.Enum):
     SNAPSHOT = "snapshot"
+    """Version is entire output of --version switch. Compatibility is by exact match."""
     SEMVER = "semver"
+    """Major, minor, patch, pre-release, and build metadata. Compatibility is by specification."""
     PEP440 = "pep440"
+    """Superficially looks like a superset of semver. As governed by PEP440."""
     EXISTENCE = "existence"
+    """Only check if the tool exists. No version check. If it exists, it is compatible."""
 
     def __str__(self):
         return self.value
@@ -34,6 +38,11 @@ class CliToolConfig:
     """Snapshot, semver, pep440, existence"""
     if_os: Optional[str] = None
     """Which OS this tool is needed for. Single value. Comparison evaluated by prefix. Same values as sys.platform"""
+    tags: Optional[list[str]] = None
+    install_command: Optional[str] = None
+    """Having failed to find the right version what command can be run. Let the user run it."""
+    install_docs: Optional[str] = None
+    """For failed tool checks, where can the user find out how to install."""
 
     def cache_hash(self) -> str:
         """
@@ -71,7 +80,11 @@ class ToolCheckResult:
     last_modified: Optional[datetime.datetime]
     tool_config: CliToolConfig
 
-    def status(self):
+    def status(self) -> str:
+        """Compress many status fields into one for display
+        Returns:
+            str: The status of the tool.
+        """
         # Status compression
         # Wrong OS. If wrong OS "Wrong OS"
         # Found/Not. If not found "Not Found"

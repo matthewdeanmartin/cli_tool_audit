@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "cli_tool_audit"
-version = "2.0.0"
+version = "3.0.0"
 description = "Audit for existence and version number of cli tools."
 authors = ["Matthew Martin <matthewdeanmartin@gmail.com>"]
 keywords = ["cli tooling", "version numbers", ]
@@ -59,9 +59,9 @@ tqdm = ">=4.66.1"
 toml = ">=0.10.2"
 tomlkit = ">=0.12.3"
 
-# metadata
-importlib-metadata = { version = ">=7.0.1", python = "<3.8" }
-hypothesis = "^6.96.0"
+# metadata, don't need it!
+# importlib-metadata = { version = ">=7.0.1", python = "<3.8" }
+
 
 [tool.poetry.dev-dependencies]
 
@@ -69,6 +69,7 @@ hypothesis = "^6.96.0"
 black = ">=23.11.0"
 pytest = ">=7.4.3"
 pytest-cov = ">=4.1.0"
+hypothesis = ">=6.96.0"
 tox = "*"
 pylint = ">=3.0.2"
 ruff = ">=0.1.9"
@@ -245,50 +246,34 @@ exclude_also = [
 ]
 
 [tool.cli-tools]
-make = {name = "make", version = ">=3.81", schema = "semver"}
-python = {name = "python", version = ">=3.11.1", schema = "semver"}
-java = {name = "java", version = ">=17.0.6", schema = "semver"}
+make = {name = "make", version = ">=3.81", schema = "semver", tags = ["build"]}
+python = {name = "python", version = ">=3.11.1", schema = "semver", tags = ["build"]}
+java = {name = "java", version = ">=17.0.6", schema = "semver", tags = ["build"]}
 
-#
-#pipx = {name = "pipx", version = ">=1.0.0", version_switch = "--version", schema = "semver"}
-#mypy = {name = "mypy", version = ">=1.0.0", schema = "semver"}
-#pylint = {name = "pylint", version = ">=1.0.0", schema = "semver"}
-#black = {name = "black", version = ">=1.0.0", schema = "semver"}
-#pygount = {name = "pygount", version = ">=1.6.0", schema = "semver"}
-#ruff = {name = "ruff", version = "0.*", schema = "semver"}
-#vulture = {name = "vulture", version = "*", schema = "semver"}
-#
-##cat = {  version = ">=8.32", version_switch = "--version" }
-##bash = {  version = ">=5.2.12", version_switch = "--version" }
-#
-#terraform = {name = "terraform", version = ">=1.2.9", schema = "semver"}
-#
-## demo of files that don't exist
-#doesnotexist = {name = "doesnotexist", version = ">=1.0.0", schema = "semver"}
-## Just check existence
-#notepad = {name = "notepad", schema = "existence"}
-#rustc = {name = "rustc", version = ">=1.67.0", schema = "semver"}
-#"yes.exe" = {name = "yes.exe", version = ">=1.0.0", schema = "semver"}
-#"yes" = {name = "yes", version = "~1.0.0", schema = "semver"}
-#podman = {name = "podman", version = "^4.6.0", schema = "semver"}
-#tesseract = {name = "tesseract", version = ">=5.1.0.20220510", schema = "semver"}
-#pandoc = {name = "pandoc", version = ">=2.7.3", schema = "semver"}
-#nano = {name = "nano", version = ">=7.1", schema = "semver"}
-#shellcheck = {name = "shellcheck", version = ">=0.8.0", schema = "semver"}
-#choco = {name = "choco", version = ">=0.10.13", schema = "semver"}
-#brew = {name = "brew", version = ">=0.0.0", schema = "semver", if_os = "darwin"}
-#poetry = {name = "poetry", version = "Poetry (version 1.5.1)", schema = "snapshot"}
-#
+pipx = {name = "pipx", version = ">=1.0.0", version_switch = "--version", schema = "semver"}
+mypy = {name = "mypy", version = ">=1.0.0", schema = "semver", tags = ["build", "work"], install_command = "pipx install mypy", install_docs = "https://mypy.readthedocs.io/en/stable/getting_started.html"}
+pylint = {name = "pylint", version = ">=1.0.0", schema = "semver", tags = ["build", "work", "user"]}
+black = {name = "black", version = ">=1.0.0", schema = "semver"}
+pygount = {name = "pygount", version = ">=1.6.0", schema = "semver"}
+ruff = {name = "ruff", version = "0.*", schema = "semver"}
+vulture = {name = "vulture", version = "*", schema = "semver"}
 
-#[tool.cli-tools]
-#foobar = {  version = ">=1.0.0"}
-#foo = {  version = ">=1.0.0", version_switch = "version" }
-#bar = {  version = ">=1.0.0", version_switch = "-v" }
-#notepad = { only_check_existence = true }
-#tesseract = { version = ">=5.1.0.20220510", schema="fourpart" }
-#winver = { version = ">=1.0.0", if_os="win" }
-#blerg = { version_stamp = "blerg v1-2 (Jan 2024) 64bit", if_os="win" }
-#winapp = {version =">=1.2.3.4", schema="dotnet", if_os="win", source="registry"}
-#winthing = {version =">=1.2.3", schema="semver", if_os="win", source="fileversioninfo"}
+terraform = {name = "terraform", version = ">=1.2.9", schema = "semver"}
+
+# demo of files that don't exist
+doesnotexist = {name = "doesnotexist", version = ">=1.0.0", schema = "semver"}
+# Just check existence
+notepad = {name = "notepad", schema = "existence"}
+rustc = {name = "rustc", version = ">=1.67.0", schema = "semver"}
+"yes.exe" = {name = "yes.exe", version = ">=1.0.0", schema = "semver"}
+"yes" = {name = "yes", version = "~1.0.0", schema = "semver"}
+podman = {name = "podman", version = "^4.6.0", schema = "semver"}
+tesseract = {name = "tesseract", version = ">=5.1.0.20220510", schema = "semver"}
+pandoc = {name = "pandoc", version = ">=2.7.3", schema = "semver"}
+nano = {name = "nano", version = ">=7.1", schema = "semver"}
+shellcheck = {name = "shellcheck", version = ">=0.8.0", schema = "semver"}
+choco = {name = "choco", version = ">=0.10.13", schema = "semver"}
+brew = {name = "brew", version = ">=0.0.0", schema = "semver", if_os = "darwin"}
+poetry = {name = "poetry", version = "Poetry (version 1.5.1)", schema = "snapshot"}
 
 

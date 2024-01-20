@@ -39,9 +39,13 @@ from typing import Optional
 
 class SchemaType(enum.Enum):
     SNAPSHOT = &#34;snapshot&#34;
+    &#34;&#34;&#34;Version is entire output of --version switch. Compatibility is by exact match.&#34;&#34;&#34;
     SEMVER = &#34;semver&#34;
+    &#34;&#34;&#34;Major, minor, patch, pre-release, and build metadata. Compatibility is by specification.&#34;&#34;&#34;
     PEP440 = &#34;pep440&#34;
+    &#34;&#34;&#34;Superficially looks like a superset of semver. As governed by PEP440.&#34;&#34;&#34;
     EXISTENCE = &#34;existence&#34;
+    &#34;&#34;&#34;Only check if the tool exists. No version check. If it exists, it is compatible.&#34;&#34;&#34;
 
     def __str__(self):
         return self.value
@@ -63,6 +67,11 @@ class CliToolConfig:
     &#34;&#34;&#34;Snapshot, semver, pep440, existence&#34;&#34;&#34;
     if_os: Optional[str] = None
     &#34;&#34;&#34;Which OS this tool is needed for. Single value. Comparison evaluated by prefix. Same values as sys.platform&#34;&#34;&#34;
+    tags: Optional[list[str]] = None
+    install_command: Optional[str] = None
+    &#34;&#34;&#34;Having failed to find the right version what command can be run. Let the user run it.&#34;&#34;&#34;
+    install_docs: Optional[str] = None
+    &#34;&#34;&#34;For failed tool checks, where can the user find out how to install.&#34;&#34;&#34;
 
     def cache_hash(self) -&gt; str:
         &#34;&#34;&#34;
@@ -100,7 +109,11 @@ class ToolCheckResult:
     last_modified: Optional[datetime.datetime]
     tool_config: CliToolConfig
 
-    def status(self):
+    def status(self) -&gt; str:
+        &#34;&#34;&#34;Compress many status fields into one for display
+        Returns:
+            str: The status of the tool.
+        &#34;&#34;&#34;
         # Status compression
         # Wrong OS. If wrong OS &#34;Wrong OS&#34;
         # Found/Not. If not found &#34;Not Found&#34;
@@ -162,7 +175,7 @@ if __name__ == &#34;__main__&#34;:
 <dl>
 <dt id="cli_tool_audit.models.CliToolConfig"><code class="flex name class">
 <span>class <span class="ident">CliToolConfig</span></span>
-<span>(</span><span>name: str, version: Optional[str] = None, version_switch: Optional[str] = None, schema: Optional[<a title="cli_tool_audit.models.SchemaType" href="#cli_tool_audit.models.SchemaType">SchemaType</a>] = None, if_os: Optional[str] = None)</span>
+<span>(</span><span>name: str, version: Optional[str] = None, version_switch: Optional[str] = None, schema: Optional[<a title="cli_tool_audit.models.SchemaType" href="#cli_tool_audit.models.SchemaType">SchemaType</a>] = None, if_os: Optional[str] = None, tags: Optional[list[str]] = None, install_command: Optional[str] = None, install_docs: Optional[str] = None)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Represents what tool and what version the user wants to audit on their system.</p></div>
@@ -186,6 +199,11 @@ class CliToolConfig:
     &#34;&#34;&#34;Snapshot, semver, pep440, existence&#34;&#34;&#34;
     if_os: Optional[str] = None
     &#34;&#34;&#34;Which OS this tool is needed for. Single value. Comparison evaluated by prefix. Same values as sys.platform&#34;&#34;&#34;
+    tags: Optional[list[str]] = None
+    install_command: Optional[str] = None
+    &#34;&#34;&#34;Having failed to find the right version what command can be run. Let the user run it.&#34;&#34;&#34;
+    install_docs: Optional[str] = None
+    &#34;&#34;&#34;For failed tool checks, where can the user find out how to install.&#34;&#34;&#34;
 
     def cache_hash(self) -&gt; str:
         &#34;&#34;&#34;
@@ -207,6 +225,14 @@ class CliToolConfig:
 <dd>
 <div class="desc"><p>Which OS this tool is needed for. Single value. Comparison evaluated by prefix. Same values as sys.platform</p></div>
 </dd>
+<dt id="cli_tool_audit.models.CliToolConfig.install_command"><code class="name">var <span class="ident">install_command</span> : Optional[str]</code></dt>
+<dd>
+<div class="desc"><p>Having failed to find the right version what command can be run. Let the user run it.</p></div>
+</dd>
+<dt id="cli_tool_audit.models.CliToolConfig.install_docs"><code class="name">var <span class="ident">install_docs</span> : Optional[str]</code></dt>
+<dd>
+<div class="desc"><p>For failed tool checks, where can the user find out how to install.</p></div>
+</dd>
 <dt id="cli_tool_audit.models.CliToolConfig.name"><code class="name">var <span class="ident">name</span> : str</code></dt>
 <dd>
 <div class="desc"><p>Tool name without path</p></div>
@@ -214,6 +240,10 @@ class CliToolConfig:
 <dt id="cli_tool_audit.models.CliToolConfig.schema"><code class="name">var <span class="ident">schema</span> : Optional[<a title="cli_tool_audit.models.SchemaType" href="#cli_tool_audit.models.SchemaType">SchemaType</a>]</code></dt>
 <dd>
 <div class="desc"><p>Snapshot, semver, pep440, existence</p></div>
+</dd>
+<dt id="cli_tool_audit.models.CliToolConfig.tags"><code class="name">var <span class="ident">tags</span> : Optional[list[str]]</code></dt>
+<dd>
+<div class="desc"></div>
 </dd>
 <dt id="cli_tool_audit.models.CliToolConfig.version"><code class="name">var <span class="ident">version</span> : Optional[str]</code></dt>
 <dd>
@@ -303,9 +333,13 @@ attributes &ndash; see the documentation for details.</p></div>
 </summary>
 <pre><code class="python">class SchemaType(enum.Enum):
     SNAPSHOT = &#34;snapshot&#34;
+    &#34;&#34;&#34;Version is entire output of --version switch. Compatibility is by exact match.&#34;&#34;&#34;
     SEMVER = &#34;semver&#34;
+    &#34;&#34;&#34;Major, minor, patch, pre-release, and build metadata. Compatibility is by specification.&#34;&#34;&#34;
     PEP440 = &#34;pep440&#34;
+    &#34;&#34;&#34;Superficially looks like a superset of semver. As governed by PEP440.&#34;&#34;&#34;
     EXISTENCE = &#34;existence&#34;
+    &#34;&#34;&#34;Only check if the tool exists. No version check. If it exists, it is compatible.&#34;&#34;&#34;
 
     def __str__(self):
         return self.value</code></pre>
@@ -318,19 +352,19 @@ attributes &ndash; see the documentation for details.</p></div>
 <dl>
 <dt id="cli_tool_audit.models.SchemaType.EXISTENCE"><code class="name">var <span class="ident">EXISTENCE</span></code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Only check if the tool exists. No version check. If it exists, it is compatible.</p></div>
 </dd>
 <dt id="cli_tool_audit.models.SchemaType.PEP440"><code class="name">var <span class="ident">PEP440</span></code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Superficially looks like a superset of semver. As governed by PEP440.</p></div>
 </dd>
 <dt id="cli_tool_audit.models.SchemaType.SEMVER"><code class="name">var <span class="ident">SEMVER</span></code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Major, minor, patch, pre-release, and build metadata. Compatibility is by specification.</p></div>
 </dd>
 <dt id="cli_tool_audit.models.SchemaType.SNAPSHOT"><code class="name">var <span class="ident">SNAPSHOT</span></code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Version is entire output of &ndash;version switch. Compatibility is by exact match.</p></div>
 </dd>
 </dl>
 </dd>
@@ -407,7 +441,11 @@ class ToolCheckResult:
     last_modified: Optional[datetime.datetime]
     tool_config: CliToolConfig
 
-    def status(self):
+    def status(self) -&gt; str:
+        &#34;&#34;&#34;Compress many status fields into one for display
+        Returns:
+            str: The status of the tool.
+        &#34;&#34;&#34;
         # Status compression
         # Wrong OS. If wrong OS &#34;Wrong OS&#34;
         # Found/Not. If not found &#34;Not Found&#34;
@@ -514,15 +552,24 @@ If it is needed for this OS, if it is incompatible or unavailable, it is a probl
 </details>
 </dd>
 <dt id="cli_tool_audit.models.ToolCheckResult.status"><code class="name flex">
-<span>def <span class="ident">status</span></span>(<span>self)</span>
+<span>def <span class="ident">status</span></span>(<span>self) ‑> str</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Compress many status fields into one for display</p>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code>str</code></dt>
+<dd>The status of the tool.</dd>
+</dl></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def status(self):
+<pre><code class="python">def status(self) -&gt; str:
+    &#34;&#34;&#34;Compress many status fields into one for display
+    Returns:
+        str: The status of the tool.
+    &#34;&#34;&#34;
     # Status compression
     # Wrong OS. If wrong OS &#34;Wrong OS&#34;
     # Found/Not. If not found &#34;Not Found&#34;
@@ -567,8 +614,11 @@ If it is needed for this OS, if it is incompatible or unavailable, it is a probl
 <ul class="two-column">
 <li><code><a title="cli_tool_audit.models.CliToolConfig.cache_hash" href="#cli_tool_audit.models.CliToolConfig.cache_hash">cache_hash</a></code></li>
 <li><code><a title="cli_tool_audit.models.CliToolConfig.if_os" href="#cli_tool_audit.models.CliToolConfig.if_os">if_os</a></code></li>
+<li><code><a title="cli_tool_audit.models.CliToolConfig.install_command" href="#cli_tool_audit.models.CliToolConfig.install_command">install_command</a></code></li>
+<li><code><a title="cli_tool_audit.models.CliToolConfig.install_docs" href="#cli_tool_audit.models.CliToolConfig.install_docs">install_docs</a></code></li>
 <li><code><a title="cli_tool_audit.models.CliToolConfig.name" href="#cli_tool_audit.models.CliToolConfig.name">name</a></code></li>
 <li><code><a title="cli_tool_audit.models.CliToolConfig.schema" href="#cli_tool_audit.models.CliToolConfig.schema">schema</a></code></li>
+<li><code><a title="cli_tool_audit.models.CliToolConfig.tags" href="#cli_tool_audit.models.CliToolConfig.tags">tags</a></code></li>
 <li><code><a title="cli_tool_audit.models.CliToolConfig.version" href="#cli_tool_audit.models.CliToolConfig.version">version</a></code></li>
 <li><code><a title="cli_tool_audit.models.CliToolConfig.version_switch" href="#cli_tool_audit.models.CliToolConfig.version_switch">version_switch</a></code></li>
 </ul>

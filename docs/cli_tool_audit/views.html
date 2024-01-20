@@ -36,6 +36,7 @@ import logging
 import os
 from concurrent.futures import ThreadPoolExecutor
 from threading import Lock
+from typing import Optional, Union
 
 import colorama
 from prettytable import PrettyTable
@@ -46,36 +47,77 @@ import cli_tool_audit.config_reader as config_reader
 import cli_tool_audit.policy as policy
 from cli_tool_audit.call_and_compatible import ToolCheckResult, check_tool_wrapper
 from cli_tool_audit.json_utils import custom_json_serializer
+from cli_tool_audit.models import CliToolConfig
 
 colorama.init(convert=True)
 
 logger = logging.getLogger(__name__)
 
 
-def validate(file_path: str = &#34;pyproject.toml&#34;, no_cache: bool = False) -&gt; list[ToolCheckResult]:
+def validate(
+    file_path: str = &#34;pyproject.toml&#34;,
+    no_cache: bool = False,
+    tags: Optional[list[str]] = None,
+    disable_progress_bar: bool = False,
+) -&gt; list[ToolCheckResult]:
     &#34;&#34;&#34;
     Validate the tools in the pyproject.toml file.
 
     Args:
         file_path (str, optional): The path to the pyproject.toml file. Defaults to &#34;pyproject.toml&#34;.
         no_cache (bool, optional): If True, don&#39;t use the cache. Defaults to False.
+        tags (Optional[list[str]], optional): Only check tools with these tags. Defaults to None.
+        disable_progress_bar (bool, optional): If True, disable the progress bar. Defaults to False.
 
     Returns:
         list[ToolCheckResult]: A list of ToolCheckResult objects.
     &#34;&#34;&#34;
+    if tags is None:
+        tags = []
     cli_tools = config_reader.read_config(file_path)
+    return process_tools(cli_tools, no_cache, tags, disable_progress_bar=disable_progress_bar)
+
+
+def process_tools(
+    cli_tools: dict[str, CliToolConfig],
+    no_cache: bool = False,
+    tags: Optional[list[str]] = None,
+    disable_progress_bar: bool = False,
+) -&gt; list[ToolCheckResult]:
+    &#34;&#34;&#34;
+    Process the tools from a dictionary of CliToolConfig objects.
+
+    Args:
+        cli_tools (dict[str, CliToolConfig]): A dictionary of tool names and CliToolConfig objects.
+        no_cache (bool, optional): If True, don&#39;t use the cache. Defaults to False.
+        tags (Optional[list[str]], optional): Only check tools with these tags. Defaults to None.
+        disable_progress_bar (bool, optional): If True, disable the progress bar. Defaults to False.
+
+    Returns:
+        list[ToolCheckResult]: A list of ToolCheckResult objects.
+    &#34;&#34;&#34;
+    if tags:
+        print(tags)
+        cli_tools = {
+            tool: config
+            for tool, config in cli_tools.items()
+            if config.tags and any(tag in config.tags for tag in tags)
+        }
 
     # Determine the number of available CPUs
     num_cpus = os.cpu_count()
 
     enable_cache = len(cli_tools) &gt;= 5
     # Create a ThreadPoolExecutor with one thread per CPU
-    lock = Lock()
+
     if no_cache:
         enable_cache = False
-
+    lock = Lock()
+    # Threaded appears faster.
+    # lock = Dummy()
+    # with ProcessPoolExecutor(max_workers=num_cpus) as executor:
     with ThreadPoolExecutor(max_workers=num_cpus) as executor:
-        disable = len(cli_tools) &lt; 5 or os.environ.get(&#34;CI&#34;) or os.environ.get(&#34;NO_COLOR&#34;)
+        disable = len(cli_tools) &lt; 5 or os.environ.get(&#34;CI&#34;) or os.environ.get(&#34;NO_COLOR&#34;) or disable_progress_bar
         with tqdm(total=len(cli_tools), disable=disable) as pbar:
             # Submit tasks to the executor
             futures = [
@@ -91,34 +133,53 @@ def validate(file_path: str = &#34;pyproject.toml&#34;, no_cache: bool = False) 
 
 
 def report_from_pyproject_toml(
-    file_path: str = &#34;pyproject.toml&#34;,
+    file_path: Optional[str] = &#34;pyproject.toml&#34;,
+    config_as_dict: Optional[dict[str, CliToolConfig]] = None,
     exit_code_on_failure: bool = True,
     file_format: str = &#34;table&#34;,
     no_cache: bool = False,
+    tags: Optional[list[str]] = None,
+    only_errors: bool = False,
 ) -&gt; int:
     &#34;&#34;&#34;
     Report on the compatibility of the tools in the pyproject.toml file.
 
     Args:
         file_path (str, optional): The path to the pyproject.toml file. Defaults to &#34;pyproject.toml&#34;.
+        config_as_dict (Optional[dict[str, CliToolConfig]], optional): A dictionary of tool names and CliToolConfig objects. Defaults to None.
         exit_code_on_failure (bool, optional): If True, exit with return value of 1 if validation fails. Defaults to True.
         file_format (str, optional): The format of the output. Defaults to &#34;table&#34;.
         no_cache (bool, optional): If True, don&#39;t use the cache. Defaults to False.
+        tags (Optional[list[str]], optional): Only check tools with these tags. Defaults to None.
+        only_errors (bool, optional): Only show errors. Defaults to False.
 
     Returns:
         int: The exit code.
     &#34;&#34;&#34;
+    if tags is None:
+        tags = []
     if not file_format:
         file_format = &#34;table&#34;
 
-    if not os.path.exists(file_path):
-        one_up = os.path.join(&#34;..&#34;, file_path)
-        if os.path.exists(one_up):
-            file_path = one_up
+    if config_as_dict:
+        results = process_tools(config_as_dict, no_cache, tags, disable_progress_bar=file_format != &#34;table&#34;)
+    elif file_path:
+        # Handle config file searching.
+        if not os.path.exists(file_path):
+            one_up = os.path.join(&#34;..&#34;, file_path)
+            if os.path.exists(one_up):
+                file_path = one_up
+        results = validate(file_path, no_cache=no_cache, tags=tags, disable_progress_bar=file_format != &#34;table&#34;)
+    else:
+        raise TypeError(&#34;Must provide either file_path or config_as_dict.&#34;)
 
-    results = validate(file_path, no_cache=no_cache)
+    success_and_failure = len(results)
+    # Remove success, no action needed.
+    if only_errors:
+        results = [result for result in results if result.is_problem()]
 
     failed = policy.apply_policy(results)
+
     if file_format == &#34;json&#34;:
         print(json.dumps([result.__dict__ for result in results], indent=4, default=custom_json_serializer))
     elif file_format == &#34;json-compact&#34;:
@@ -132,7 +193,8 @@ def report_from_pyproject_toml(
             print(&#34;  &lt;/result&gt;&#34;)
         print(&#34;&lt;/results&gt;&#34;)
     elif file_format == &#34;table&#34;:
-        pretty_print_results(results)
+        table = pretty_print_results(results, truncate_long_versions=True, include_docs=False)
+        print(table)
     elif file_format == &#34;csv&#34;:
         print(
             &#34;tool,desired_version,is_available,is_snapshot,found_version,parsed_version,is_compatible,is_broken,last_modified&#34;
@@ -141,43 +203,67 @@ def report_from_pyproject_toml(
             print(
                 f&#34;{result.tool},{result.desired_version},{result.is_available},{result.is_snapshot},{result.found_version},{result.parsed_version},{result.is_compatible},{result.is_broken},{result.last_modified}&#34;
             )
+    elif file_format == &#34;html&#34;:
+        table = pretty_print_results(results, truncate_long_versions=False, include_docs=True)
+        print(table.get_html_string())
     else:
         print(
             f&#34;Unknown file format: {file_format}, defaulting to table output. Supported formats: json, json-compact, xml, table, csv.&#34;
         )
-        pretty_print_results(results)
+        table = pretty_print_results(results, truncate_long_versions=True, include_docs=False)
+        print(table)
 
+    if only_errors and success_and_failure &gt; 0 and len(results) == 0:
+        print(&#34;No errors found, all tools meet version policy.&#34;)
+        return 0
     if failed and exit_code_on_failure and file_format == &#34;table&#34;:
         print(&#34;Did not pass validation, failing with return value of 1.&#34;)
         return 1
     return 0
 
 
-def pretty_print_results(results: list[ToolCheckResult]) -&gt; None:
+def pretty_print_results(
+    results: list[ToolCheckResult], truncate_long_versions: bool, include_docs: bool
+) -&gt; Union[PrettyTable, ColorTable]:
     &#34;&#34;&#34;
     Pretty print the results of the validation.
 
     Args:
         results (list[ToolCheckResult]): A list of ToolCheckResult objects.
+        truncate_long_versions (bool): If True, truncate long versions. Defaults to False.
+        include_docs (bool): If True, include install command and install docs. Defaults to False.
+
+    Returns:
+        Union[PrettyTable, ColorTable]: A PrettyTable or ColorTable object.
     &#34;&#34;&#34;
-    if os.environ.get(&#34;NO_COLOR&#34;):
+    if os.environ.get(&#34;NO_COLOR&#34;) or os.environ.get(&#34;CI&#34;):
         table = PrettyTable()
     else:
         table = ColorTable(theme=Themes.OCEAN)
     table.field_names = [&#34;Tool&#34;, &#34;Found&#34;, &#34;Parsed&#34;, &#34;Desired&#34;, &#34;Status&#34;, &#34;Modified&#34;]
+    if include_docs:
+        table.field_names.append(&#34;Install Command&#34;)
+        table.field_names.append(&#34;Install Docs&#34;)
 
     all_rows: list[list[str]] = []
 
     for result in results:
+        if truncate_long_versions:
+            found_version = result.found_version[0:25].strip() if result.found_version else &#34;&#34;
+        else:
+            found_version = result.found_version or &#34;&#34;
         row_data = [
             result.tool,
-            result.found_version[0:25].strip() if result.found_version else &#34;&#34;,
+            found_version or &#34;&#34;,
             result.parsed_version if result.parsed_version else &#34;&#34;,
-            result.desired_version,
+            result.desired_version or &#34;&#34;,
             # &#34;Yes&#34; if result.is_compatible == &#34;Compatible&#34; else result.is_compatible,
-            result.status(),
+            result.status() or &#34;&#34;,
             result.last_modified.strftime(&#34;%m/%d/%y&#34;) if result.last_modified else &#34;&#34;,
         ]
+        if include_docs:
+            row_data.append(result.tool_config.install_command or &#34;&#34;)
+            row_data.append(result.tool_config.install_docs or &#34;&#34;)
         row_transformed = []
         for datum in row_data:
             if result.is_problem():
@@ -189,8 +275,7 @@ def pretty_print_results(results: list[ToolCheckResult]) -&gt; None:
 
     table.add_rows(sorted(all_rows, key=lambda x: x[0]))
 
-    # Print the table
-    print(table)
+    return table
 
 
 if __name__ == &#34;__main__&#34;:
@@ -205,7 +290,7 @@ if __name__ == &#34;__main__&#34;:
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
 <dt id="cli_tool_audit.views.pretty_print_results"><code class="name flex">
-<span>def <span class="ident">pretty_print_results</span></span>(<span>results: list[<a title="cli_tool_audit.models.ToolCheckResult" href="models.html#cli_tool_audit.models.ToolCheckResult">ToolCheckResult</a>]) ‑> None</span>
+<span>def <span class="ident">pretty_print_results</span></span>(<span>results: list[<a title="cli_tool_audit.models.ToolCheckResult" href="models.html#cli_tool_audit.models.ToolCheckResult">ToolCheckResult</a>], truncate_long_versions: bool, include_docs: bool) ‑> Union[prettytable.prettytable.PrettyTable, prettytable.colortable.ColorTable]</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Pretty print the results of the validation.</p>
@@ -213,36 +298,62 @@ if __name__ == &#34;__main__&#34;:
 <dl>
 <dt><strong><code>results</code></strong> :&ensp;<code>list[ToolCheckResult]</code></dt>
 <dd>A list of ToolCheckResult objects.</dd>
+<dt><strong><code>truncate_long_versions</code></strong> :&ensp;<code>bool</code></dt>
+<dd>If True, truncate long versions. Defaults to False.</dd>
+<dt><strong><code>include_docs</code></strong> :&ensp;<code>bool</code></dt>
+<dd>If True, include install command and install docs. Defaults to False.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code>Union[PrettyTable, ColorTable]</code></dt>
+<dd>A PrettyTable or ColorTable object.</dd>
 </dl></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def pretty_print_results(results: list[ToolCheckResult]) -&gt; None:
+<pre><code class="python">def pretty_print_results(
+    results: list[ToolCheckResult], truncate_long_versions: bool, include_docs: bool
+) -&gt; Union[PrettyTable, ColorTable]:
     &#34;&#34;&#34;
     Pretty print the results of the validation.
 
     Args:
         results (list[ToolCheckResult]): A list of ToolCheckResult objects.
+        truncate_long_versions (bool): If True, truncate long versions. Defaults to False.
+        include_docs (bool): If True, include install command and install docs. Defaults to False.
+
+    Returns:
+        Union[PrettyTable, ColorTable]: A PrettyTable or ColorTable object.
     &#34;&#34;&#34;
-    if os.environ.get(&#34;NO_COLOR&#34;):
+    if os.environ.get(&#34;NO_COLOR&#34;) or os.environ.get(&#34;CI&#34;):
         table = PrettyTable()
     else:
         table = ColorTable(theme=Themes.OCEAN)
     table.field_names = [&#34;Tool&#34;, &#34;Found&#34;, &#34;Parsed&#34;, &#34;Desired&#34;, &#34;Status&#34;, &#34;Modified&#34;]
+    if include_docs:
+        table.field_names.append(&#34;Install Command&#34;)
+        table.field_names.append(&#34;Install Docs&#34;)
 
     all_rows: list[list[str]] = []
 
     for result in results:
+        if truncate_long_versions:
+            found_version = result.found_version[0:25].strip() if result.found_version else &#34;&#34;
+        else:
+            found_version = result.found_version or &#34;&#34;
         row_data = [
             result.tool,
-            result.found_version[0:25].strip() if result.found_version else &#34;&#34;,
+            found_version or &#34;&#34;,
             result.parsed_version if result.parsed_version else &#34;&#34;,
-            result.desired_version,
+            result.desired_version or &#34;&#34;,
             # &#34;Yes&#34; if result.is_compatible == &#34;Compatible&#34; else result.is_compatible,
-            result.status(),
+            result.status() or &#34;&#34;,
             result.last_modified.strftime(&#34;%m/%d/%y&#34;) if result.last_modified else &#34;&#34;,
         ]
+        if include_docs:
+            row_data.append(result.tool_config.install_command or &#34;&#34;)
+            row_data.append(result.tool_config.install_docs or &#34;&#34;)
         row_transformed = []
         for datum in row_data:
             if result.is_problem():
@@ -254,12 +365,90 @@ if __name__ == &#34;__main__&#34;:
 
     table.add_rows(sorted(all_rows, key=lambda x: x[0]))
 
-    # Print the table
-    print(table)</code></pre>
+    return table</code></pre>
+</details>
+</dd>
+<dt id="cli_tool_audit.views.process_tools"><code class="name flex">
+<span>def <span class="ident">process_tools</span></span>(<span>cli_tools: dict[str, <a title="cli_tool_audit.models.CliToolConfig" href="models.html#cli_tool_audit.models.CliToolConfig">CliToolConfig</a>], no_cache: bool = False, tags: Optional[list[str]] = None, disable_progress_bar: bool = False) ‑> list[<a title="cli_tool_audit.models.ToolCheckResult" href="models.html#cli_tool_audit.models.ToolCheckResult">ToolCheckResult</a>]</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Process the tools from a dictionary of CliToolConfig objects.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>cli_tools</code></strong> :&ensp;<code>dict[str, CliToolConfig]</code></dt>
+<dd>A dictionary of tool names and CliToolConfig objects.</dd>
+<dt><strong><code>no_cache</code></strong> :&ensp;<code>bool</code>, optional</dt>
+<dd>If True, don't use the cache. Defaults to False.</dd>
+<dt><strong><code>tags</code></strong> :&ensp;<code>Optional[list[str]]</code>, optional</dt>
+<dd>Only check tools with these tags. Defaults to None.</dd>
+<dt><strong><code>disable_progress_bar</code></strong> :&ensp;<code>bool</code>, optional</dt>
+<dd>If True, disable the progress bar. Defaults to False.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code>list[ToolCheckResult]</code></dt>
+<dd>A list of ToolCheckResult objects.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def process_tools(
+    cli_tools: dict[str, CliToolConfig],
+    no_cache: bool = False,
+    tags: Optional[list[str]] = None,
+    disable_progress_bar: bool = False,
+) -&gt; list[ToolCheckResult]:
+    &#34;&#34;&#34;
+    Process the tools from a dictionary of CliToolConfig objects.
+
+    Args:
+        cli_tools (dict[str, CliToolConfig]): A dictionary of tool names and CliToolConfig objects.
+        no_cache (bool, optional): If True, don&#39;t use the cache. Defaults to False.
+        tags (Optional[list[str]], optional): Only check tools with these tags. Defaults to None.
+        disable_progress_bar (bool, optional): If True, disable the progress bar. Defaults to False.
+
+    Returns:
+        list[ToolCheckResult]: A list of ToolCheckResult objects.
+    &#34;&#34;&#34;
+    if tags:
+        print(tags)
+        cli_tools = {
+            tool: config
+            for tool, config in cli_tools.items()
+            if config.tags and any(tag in config.tags for tag in tags)
+        }
+
+    # Determine the number of available CPUs
+    num_cpus = os.cpu_count()
+
+    enable_cache = len(cli_tools) &gt;= 5
+    # Create a ThreadPoolExecutor with one thread per CPU
+
+    if no_cache:
+        enable_cache = False
+    lock = Lock()
+    # Threaded appears faster.
+    # lock = Dummy()
+    # with ProcessPoolExecutor(max_workers=num_cpus) as executor:
+    with ThreadPoolExecutor(max_workers=num_cpus) as executor:
+        disable = len(cli_tools) &lt; 5 or os.environ.get(&#34;CI&#34;) or os.environ.get(&#34;NO_COLOR&#34;) or disable_progress_bar
+        with tqdm(total=len(cli_tools), disable=disable) as pbar:
+            # Submit tasks to the executor
+            futures = [
+                executor.submit(check_tool_wrapper, (tool, config, lock, enable_cache))
+                for tool, config in cli_tools.items()
+            ]
+            results = []
+            for future in concurrent.futures.as_completed(futures):
+                result = future.result()
+                pbar.update(1)
+                results.append(result)
+    return results</code></pre>
 </details>
 </dd>
 <dt id="cli_tool_audit.views.report_from_pyproject_toml"><code class="name flex">
-<span>def <span class="ident">report_from_pyproject_toml</span></span>(<span>file_path: str = 'pyproject.toml', exit_code_on_failure: bool = True, file_format: str = 'table', no_cache: bool = False) ‑> int</span>
+<span>def <span class="ident">report_from_pyproject_toml</span></span>(<span>file_path: Optional[str] = 'pyproject.toml', config_as_dict: Optional[dict[str, <a title="cli_tool_audit.models.CliToolConfig" href="models.html#cli_tool_audit.models.CliToolConfig">CliToolConfig</a>]] = None, exit_code_on_failure: bool = True, file_format: str = 'table', no_cache: bool = False, tags: Optional[list[str]] = None, only_errors: bool = False) ‑> int</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Report on the compatibility of the tools in the pyproject.toml file.</p>
@@ -267,12 +456,18 @@ if __name__ == &#34;__main__&#34;:
 <dl>
 <dt><strong><code>file_path</code></strong> :&ensp;<code>str</code>, optional</dt>
 <dd>The path to the pyproject.toml file. Defaults to "pyproject.toml".</dd>
+<dt><strong><code>config_as_dict</code></strong> :&ensp;<code>Optional[dict[str, CliToolConfig]]</code>, optional</dt>
+<dd>A dictionary of tool names and CliToolConfig objects. Defaults to None.</dd>
 <dt><strong><code>exit_code_on_failure</code></strong> :&ensp;<code>bool</code>, optional</dt>
 <dd>If True, exit with return value of 1 if validation fails. Defaults to True.</dd>
 <dt><strong><code>file_format</code></strong> :&ensp;<code>str</code>, optional</dt>
 <dd>The format of the output. Defaults to "table".</dd>
 <dt><strong><code>no_cache</code></strong> :&ensp;<code>bool</code>, optional</dt>
 <dd>If True, don't use the cache. Defaults to False.</dd>
+<dt><strong><code>tags</code></strong> :&ensp;<code>Optional[list[str]]</code>, optional</dt>
+<dd>Only check tools with these tags. Defaults to None.</dd>
+<dt><strong><code>only_errors</code></strong> :&ensp;<code>bool</code>, optional</dt>
+<dd>Only show errors. Defaults to False.</dd>
 </dl>
 <h2 id="returns">Returns</h2>
 <dl>
@@ -284,34 +479,53 @@ if __name__ == &#34;__main__&#34;:
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def report_from_pyproject_toml(
-    file_path: str = &#34;pyproject.toml&#34;,
+    file_path: Optional[str] = &#34;pyproject.toml&#34;,
+    config_as_dict: Optional[dict[str, CliToolConfig]] = None,
     exit_code_on_failure: bool = True,
     file_format: str = &#34;table&#34;,
     no_cache: bool = False,
+    tags: Optional[list[str]] = None,
+    only_errors: bool = False,
 ) -&gt; int:
     &#34;&#34;&#34;
     Report on the compatibility of the tools in the pyproject.toml file.
 
     Args:
         file_path (str, optional): The path to the pyproject.toml file. Defaults to &#34;pyproject.toml&#34;.
+        config_as_dict (Optional[dict[str, CliToolConfig]], optional): A dictionary of tool names and CliToolConfig objects. Defaults to None.
         exit_code_on_failure (bool, optional): If True, exit with return value of 1 if validation fails. Defaults to True.
         file_format (str, optional): The format of the output. Defaults to &#34;table&#34;.
         no_cache (bool, optional): If True, don&#39;t use the cache. Defaults to False.
+        tags (Optional[list[str]], optional): Only check tools with these tags. Defaults to None.
+        only_errors (bool, optional): Only show errors. Defaults to False.
 
     Returns:
         int: The exit code.
     &#34;&#34;&#34;
+    if tags is None:
+        tags = []
     if not file_format:
         file_format = &#34;table&#34;
 
-    if not os.path.exists(file_path):
-        one_up = os.path.join(&#34;..&#34;, file_path)
-        if os.path.exists(one_up):
-            file_path = one_up
+    if config_as_dict:
+        results = process_tools(config_as_dict, no_cache, tags, disable_progress_bar=file_format != &#34;table&#34;)
+    elif file_path:
+        # Handle config file searching.
+        if not os.path.exists(file_path):
+            one_up = os.path.join(&#34;..&#34;, file_path)
+            if os.path.exists(one_up):
+                file_path = one_up
+        results = validate(file_path, no_cache=no_cache, tags=tags, disable_progress_bar=file_format != &#34;table&#34;)
+    else:
+        raise TypeError(&#34;Must provide either file_path or config_as_dict.&#34;)
 
-    results = validate(file_path, no_cache=no_cache)
+    success_and_failure = len(results)
+    # Remove success, no action needed.
+    if only_errors:
+        results = [result for result in results if result.is_problem()]
 
     failed = policy.apply_policy(results)
+
     if file_format == &#34;json&#34;:
         print(json.dumps([result.__dict__ for result in results], indent=4, default=custom_json_serializer))
     elif file_format == &#34;json-compact&#34;:
@@ -325,7 +539,8 @@ if __name__ == &#34;__main__&#34;:
             print(&#34;  &lt;/result&gt;&#34;)
         print(&#34;&lt;/results&gt;&#34;)
     elif file_format == &#34;table&#34;:
-        pretty_print_results(results)
+        table = pretty_print_results(results, truncate_long_versions=True, include_docs=False)
+        print(table)
     elif file_format == &#34;csv&#34;:
         print(
             &#34;tool,desired_version,is_available,is_snapshot,found_version,parsed_version,is_compatible,is_broken,last_modified&#34;
@@ -334,12 +549,19 @@ if __name__ == &#34;__main__&#34;:
             print(
                 f&#34;{result.tool},{result.desired_version},{result.is_available},{result.is_snapshot},{result.found_version},{result.parsed_version},{result.is_compatible},{result.is_broken},{result.last_modified}&#34;
             )
+    elif file_format == &#34;html&#34;:
+        table = pretty_print_results(results, truncate_long_versions=False, include_docs=True)
+        print(table.get_html_string())
     else:
         print(
             f&#34;Unknown file format: {file_format}, defaulting to table output. Supported formats: json, json-compact, xml, table, csv.&#34;
         )
-        pretty_print_results(results)
+        table = pretty_print_results(results, truncate_long_versions=True, include_docs=False)
+        print(table)
 
+    if only_errors and success_and_failure &gt; 0 and len(results) == 0:
+        print(&#34;No errors found, all tools meet version policy.&#34;)
+        return 0
     if failed and exit_code_on_failure and file_format == &#34;table&#34;:
         print(&#34;Did not pass validation, failing with return value of 1.&#34;)
         return 1
@@ -347,7 +569,7 @@ if __name__ == &#34;__main__&#34;:
 </details>
 </dd>
 <dt id="cli_tool_audit.views.validate"><code class="name flex">
-<span>def <span class="ident">validate</span></span>(<span>file_path: str = 'pyproject.toml', no_cache: bool = False) ‑> list[<a title="cli_tool_audit.models.ToolCheckResult" href="models.html#cli_tool_audit.models.ToolCheckResult">ToolCheckResult</a>]</span>
+<span>def <span class="ident">validate</span></span>(<span>file_path: str = 'pyproject.toml', no_cache: bool = False, tags: Optional[list[str]] = None, disable_progress_bar: bool = False) ‑> list[<a title="cli_tool_audit.models.ToolCheckResult" href="models.html#cli_tool_audit.models.ToolCheckResult">ToolCheckResult</a>]</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Validate the tools in the pyproject.toml file.</p>
@@ -357,6 +579,10 @@ if __name__ == &#34;__main__&#34;:
 <dd>The path to the pyproject.toml file. Defaults to "pyproject.toml".</dd>
 <dt><strong><code>no_cache</code></strong> :&ensp;<code>bool</code>, optional</dt>
 <dd>If True, don't use the cache. Defaults to False.</dd>
+<dt><strong><code>tags</code></strong> :&ensp;<code>Optional[list[str]]</code>, optional</dt>
+<dd>Only check tools with these tags. Defaults to None.</dd>
+<dt><strong><code>disable_progress_bar</code></strong> :&ensp;<code>bool</code>, optional</dt>
+<dd>If True, disable the progress bar. Defaults to False.</dd>
 </dl>
 <h2 id="returns">Returns</h2>
 <dl>
@@ -367,42 +593,28 @@ if __name__ == &#34;__main__&#34;:
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def validate(file_path: str = &#34;pyproject.toml&#34;, no_cache: bool = False) -&gt; list[ToolCheckResult]:
+<pre><code class="python">def validate(
+    file_path: str = &#34;pyproject.toml&#34;,
+    no_cache: bool = False,
+    tags: Optional[list[str]] = None,
+    disable_progress_bar: bool = False,
+) -&gt; list[ToolCheckResult]:
     &#34;&#34;&#34;
     Validate the tools in the pyproject.toml file.
 
     Args:
         file_path (str, optional): The path to the pyproject.toml file. Defaults to &#34;pyproject.toml&#34;.
         no_cache (bool, optional): If True, don&#39;t use the cache. Defaults to False.
+        tags (Optional[list[str]], optional): Only check tools with these tags. Defaults to None.
+        disable_progress_bar (bool, optional): If True, disable the progress bar. Defaults to False.
 
     Returns:
         list[ToolCheckResult]: A list of ToolCheckResult objects.
     &#34;&#34;&#34;
+    if tags is None:
+        tags = []
     cli_tools = config_reader.read_config(file_path)
-
-    # Determine the number of available CPUs
-    num_cpus = os.cpu_count()
-
-    enable_cache = len(cli_tools) &gt;= 5
-    # Create a ThreadPoolExecutor with one thread per CPU
-    lock = Lock()
-    if no_cache:
-        enable_cache = False
-
-    with ThreadPoolExecutor(max_workers=num_cpus) as executor:
-        disable = len(cli_tools) &lt; 5 or os.environ.get(&#34;CI&#34;) or os.environ.get(&#34;NO_COLOR&#34;)
-        with tqdm(total=len(cli_tools), disable=disable) as pbar:
-            # Submit tasks to the executor
-            futures = [
-                executor.submit(check_tool_wrapper, (tool, config, lock, enable_cache))
-                for tool, config in cli_tools.items()
-            ]
-            results = []
-            for future in concurrent.futures.as_completed(futures):
-                result = future.result()
-                pbar.update(1)
-                results.append(result)
-    return results</code></pre>
+    return process_tools(cli_tools, no_cache, tags, disable_progress_bar=disable_progress_bar)</code></pre>
 </details>
 </dd>
 </dl>
@@ -424,6 +636,7 @@ if __name__ == &#34;__main__&#34;:
 <li><h3><a href="#header-functions">Functions</a></h3>
 <ul class="">
 <li><code><a title="cli_tool_audit.views.pretty_print_results" href="#cli_tool_audit.views.pretty_print_results">pretty_print_results</a></code></li>
+<li><code><a title="cli_tool_audit.views.process_tools" href="#cli_tool_audit.views.process_tools">process_tools</a></code></li>
 <li><code><a title="cli_tool_audit.views.report_from_pyproject_toml" href="#cli_tool_audit.views.report_from_pyproject_toml">report_from_pyproject_toml</a></code></li>
 <li><code><a title="cli_tool_audit.views.validate" href="#cli_tool_audit.views.validate">validate</a></code></li>
 </ul>

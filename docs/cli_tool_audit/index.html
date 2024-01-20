@@ -30,10 +30,14 @@ component. Intended to work with cli tools regardless to how they were installed
 versions, then you don't need this tool.</p>
 <p>Some useful scenarios:</p>
 <ul>
+<li>Validating a developer's workstation instead of an "install everything" script.</li>
+<li>
+<ul>
+<li>Validating a CI environment and failing the build when configuration has drifted</li>
+</ul>
+</li>
 <li>Validating an end user's environment before running an app where you can't install all the
 dependencies for them.</li>
-<li>Validating a CI environment and failing the build when configuration has drifted</li>
-<li>Validating a developer's workstation instead of an "install everything" script.</li>
 </ul>
 <h2 id="how-it-works">How it works</h2>
 <p>You declare a list of cli commands and version ranges.</p>
@@ -44,19 +48,19 @@ or can't be determined.</p>
 <p>There is no universal method for getting a version number from a CLI tool, nor is there a universal orderable
 version number system, so the outcome of many check may be limited to an existence check or exact version number check.</p>
 <p>Here is an example run.</p>
-<pre><code class="language-text">❯ cli_tool_audit
-+-----------+-------------------------------------+-----------------+------------+-----------+
-|    Tool   |            Found Version            | Desired Version | Compatible |   Status  |
-+-----------+-------------------------------------+-----------------+------------+-----------+
-|   python  |            Python 3.11.1            |     &gt;=3.11.1    |    Yes     | Available |
-|    java   | openjdk version &quot;17.0.6&quot; 2023-01-17 |     &gt;=17.0.6    |    Yes     | Available |
-|           |            OpenJDK Runtim           |                 |            |           |
-|    make   |            GNU Make 3.81            |      &gt;=3.81     |    Yes     | Available |
-+-----------+-------------------------------------+-----------------+------------+-----------+
+<pre><code class="language-text">❯ cli_tool_audit audit
++--------+--------------------------+--------+----------+------------+----------+
+|  Tool  |          Found           | Parsed | Desired  |   Status   | Modified |
++--------+--------------------------+--------+----------+------------+----------+
+|  java  | openjdk version &quot;17.0.6&quot; | 17.0.6 | &gt;=17.0.6 | Compatible | 01/18/23 |
+|  make  |      GNU Make 3.81       | 3.81.0 |  &gt;=3.81  | Compatible | 11/24/06 |
+|        |       Copyright (        |        |          |            |          |
+| python |      Python 3.11.1       | 3.11.1 | &gt;=3.11.1 | Compatible | 01/13/24 |
++--------+--------------------------+--------+----------+------------+----------+
 </code></pre>
 <h2 id="installation">Installation</h2>
 <p>You will need to install it to your virtual environment if tools you are looking for are in your virtual environment.
-If all the tools are global then you can pipx install.</p>
+If all the tools are global then you can pipx install. It is on the roadmap to support a pipx install for all scenarios.</p>
 <pre><code class="language-shell">pipx install cli-tool-audit
 </code></pre>
 <h2 id="usage">Usage</h2>
@@ -70,36 +74,37 @@ which is probably too strict.</p>
 </code></pre>
 <p>All commands</p>
 <pre><code class="language-text">❯ cli_tool_audit --help
-usage: cli-tool-audit [-h] [-V] [-c CONFIG] [-nc] [-ff {json,json-compact,xml,table,csv}] [-nf] [--verbose] [--demo {pipx,venv,npm}]
-                      {interactive,read,create,update,delete,freeze,audit} ...
+usage: cli_tool_audit [-h] [-V] [--verbose] [--demo {pipx,venv,npm}]
+                      {interactive,freeze,audit,single,read,create,update,delete} ...
 
-Audit version numbers of CLI tools.
+Audit for existence and version number of cli tools.
 
 positional arguments:
-  {interactive,read,create,update,delete,freeze,audit}
-                        Edit configuration from terminal.
+  {interactive,freeze,audit,single,read,create,update,delete}
+                        Subcommands.
     interactive         Interactively edit configuration
+    freeze              Freeze the versions of specified tools
+    audit               Audit environment with current configuration
+    single              Audit one tool without configuration file
     read                Read and list all tool configurations
     create              Create a new tool configuration
     update              Update an existing tool configuration
     delete              Delete a tool configuration
-    freeze              Freeze the versions of specified tools
-    audit               Audit environment with current configuration (default)
 
 options:
   -h, --help            show this help message and exit
   -V, --version         Show program's version number and exit.
-  -c CONFIG, --config CONFIG
-                        Path to the configuration file in TOML format. (default is pyproject.toml)
-  -nc, --no-cache, --no_cache
-                        Disable caching of results.
-  -ff {json,json-compact,xml,table,csv}, --file-format {json,json-compact,xml,table,csv}, --file_format {json,json-compact,xml,table,csv}
-                        Output results in the specified format. (default is table)
-  -nf, --never-fail, --never_fail
-                        Never return a non-zero exit code
   --verbose             verbose output
   --demo {pipx,venv,npm}
                         Demo for values of npm, pipx or venv
+
+    Examples:
+
+        # Audit and report using pyproject.toml
+        cli_tool_audit audit
+
+        # Generate config for snapshots
+        cli_tool_audit freeze python java make rustc
 </code></pre>
 <p>Note. If you use the create/update commands and specify the <code>--version</code> switch, it must have an equal sign.</p>
 <p>Here is how to generate a freeze, a list of current versions by snapshot, for a lis tof tools. All tools will be
@@ -118,9 +123,9 @@ pipx = { version = &quot;&gt;=1.0.0&quot;, version_switch = &quot;--version&quot
 # Restrict to specific OS
 brew = { version = &quot;&gt;=0.1.0&quot;, if_os=&quot;darwin&quot; }
 # Pin to a snapshot of the output of `poetry --version`
-poetry = {version_snapshot = &quot;Poetry (version 1.5.1)&quot;}
+poetry = {version = &quot;Poetry (version 1.5.1)&quot;, schema=&quot;snapshot&quot;}
 # Don't attempt to run `notepad --version`, just check if it is on the path
-notepad = { only_check_existence = true }
+notepad = { schema = &quot;existence&quot; }
 # Any version.
 vulture = { version = &quot;*&quot; }
 # Supports ^ and ~ version ranges.
@@ -164,6 +169,181 @@ vein are out of scope.</p>
 <li><a href="https://github.com/jstutters/toolaudit">tool-audit</a></li>
 <li><a href="https://learn.microsoft.com/en-us/dotnet/core/tools/dotnet-tool-list">dotnet-tool-list</a></li>
 </ul>
+<h1 id="use-cases">Use Cases</h1>
+<h2 id="developer-environment">Developer Environment</h2>
+<p>Goal: Make sure developers have all the tools they need at a suitable version.</p>
+<p>Alternative solutions: Docker files, imaged laptops, devcontainers, installing all tools with the same package manager.</p>
+<h3 id="steps">Steps</h3>
+<ol>
+<li>Freeze the versions of the tools you want to use. Developers may have different OS, and getting workstations
+exactly the same is difficult, so choose "semver" for some flexibility.</li>
+</ol>
+<pre><code class="language-shell">cli_tool_audit freeze python java make rustc --version semver
+</code></pre>
+<ol>
+<li>Copy the output into your pyproject.toml.</li>
+<li>Edit the "installation_instructions" as needed</li>
+<li>Developers run on their machines, or as a early step in the local build process</li>
+</ol>
+<pre><code class="language-shell">cli_tool_audit audit
+</code></pre>
+<h2 id="serverbuild-server-configuration-drift-detection">Server/Build Server Configuration Drift Detection</h2>
+<p>Goal: Know when the tool versions have drifted too far for comfort on the build server.</p>
+<p>Alternative solutions: Docker base image that you control and upgrade on your own timeline.</p>
+<ol>
+<li>Freeze the versions of the tools you want to use.</li>
+</ol>
+<pre><code class="language-shell">cli_tool_audit freeze python java make rustc --version snapshot
+</code></pre>
+<ol>
+<li>Copy the output into your pyproject.toml.</li>
+<li>Add to build script.</li>
+</ol>
+<pre><code class="language-shell">cli_tool_audit audit
+</code></pre>
+<h2 id="end-user-application-pre-flight-checks">End-User Application "pre-flight" checks</h2>
+<p>Goal: Make sure the user has the tools they need to run your application.</p>
+<p>Alternative solutions: Bundle the other applications wiht your application.</p>
+<h2 id="steps_1">Steps</h2>
+<ol>
+<li>Freeze the versions of the tools you want to use.</li>
+</ol>
+<pre><code class="language-shell">cli_tool_audit freeze python java make rustc --version snapshot
+</code></pre>
+<ol>
+<li>Copy the output into your pyproject.toml or other toml file.</li>
+<li>Call programmatically on startup.</li>
+</ol>
+<pre><code class="language-python">import cli_tool_audit
+
+results = cli_tool_audit.validate(file_path=&quot;path/to/your/config.toml&quot;)
+# Display results if there are problems.
+</code></pre>
+<h1 id="environment-variables">Environment Variables</h1>
+<p>You can modify the apps behavior with environment variables.</p>
+<h2 id="no_color"><code>NO_COLOR</code></h2>
+<p>Disables progress bar, colored tables and color logging.</p>
+<h2 id="ci"><code>CI</code></h2>
+<p>Same as NO_COLOR</p>
+<h2 id="cli_tool_audit_timeout"><code>CLI_TOOL_AUDIT_TIMEOUT</code></h2>
+<p>This is how long a the application will wait for a tool to reply to a version query, defaults to 15 seconds.</p>
+<h1 id="changelog">Changelog</h1>
+<p>All notable changes to this project will be documented in this file.</p>
+<p>The format is based on <a href="https://keepachangelog.com/en/1.0.0/">Keep a Changelog</a>,
+and this project adheres to <a href="https://semver.org/spec/v2.0.0.html">Semantic Versioning</a>.</p>
+<h2 id="300-2024-01-19">[3.0.0] - 2024-01-19</h2>
+<h3 id="added">Added</h3>
+<ul>
+<li>filter an audit by tags</li>
+<li>install_docs, install_command to show what to do when there are problems</li>
+<li><code>single</code> to validate one tool without a config file</li>
+<li><code>.html</code> output</li>
+</ul>
+<h2 id="fixed">Fixed</h2>
+<ul>
+<li>only truncate long version on console output</li>
+<li>removed three dependencies (toml, hypothesis, importlib-metadata)</li>
+</ul>
+<h2 id="200-2024-01-19">[2.0.0] - 2024-01-19</h2>
+<h3 id="fixed_1">Fixed</h3>
+<ul>
+<li>Cache now adds gitingore and clears files older than 30 days on startup</li>
+<li>Audit is now a sub command with arguments.</li>
+</ul>
+<h3 id="breaking">Breaking</h3>
+<ul>
+<li>Gnu options with dashes, no underscores </li>
+<li>Global opts that apply to only some commands move to subparser</li>
+<li>check_only_for_existence is now schema type "existence" snapshot_version is now schema type "snapshot"</li>
+<li>default action is now "audit" with all defaults.</li>
+</ul>
+<h2 id="120-2024-01-17">[1.2.0] - 2024-01-17</h2>
+<h3 id="added_1">Added</h3>
+<ul>
+<li>Caching of good results, speeding things up</li>
+<li>Caching enabled only for batches of 5+ tool checks</li>
+<li>TODO: command to clear cache/change cache location</li>
+<li>Formalize support of four schemas, semver, pep440, snapshot and exists.</li>
+<li>Added <code>about.py</code></li>
+</ul>
+<h3 id="fixed_2">Fixed</h3>
+<ul>
+<li>"wrong OS" no longer flagged as problem</li>
+<li>Added lock to ThreadPoolExecutor's work items</li>
+</ul>
+<h2 id="110-2024-01-16">[1.1.0] - 2024-01-16</h2>
+<h3 id="added_2">Added</h3>
+<ul>
+<li>Interactive config at cli with <code>--interactive</code></li>
+<li>Short switches for cli args and aliases for - and _ as connectors</li>
+<li>Export multiple file formats with <code>--file-format</code></li>
+<li>Added subcommand for <code>audit</code> with intention of removing default action.</li>
+</ul>
+<h3 id="fixed_3">Fixed</h3>
+<ul>
+<li>Spelling and docs. Make file now lints docs and runs spell check tools.</li>
+</ul>
+<h2 id="107-2024-01-16">[1.0.7] - 2024-01-16</h2>
+<h3 id="fixed_4">Fixed</h3>
+<ul>
+<li>Spelling and docs. Make file now lints docs and runs spell check tools.</li>
+</ul>
+<h2 id="106-2024-01-15">[1.0.6] - 2024-01-15</h2>
+<h3 id="fixed_5">Fixed</h3>
+<ul>
+<li>Add "basic_test.sh" and fix issue found with it.</li>
+</ul>
+<h2 id="105-2024-01-15">[1.0.5] - 2024-01-15</h2>
+<h3 id="fixed_6">Fixed</h3>
+<ul>
+<li>Needs packaging lib in deps</li>
+</ul>
+<h2 id="104-2024-01-14">[1.0.4] - 2024-01-14</h2>
+<h3 id="added_3">Added</h3>
+<ul>
+<li>Support for if_os, snapshot</li>
+<li>Config manager and possibility to do config via cli</li>
+<li>Freeze command</li>
+<li>Last modified</li>
+</ul>
+<h3 id="fixed_7">Fixed</h3>
+<ul>
+<li>Tested with tox and got passing on 3.9-3.12</li>
+<li>Possibly fixed dependencies.</li>
+</ul>
+<h2 id="103-2024-01-14">[1.0.3] - 2024-01-14</h2>
+<h3 id="added_4">Added</h3>
+<ul>
+<li>Support for ^, ~ and * version ranges.</li>
+</ul>
+<h2 id="102-2024-01-14">[1.0.2] - 2024-01-14</h2>
+<h3 id="added_5">Added</h3>
+<ul>
+<li>Color mode actually works now, problems are in red.</li>
+<li>Logging and verbose switch created</li>
+</ul>
+<h3 id="fixed_8">Fixed</h3>
+<ul>
+<li>When calling subprocess, it now checks stderr if nothing returned by stdout</li>
+</ul>
+<h2 id="101-2024-01-13">[1.0.1] - 2024-01-13</h2>
+<h3 id="added_6">Added</h3>
+<ul>
+<li>New stress test using npm.</li>
+<li>Started concept of "known switches"</li>
+</ul>
+<h3 id="fixed_9">Fixed</h3>
+<ul>
+<li>All reports print with pretty tables</li>
+<li>Version switch always defaults to <code>--version</code></li>
+<li>Tuple results are now dataclasses</li>
+<li>validate is now a function and exported</li>
+</ul>
+<h2 id="100-2024-01-13">[1.0.0] - 2024-01-13</h2>
+<h3 id="added_7">Added</h3>
+<ul>
+<li>Application created.</li>
+</ul>
 <details class="source">
 <summary>
 <span>Expand source code</span>
@@ -172,6 +352,12 @@ vein are out of scope.</p>
 Audit CLI tool version numbers.
 
 .. include:: ../README.md
+
+.. include:: ../docs/UseCases.md
+
+.. include:: ../docs/EnvironmentVariables.md
+
+.. include:: ../CHANGELOG.md
 &#34;&#34;&#34;
 __all__ = [&#34;validate&#34;, &#34;read_config&#34;, &#34;check_tool_availability&#34;, &#34;__version__&#34;, &#34;__about__&#34;]
 
@@ -333,7 +519,8 @@ from cli_tool_audit.views import validate</code></pre>
     # pylint: disable=broad-exception-caught
     try:
         command = [tool_name, version_switch]
-        result = subprocess.run(command, capture_output=True, text=True, timeout=15, shell=False, check=True)  # nosec
+        timeout = int(os.environ.get(&#34;CLI_TOOL_AUDIT_TIMEOUT&#34;, 15))
+        result = subprocess.run(command, capture_output=True, text=True, timeout=timeout, shell=False, check=True)  # nosec
         # Sometimes version is on line 2 or later.
         version = result.stdout.strip()
         if not version:
@@ -399,7 +586,7 @@ from cli_tool_audit.views import validate</code></pre>
 </details>
 </dd>
 <dt id="cli_tool_audit.validate"><code class="name flex">
-<span>def <span class="ident">validate</span></span>(<span>file_path: str = 'pyproject.toml', no_cache: bool = False) ‑> list[<a title="cli_tool_audit.models.ToolCheckResult" href="models.html#cli_tool_audit.models.ToolCheckResult">ToolCheckResult</a>]</span>
+<span>def <span class="ident">validate</span></span>(<span>file_path: str = 'pyproject.toml', no_cache: bool = False, tags: Optional[list[str]] = None, disable_progress_bar: bool = False) ‑> list[<a title="cli_tool_audit.models.ToolCheckResult" href="models.html#cli_tool_audit.models.ToolCheckResult">ToolCheckResult</a>]</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Validate the tools in the pyproject.toml file.</p>
@@ -409,6 +596,10 @@ from cli_tool_audit.views import validate</code></pre>
 <dd>The path to the pyproject.toml file. Defaults to "pyproject.toml".</dd>
 <dt><strong><code>no_cache</code></strong> :&ensp;<code>bool</code>, optional</dt>
 <dd>If True, don't use the cache. Defaults to False.</dd>
+<dt><strong><code>tags</code></strong> :&ensp;<code>Optional[list[str]]</code>, optional</dt>
+<dd>Only check tools with these tags. Defaults to None.</dd>
+<dt><strong><code>disable_progress_bar</code></strong> :&ensp;<code>bool</code>, optional</dt>
+<dd>If True, disable the progress bar. Defaults to False.</dd>
 </dl>
 <h2 id="returns">Returns</h2>
 <dl>
@@ -419,42 +610,28 @@ from cli_tool_audit.views import validate</code></pre>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def validate(file_path: str = &#34;pyproject.toml&#34;, no_cache: bool = False) -&gt; list[ToolCheckResult]:
+<pre><code class="python">def validate(
+    file_path: str = &#34;pyproject.toml&#34;,
+    no_cache: bool = False,
+    tags: Optional[list[str]] = None,
+    disable_progress_bar: bool = False,
+) -&gt; list[ToolCheckResult]:
     &#34;&#34;&#34;
     Validate the tools in the pyproject.toml file.
 
     Args:
         file_path (str, optional): The path to the pyproject.toml file. Defaults to &#34;pyproject.toml&#34;.
         no_cache (bool, optional): If True, don&#39;t use the cache. Defaults to False.
+        tags (Optional[list[str]], optional): Only check tools with these tags. Defaults to None.
+        disable_progress_bar (bool, optional): If True, disable the progress bar. Defaults to False.
 
     Returns:
         list[ToolCheckResult]: A list of ToolCheckResult objects.
     &#34;&#34;&#34;
+    if tags is None:
+        tags = []
     cli_tools = config_reader.read_config(file_path)
-
-    # Determine the number of available CPUs
-    num_cpus = os.cpu_count()
-
-    enable_cache = len(cli_tools) &gt;= 5
-    # Create a ThreadPoolExecutor with one thread per CPU
-    lock = Lock()
-    if no_cache:
-        enable_cache = False
-
-    with ThreadPoolExecutor(max_workers=num_cpus) as executor:
-        disable = len(cli_tools) &lt; 5 or os.environ.get(&#34;CI&#34;) or os.environ.get(&#34;NO_COLOR&#34;)
-        with tqdm(total=len(cli_tools), disable=disable) as pbar:
-            # Submit tasks to the executor
-            futures = [
-                executor.submit(check_tool_wrapper, (tool, config, lock, enable_cache))
-                for tool, config in cli_tools.items()
-            ]
-            results = []
-            for future in concurrent.futures.as_completed(futures):
-                result = future.result()
-                pbar.update(1)
-                results.append(result)
-    return results</code></pre>
+    return process_tools(cli_tools, no_cache, tags, disable_progress_bar=disable_progress_bar)</code></pre>
 </details>
 </dd>
 </dl>
@@ -473,6 +650,80 @@ from cli_tool_audit.views import validate</code></pre>
 <li><a href="#demos">Demos</a></li>
 <li><a href="#how-does-this-relate-to-package-managers-eg-apt-pipx-npm-choco-etc">How does this relate to package managers, e.g. apt, pipx, npm, choco, etc.</a></li>
 <li><a href="#prior-art">Prior Art</a></li>
+</ul>
+</li>
+<li><a href="#use-cases">Use Cases</a><ul>
+<li><a href="#developer-environment">Developer Environment</a><ul>
+<li><a href="#steps">Steps</a></li>
+</ul>
+</li>
+<li><a href="#serverbuild-server-configuration-drift-detection">Server/Build Server Configuration Drift Detection</a></li>
+<li><a href="#end-user-application-pre-flight-checks">End-User Application "pre-flight" checks</a></li>
+<li><a href="#steps_1">Steps</a></li>
+</ul>
+</li>
+<li><a href="#environment-variables">Environment Variables</a><ul>
+<li><a href="#no_color">NO_COLOR</a></li>
+<li><a href="#ci">CI</a></li>
+<li><a href="#cli_tool_audit_timeout">CLI_TOOL_AUDIT_TIMEOUT</a></li>
+</ul>
+</li>
+<li><a href="#changelog">Changelog</a><ul>
+<li><a href="#300-2024-01-19">[3.0.0] - 2024-01-19</a><ul>
+<li><a href="#added">Added</a></li>
+</ul>
+</li>
+<li><a href="#fixed">Fixed</a></li>
+<li><a href="#200-2024-01-19">[2.0.0] - 2024-01-19</a><ul>
+<li><a href="#fixed_1">Fixed</a></li>
+<li><a href="#breaking">Breaking</a></li>
+</ul>
+</li>
+<li><a href="#120-2024-01-17">[1.2.0] - 2024-01-17</a><ul>
+<li><a href="#added_1">Added</a></li>
+<li><a href="#fixed_2">Fixed</a></li>
+</ul>
+</li>
+<li><a href="#110-2024-01-16">[1.1.0] - 2024-01-16</a><ul>
+<li><a href="#added_2">Added</a></li>
+<li><a href="#fixed_3">Fixed</a></li>
+</ul>
+</li>
+<li><a href="#107-2024-01-16">[1.0.7] - 2024-01-16</a><ul>
+<li><a href="#fixed_4">Fixed</a></li>
+</ul>
+</li>
+<li><a href="#106-2024-01-15">[1.0.6] - 2024-01-15</a><ul>
+<li><a href="#fixed_5">Fixed</a></li>
+</ul>
+</li>
+<li><a href="#105-2024-01-15">[1.0.5] - 2024-01-15</a><ul>
+<li><a href="#fixed_6">Fixed</a></li>
+</ul>
+</li>
+<li><a href="#104-2024-01-14">[1.0.4] - 2024-01-14</a><ul>
+<li><a href="#added_3">Added</a></li>
+<li><a href="#fixed_7">Fixed</a></li>
+</ul>
+</li>
+<li><a href="#103-2024-01-14">[1.0.3] - 2024-01-14</a><ul>
+<li><a href="#added_4">Added</a></li>
+</ul>
+</li>
+<li><a href="#102-2024-01-14">[1.0.2] - 2024-01-14</a><ul>
+<li><a href="#added_5">Added</a></li>
+<li><a href="#fixed_8">Fixed</a></li>
+</ul>
+</li>
+<li><a href="#101-2024-01-13">[1.0.1] - 2024-01-13</a><ul>
+<li><a href="#added_6">Added</a></li>
+<li><a href="#fixed_9">Fixed</a></li>
+</ul>
+</li>
+<li><a href="#100-2024-01-13">[1.0.0] - 2024-01-13</a><ul>
+<li><a href="#added_7">Added</a></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>

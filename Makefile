@@ -124,3 +124,7 @@ check_changelog:
 	$(VENV) changelogmanager validate
 
 check_all: check_docs check_md check_spelling
+
+check_own_ver:
+	# Can it verify itself?
+	$(VENV) python dog_food_check.py

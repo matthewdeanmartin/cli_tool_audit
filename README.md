@@ -8,10 +8,10 @@ versions, then you don't need this tool.
 
 Some useful scenarios:
 
+- Validating a developer's workstation instead of an "install everything" script.
+- - Validating a CI environment and failing the build when configuration has drifted
 - Validating an end user's environment before running an app where you can't install all the
   dependencies for them.
-- Validating a CI environment and failing the build when configuration has drifted
-- Validating a developer's workstation instead of an "install everything" script.
 
 ## How it works
 
@@ -43,7 +43,7 @@ Here is an example run.
 ## Installation
 
 You will need to install it to your virtual environment if tools you are looking for are in your virtual environment.
-If all the tools are global then you can pipx install.
+If all the tools are global then you can pipx install. It is on the roadmap to support a pipx install for all scenarios.
 
 ```shell
 pipx install cli-tool-audit
@@ -70,16 +70,18 @@ All commands
 
 ```text
 ❯ cli_tool_audit --help
-usage: cli_tool_audit [-h] [-V] [--verbose] [--demo {pipx,venv,npm}] {interactive,freeze,audit,read,create,update,delete} ...
+usage: cli_tool_audit [-h] [-V] [--verbose] [--demo {pipx,venv,npm}]
+                      {interactive,freeze,audit,single,read,create,update,delete} ...
 
 Audit for existence and version number of cli tools.
 
 positional arguments:
-  {interactive,freeze,audit,read,create,update,delete}
+  {interactive,freeze,audit,single,read,create,update,delete}
                         Subcommands.
     interactive         Interactively edit configuration
     freeze              Freeze the versions of specified tools
     audit               Audit environment with current configuration
+    single              Audit one tool without configuration file
     read                Read and list all tool configurations
     create              Create a new tool configuration
     update              Update an existing tool configuration

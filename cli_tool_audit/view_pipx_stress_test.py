@@ -14,6 +14,14 @@ from tqdm import tqdm
 import cli_tool_audit.views as views
 from cli_tool_audit.models import CliToolConfig
 
+#  Dummy lock for switch to ProcessPoolExecutor
+# class Dummy:
+#     def __enter__(self):
+#         pass
+#
+#     def __exit__(self, exc_type, exc_value, traceback):
+#         pass
+
 
 def get_pipx_list() -> Any:
     """
@@ -83,6 +91,9 @@ def report_for_pipx_tools(max_count: int = -1) -> None:
     # Create a ThreadPoolExecutor with one thread per CPU
     lock = Lock()
     with ThreadPoolExecutor(max_workers=num_cpus) as executor:
+        # threaded is faster
+        # lock = Dummy()
+        # with ProcessPoolExecutor(max_workers=num_cpus) as executor:
         # Submit tasks to the executor
         disable = len(cli_tools) < 5 or os.environ.get("CI") or os.environ.get("NO_COLOR")
         with tqdm(total=len(cli_tools), disable=disable) as progress_bar:
@@ -97,7 +108,7 @@ def report_for_pipx_tools(max_count: int = -1) -> None:
                 result = future.result()
                 tqdm.update(progress_bar, 1)
                 results.append(result)
-        views.pretty_print_results(results)
+        print(views.pretty_print_results(results, truncate_long_versions=True, include_docs=False))
 
 
 if __name__ == "__main__":

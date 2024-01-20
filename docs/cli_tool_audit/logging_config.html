@@ -69,7 +69,7 @@ def generate_config(level: str = &#34;DEBUG&#34;) -&gt; dict[str, Any]:
             }
         },
     }
-    if os.environ.get(&#34;NO_COLOR&#34;):
+    if os.environ.get(&#34;NO_COLOR&#34;) or os.environ.get(&#34;CI&#34;):
         config[&#34;handlers&#34;][&#34;default&#34;][&#34;formatter&#34;] = &#34;standard&#34;
     return config</code></pre>
 </details>
@@ -135,7 +135,7 @@ def generate_config(level: str = &#34;DEBUG&#34;) -&gt; dict[str, Any]:
             }
         },
     }
-    if os.environ.get(&#34;NO_COLOR&#34;):
+    if os.environ.get(&#34;NO_COLOR&#34;) or os.environ.get(&#34;CI&#34;):
         config[&#34;handlers&#34;][&#34;default&#34;][&#34;formatter&#34;] = &#34;standard&#34;
     return config</code></pre>
 </details>

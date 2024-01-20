@@ -40,6 +40,6 @@ def generate_config(level: str = "DEBUG") -> dict[str, Any]:
             }
         },
     }
-    if os.environ.get("NO_COLOR"):
+    if os.environ.get("NO_COLOR") or os.environ.get("CI"):
         config["handlers"]["default"]["formatter"] = "standard"
     return config

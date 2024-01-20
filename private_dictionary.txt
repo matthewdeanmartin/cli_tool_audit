@@ -27,3 +27,5 @@ serializable
 deserializable
 dataclasses
 schemas
+CHANGELOG
+UseCases

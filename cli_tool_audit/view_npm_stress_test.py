@@ -66,8 +66,10 @@ def report_for_npm_tools(max_count: int = -1) -> None:
     enable_cache = len(cli_tools) >= 5
     # Create a ThreadPoolExecutor with one thread per CPU
     with ThreadPoolExecutor(max_workers=num_cpus) as executor:
+        # with ProcessPoolExecutor(max_workers=num_cpus) as executor:
         # Submit tasks to the executor
         lock = Lock()
+        # lock = Dummy()
         disable = len(cli_tools) < 5 or os.environ.get("CI") or os.environ.get("NO_COLOR")
         with tqdm(total=len(cli_tools), disable=disable) as progress_bar:
             futures = [
@@ -82,7 +84,7 @@ def report_for_npm_tools(max_count: int = -1) -> None:
                 tqdm.update(progress_bar, 1)
                 results.append(result)
 
-        views.pretty_print_results(results)
+        print(views.pretty_print_results(results, truncate_long_versions=True, include_docs=False))
 
 
 if __name__ == "__main__":

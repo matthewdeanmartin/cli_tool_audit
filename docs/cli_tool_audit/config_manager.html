@@ -30,7 +30,6 @@
 import os
 from typing import Any, cast
 
-import toml
 import tomlkit
 
 from cli_tool_audit.models import CliToolConfig, SchemaType
@@ -58,7 +57,7 @@ class ConfigManager:
         &#34;&#34;&#34;
         if os.path.exists(self.config_path):
             with open(self.config_path, encoding=&#34;utf-8&#34;) as file:
-                config = toml.load(file)
+                config = tomlkit.load(file)
                 tools_config = config.get(&#34;tool&#34;, {}).get(&#34;cli-tools&#34;, {})
                 for tool_name, settings in tools_config.items():
                     if settings.get(&#34;only_check_existence&#34;):
@@ -237,7 +236,7 @@ if __name__ == &#34;__main__&#34;:
         &#34;&#34;&#34;
         if os.path.exists(self.config_path):
             with open(self.config_path, encoding=&#34;utf-8&#34;) as file:
-                config = toml.load(file)
+                config = tomlkit.load(file)
                 tools_config = config.get(&#34;tool&#34;, {}).get(&#34;cli-tools&#34;, {})
                 for tool_name, settings in tools_config.items():
                     if settings.get(&#34;only_check_existence&#34;):
@@ -492,7 +491,7 @@ if __name__ == &#34;__main__&#34;:
     &#34;&#34;&#34;
     if os.path.exists(self.config_path):
         with open(self.config_path, encoding=&#34;utf-8&#34;) as file:
-            config = toml.load(file)
+            config = tomlkit.load(file)
             tools_config = config.get(&#34;tool&#34;, {}).get(&#34;cli-tools&#34;, {})
             for tool_name, settings in tools_config.items():
                 if settings.get(&#34;only_check_existence&#34;):

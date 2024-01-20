@@ -84,7 +84,10 @@ def check_tool_availability(
     # pylint: disable=broad-exception-caught
     try:
         command = [tool_name, version_switch]
-        result = subprocess.run(command, capture_output=True, text=True, timeout=15, shell=False, check=True)  # nosec
+        timeout = int(os.environ.get("CLI_TOOL_AUDIT_TIMEOUT", 15))
+        result = subprocess.run(
+            command, capture_output=True, text=True, timeout=timeout, shell=False, check=True
+        )  # nosec
         # Sometimes version is on line 2 or later.
         version = result.stdout.strip()
         if not version:

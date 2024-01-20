@@ -18,6 +18,7 @@ import cli_tool_audit.view_pipx_stress_test as demo_pipx
 import cli_tool_audit.view_venv_stress_test as demo_venv
 import cli_tool_audit.views as views
 from cli_tool_audit.__about__ import __description__, __version__
+from cli_tool_audit.models import CliToolConfig
 
 logger = logging.getLogger(__name__)
 
@@ -117,9 +118,34 @@ def handle_audit(args: argparse.Namespace) -> None:
     Args:
         args: The args from the command line.
     """
-    print(args)
     views.report_from_pyproject_toml(
-        file_path=args.config, exit_code_on_failure=not args.never_fail, file_format=args.format, no_cache=args.no_cache
+        file_path=args.config,
+        exit_code_on_failure=not args.never_fail,
+        file_format=args.format,
+        no_cache=args.no_cache,
+        tags=args.tags,
+        only_errors=args.only_errors,
+    )
+
+
+def handle_single(args):
+    """
+    Audit environment with current configuration.
+
+    Args:
+        args: The args from the command line.
+    """
+    config = CliToolConfig(
+        name=args.tool, version=args.version, version_switch=args.version_switch, schema=args.schema, if_os=args.if_os
+    )
+    views.report_from_pyproject_toml(
+        file_path=None,
+        config_as_dict={args.tool: config},
+        exit_code_on_failure=True,
+        file_format=args.format,
+        no_cache=False,
+        tags=None,
+        only_errors=False,
     )
 
 
@@ -180,25 +206,39 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     # Add 'audit' sub-command
     audit_parser = subparsers.add_parser("audit", help="Audit environment with current configuration")
-    # audit_parser.add_argument("tools", nargs="+", help="...")
-    audit_parser.add_argument(
-        "-f",
-        "--format",
-        default="table",
-        type=str,
-        choices=("json", "json-compact", "xml", "table", "csv"),
-        help="Output results in the specified format. (default is %(default)s)",
-    )
+    add_formats(audit_parser)
     add_config_to_subparser(audit_parser)
     audit_parser.add_argument("-nf", "--never-fail", action="store_true", help="Never return a non-zero exit code")
     audit_parser.add_argument(
         "-nc",
         "--no-cache",
-        "--no_cache",
         action="store_true",
         help="Disable caching of results.",
     )
+    audit_parser.add_argument(
+        "-oe",
+        "--only-errors",
+        action="store_true",
+        help="Show only tools in error.",
+    )
+
+    audit_parser.add_argument(
+        "--tags",
+        # action='append',
+        nargs="+",
+        help="Tag for filtering tools.",
+    )
     audit_parser.set_defaults(func=handle_audit)
+
+    # Single audit
+    single_parser = subparsers.add_parser("single", help="Audit one tool without configuration file")
+    single_parser.add_argument("tool", help="Name of the tool")
+    single_parser.add_argument("--version", help="Version of the tool")
+    single_parser.add_argument("--version-switch", "--version_switch", help="Version switch for the tool")
+    add_schema_argument(single_parser)
+    add_formats(single_parser)
+    single_parser.add_argument("--if-os", help="Check only on this os.")
+    single_parser.set_defaults(func=handle_single)
 
     # Read command
     read_parser = subparsers.add_parser("read", help="Read and list all tool configurations")
@@ -265,6 +305,17 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     # Default behavior
     print("No command specified. Auditing environment with pyproject.toml configuration.")
     return views.report_from_pyproject_toml(exit_code_on_failure=True, file_format="table", no_cache=True)
+
+
+def add_formats(audit_parser):
+    audit_parser.add_argument(
+        "-f",
+        "--format",
+        default="table",
+        type=str,
+        choices=("json", "json-compact", "xml", "table", "csv", "html"),
+        help="Output results in the specified format. (default is %(default)s)",
+    )
 
 
 def add_schema_argument(parser):
