@@ -968,6 +968,20 @@ files = [
 ]
 
 [[package]]
+name = "metametameta"
+version = "0.1.0"
+description = "Generate __about__.py with dunder meta."
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "metametameta-0.1.0-py3-none-any.whl", hash = "sha256:75519dfa58ac20a0d4cbe8693247f66e61b673e0afbe112b284ed78b332e89d5"},
+    {file = "metametameta-0.1.0.tar.gz", hash = "sha256:6eb87f5d0718b8d3bf69d544cf802f68824dd5590c50da54d51267ef623ecc5c"},
+]
+
+[package.dependencies]
+toml = ">=0.10.2"
+
+[[package]]
 name = "multidict"
 version = "6.0.4"
 description = "multidict implementation"
@@ -1900,4 +1914,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.8"
-content-hash = "1657fc6230fe29357fb04e8e9fda0dc16e295669b0d54828e9d690bd266cac41"
+content-hash = "1c1c643c7a75d51f41cc08d26502724a88a80fdcfdd8267e6933cf02de0f8a82"

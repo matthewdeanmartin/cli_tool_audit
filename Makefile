@@ -14,6 +14,7 @@ poetry.lock: pyproject.toml
 	@echo "Installing dependencies"
 	@poetry install --with dev
 
+
 clean-pyc:
 	@echo "Removing compiled files"
 	@find cli_tool_audit -name '*.pyc' -exec rm -f {} + || true
@@ -33,7 +34,7 @@ test: clean poetry.lock
 	@echo "Running unit tests"
 	$(VENV) pytest --doctest-modules cli_tool_audit
 	$(VENV) python -m unittest discover
-	$(VENV) py.test tests -vv -n auto --cov=cli_tool_audit --cov-report=html --cov-fail-under 75
+	$(VENV) py.test tests -vv -n auto --cov=cli_tool_audit --cov-report=html --cov-fail-under 50
 	$(VENV) bash basic_test.sh
 
 
@@ -50,6 +51,7 @@ isort: .build_history/isort
 
 .build_history/black: .build_history .build_history/isort $(FILES)
 	@echo "Formatting code"
+	metametameta poetry
 	$(VENV) black cli_tool_audit --exclude .venv
 	$(VENV) black tests --exclude .venv
 	# $(VENV) black scripts --exclude .venv

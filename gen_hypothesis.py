@@ -2,7 +2,9 @@ import pkgutil
 import subprocess
 from pathlib import Path
 from typing import Any
+
 import cli_tool_audit
+
 
 def get_submodules(module: Any) -> list[str]:
     """

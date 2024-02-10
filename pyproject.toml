@@ -101,6 +101,7 @@ mdformat = ">=0.7.17"
 linkcheckmd = ">=1.4.0"
 codespell = ">=2.2.6"
 pyenchant = ">=3.2.2"
+metametameta=">=0.1.0"
 #
 # contract
 # griffe = ">=0.38.1"

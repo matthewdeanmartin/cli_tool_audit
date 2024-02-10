@@ -2,7 +2,6 @@
 # and is provided under the Creative Commons Zero public domain dedication.
 
 
-
 # Random path tests don't mean anything?
 # @pytest.mark.parametrize('config_path', [None, 'subdir'])
 # @given(data=st.data())

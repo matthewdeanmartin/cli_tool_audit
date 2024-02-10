@@ -2,8 +2,6 @@
 # and is provided under the Creative Commons Zero public domain dedication.
 
 
-
-
 # needs to be some real tools, not just random strings.
 # @given(
 #     tool_info=st.from_type(
