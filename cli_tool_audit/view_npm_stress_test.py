@@ -3,6 +3,7 @@ This module contains a stress test for the cli_tool_audit module.
 
 It fetches all globally installed npm tools and runs them through the audit process.
 """
+
 import concurrent
 import os
 import subprocess  # nosec
@@ -29,7 +30,7 @@ def list_global_npm_executables() -> list[str]:
         cmd = "npm.cmd"
     else:
         cmd = "npm"
-    out = subprocess.run([cmd, "root", "-g"], env=env, shell=False, capture_output=True, text=True, check=True)  # nosec
+    out = subprocess.run([cmd, "root", "-g"], env=env, shell=True, capture_output=True, text=True, check=True)  # nosec
     node_modules_path = out.stdout.strip()
 
     # List the executables in the bin directory

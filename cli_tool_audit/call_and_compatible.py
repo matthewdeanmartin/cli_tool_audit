@@ -1,6 +1,7 @@
 """
 Merge tool call and compatibility check results.
 """
+
 import sys
 import threading
 

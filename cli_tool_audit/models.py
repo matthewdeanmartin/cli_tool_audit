@@ -1,6 +1,7 @@
 """
 This module contains dataclasses for the tool audit.
 """
+
 import datetime
 import enum
 import hashlib

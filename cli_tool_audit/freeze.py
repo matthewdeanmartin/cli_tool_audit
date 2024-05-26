@@ -1,6 +1,7 @@
 """
 Capture current version of a list of tools.
 """
+
 import os
 import tempfile
 from pathlib import Path

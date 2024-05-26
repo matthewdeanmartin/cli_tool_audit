@@ -1,6 +1,7 @@
 """
 Stress test for the cli_tool_audit package using pipx installed tools as source data.
 """
+
 import concurrent
 import json
 import os
@@ -36,7 +37,7 @@ def get_pipx_list() -> Any:
     """
     try:
         result = subprocess.run(
-            ["pipx", "list", "--json"], shell=False, capture_output=True, text=True, check=True
+            ["pipx", "list", "--json"], shell=True, capture_output=True, text=True, check=True
         )  # nosec
         return json.loads(result.stdout)
     except subprocess.CalledProcessError as e:

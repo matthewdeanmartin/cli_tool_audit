@@ -1,6 +1,7 @@
 """
 Read list of tools from config.
 """
+
 import logging
 from pathlib import Path
 

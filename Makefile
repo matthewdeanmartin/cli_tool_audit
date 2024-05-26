@@ -33,7 +33,7 @@ clean: clean-pyc clean-test
 test: clean poetry.lock
 	@echo "Running unit tests"
 	$(VENV) pytest --doctest-modules cli_tool_audit
-	$(VENV) python -m unittest discover
+	# $(VENV) python -m unittest discover
 	$(VENV) py.test tests -vv -n auto --cov=cli_tool_audit --cov-report=html --cov-fail-under 50
 	$(VENV) bash basic_test.sh
 
@@ -88,9 +88,6 @@ bandit: .build_history/bandit
 
 check: mypy test pylint bandit pre-commit
 
-.PHONY: publish_test
-publish_test:
-	rm -rf dist && poetry version minor && poetry build && twine upload -r testpypi dist/*
 
 .PHONY: publish
 publish: test

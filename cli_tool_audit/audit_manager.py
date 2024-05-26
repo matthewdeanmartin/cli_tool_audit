@@ -3,6 +3,7 @@ Class to audit a tool, abstract base class to allow for supporting different ver
 
 Includes several implementations of VersionChecker, which are used by AuditManager.
 """
+
 import datetime
 import logging
 import os

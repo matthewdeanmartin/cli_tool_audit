@@ -1,6 +1,7 @@
 """
 Functions for checking compatibility between versions.
 """
+
 import logging
 import re
 from typing import Any, Optional

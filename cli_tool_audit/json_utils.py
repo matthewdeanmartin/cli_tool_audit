@@ -1,6 +1,7 @@
 """
 JSON utility functions.
 """
+
 import dataclasses
 import enum
 from datetime import date, datetime

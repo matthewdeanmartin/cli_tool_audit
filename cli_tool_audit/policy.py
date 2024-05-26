@@ -1,6 +1,7 @@
 """
 Apply various policies to the results of the tool checks.
 """
+
 import cli_tool_audit.models as models
 
 

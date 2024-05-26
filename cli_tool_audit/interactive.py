@@ -1,6 +1,7 @@
 """
 Interactively manage tool configurations.
 """
+
 from typing import Union
 
 import cli_tool_audit.config_manager as cm

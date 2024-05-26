@@ -1,6 +1,7 @@
 """
 Main output view for cli_tool_audit assuming tool list is in config.
 """
+
 import concurrent
 import json
 import logging

@@ -9,6 +9,7 @@ Audit CLI tool version numbers.
 
 .. include:: ../CHANGELOG.md
 """
+
 __all__ = ["validate", "process_tools", "read_config", "check_tool_availability", "models", "__version__", "__about__"]
 
 import cli_tool_audit.__about__ as __about__
