@@ -51,7 +51,7 @@ isort: .build_history/isort
 
 .build_history/black: .build_history .build_history/isort $(FILES)
 	@echo "Formatting code"
-	metametameta poetry
+	$(VENV) metametameta poetry
 	$(VENV) black cli_tool_audit --exclude .venv
 	$(VENV) black tests --exclude .venv
 	# $(VENV) black scripts --exclude .venv
