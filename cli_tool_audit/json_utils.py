@@ -24,7 +24,7 @@ def custom_json_serializer(o: Any) -> Any:
     if isinstance(o, (date, datetime)):
         return o.isoformat()
     if dataclasses.is_dataclass(o):
-        return dataclasses.asdict(o)
+        return dataclasses.asdict(o)  # type: ignore
     if isinstance(o, enum.Enum):
         return o.value
     # Development time

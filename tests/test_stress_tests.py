@@ -17,11 +17,13 @@ def test_report_for_npm_tools():
         cmd = "npm"
     try:
         subprocess.run([cmd, "--version"], shell=True, capture_output=True, text=True, check=True)  # nosec
+        report_for_npm_tools(max_count=2)
+    except FileNotFoundError:
+        # mark test as ignored
+        pytest.skip("npm not found on path")
     except subprocess.CalledProcessError:
         # mark test as ignored
         pytest.skip("npm not found on path")
-
-    report_for_npm_tools(max_count=2)
 
 
 def test_report_for_pipx_tools():

@@ -1,6 +1,10 @@
 from cli_tool_audit.compatibility import check_compatibility
 
 
+def test_any_will_do_compatible():
+    assert check_compatibility("*", "2.0")[0] == "Compatible"
+
+
 def test_not_compatible():
     assert check_compatibility(">1.0.0", "0.1.0") != "Compatible"
 
@@ -33,3 +37,26 @@ def test_ascii_art():
 
                     VERSION 5.13.2"""
     assert check_compatibility(">=5.13.2", example)[0] == "Compatible"
+
+    again = r"""
+                 _                 _
+                (_) ___  ___  _ __| |_
+                | |/ _/ / _ \/ '__  _/
+                | |\__ \/\_\/| |  | |_
+                |_|\___/\___/\_/   \_/
+
+      isort your imports, so you don't have to.
+
+                    VERSION 5.13.2"""
+    assert check_compatibility("==5.13.2", again)[0] == "Compatible"
+
+    again_any = r"""_                 _
+                   (_) ___  ___  _ __| |_
+                   | |/ _/ / _ \/ '__  _/
+                   | |\__ \/\_\/| |  | |_
+                   |_|\___/\___/\_/   \_/
+
+         isort your imports, so you don't have to.
+
+                       VERSION 5.13.2"""
+    assert check_compatibility("*", again_any)[0] == "Compatible"

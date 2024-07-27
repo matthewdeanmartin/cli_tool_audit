@@ -5,6 +5,7 @@ It fetches all globally installed npm tools and runs them through the audit proc
 """
 
 import concurrent
+import logging
 import os
 import subprocess  # nosec
 from concurrent.futures import ThreadPoolExecutor
@@ -15,6 +16,8 @@ from tqdm import tqdm
 import cli_tool_audit.call_and_compatible as call_and_compatible
 import cli_tool_audit.models as models
 import cli_tool_audit.views as views
+
+logger = logging.getLogger(__name__)
 
 
 def list_global_npm_executables() -> list[str]:
@@ -30,12 +33,18 @@ def list_global_npm_executables() -> list[str]:
         cmd = "npm.cmd"
     else:
         cmd = "npm"
-    out = subprocess.run([cmd, "root", "-g"], env=env, shell=True, capture_output=True, text=True, check=True)  # nosec
-    node_modules_path = out.stdout.strip()
+    try:
+        out = subprocess.run(
+            [cmd, "root", "-g"], env=env, shell=True, capture_output=True, text=True, check=True
+        )  # nosec
+        node_modules_path = out.stdout.strip()
 
-    # List the executables in the bin directory
-    executables = os.listdir(node_modules_path)
-    return executables
+        # List the executables in the bin directory
+        executables = os.listdir(node_modules_path)
+        return executables
+    except FileExistsError:
+        logger.error("npm not found on path")
+        return []
 
 
 def report_for_npm_tools(max_count: int = -1) -> None:

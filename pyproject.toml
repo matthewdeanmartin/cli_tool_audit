@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "cli_tool_audit"
-version = "3.0.1"
+version = "3.0.2"
 description = "Audit for existence and version number of cli tools."
 authors = ["Matthew Martin <matthewdeanmartin@gmail.com>"]
 keywords = ["cli tooling", "version numbers", ]
@@ -64,6 +64,9 @@ tomlkit = ">=0.12.3"
 
 
 [tool.poetry.dev-dependencies]
+pyclean = ">=3.0.0"
+vulture = ">=2.11"
+deadcode = ">=2.3.0"
 
 # build tools
 black = ">=23.11.0"

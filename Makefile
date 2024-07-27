@@ -79,7 +79,7 @@ bandit: .build_history/bandit
 .PHONY: pylint
 .build_history/pylint: .build_history .build_history/isort .build_history/black $(FILES)
 	@echo "Linting with pylint"
-	$(VENV) ruff --fix
+	$(VENV) ruff check . --fix
 	$(VENV) pylint cli_tool_audit --fail-under 9.8
 	@touch .build_history/pylint
 

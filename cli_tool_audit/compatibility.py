@@ -79,6 +79,8 @@ def check_compatibility(desired_version: str, found_version: Optional[str]) -> t
         >>> check_compatibility(">=1.1.1", "1.1.2")
         ('Compatible', Version(major=1, minor=1, patch=2, prerelease=None, build=None))
     """
+    if desired_version == "*":
+        return "Compatible", None
     if not found_version:
         logger.info(f"Tool provided no versions, so can't tell. {desired_version}/{found_version}")
         return CANT_TELL, None
