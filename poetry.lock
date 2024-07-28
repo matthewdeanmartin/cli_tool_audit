@@ -1423,6 +1423,19 @@ pytest = ">=6.2.5"
 dev = ["pre-commit", "pytest-asyncio", "tox"]
 
 [[package]]
+name = "pytest-network"
+version = "0.0.1"
+description = "A simple plugin to disable network on socket level."
+optional = false
+python-versions = "*"
+files = [
+    {file = "pytest_network-0.0.1.tar.gz", hash = "sha256:7b109e2ad27f4ab0f13c1796a9b419bab1d503ea3b5ae3ca37363486ccceaa3f"},
+]
+
+[package.dependencies]
+pytest = ">=5.3.1"
+
+[[package]]
 name = "pytest-randomly"
 version = "3.15.0"
 description = "Pytest plugin to randomly order tests and control random.seed."
@@ -1991,4 +2004,4 @@ test = ["big-O", "importlib-resources", "jaraco.functools", "jaraco.itertools", 
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.8"
-content-hash = "1f3ed02e175b80a55aeabe94898711eb327479dc90397dc4157bd67bda3f7880"
+content-hash = "734437e84c8ec7682ab502e67f07ee304941a5aeb4e252fe75aba17cfe5b599d"
