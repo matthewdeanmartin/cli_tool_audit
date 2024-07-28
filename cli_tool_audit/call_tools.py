@@ -35,7 +35,7 @@ def get_command_last_modified_date(tool_name: str) -> Optional[datetime.datetime
         Optional[datetime.datetime]: The last modified date of the command's executable.
     """
     # Find the path of the command's executable
-    result = which(tool_name)
+    result = which(str(tool_name))
     if result is None:
         return None
 
