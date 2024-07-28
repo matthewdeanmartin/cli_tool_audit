@@ -64,6 +64,7 @@ tomlkit = ">=0.12.3"
 
 
 [tool.poetry.dev-dependencies]
+setuptools = ">=70"
 pyclean = ">=3.0.0"
 vulture = ">=2.11"
 deadcode = ">=2.3.0"
