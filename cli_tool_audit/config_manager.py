@@ -59,7 +59,7 @@ class ConfigManager:
 
                     settings["name"] = tool_name
                     if settings.get("schema"):
-                        settings["schema"] = models.SchemaType(settings["schema"].lower())
+                        settings["schema"] = models.SchemaType(str(settings["schema"]).lower())
                     else:
                         settings["schema"] = models.SchemaType.SEMVER
                     self.tools[tool_name] = models.CliToolConfig(**settings)
