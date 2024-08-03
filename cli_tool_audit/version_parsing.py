@@ -1,3 +1,4 @@
+import logging
 import re
 from typing import Optional
 
@@ -5,6 +6,8 @@ import packaging.specifiers as ps
 import packaging.version
 import semver
 from semver import Version
+
+logger = logging.getLogger(__name__)
 
 
 def extract_first_two_part_version(input_string: str) -> Optional[str]:
@@ -128,9 +131,9 @@ def two_pass_semver_parse(input_string: str) -> Optional[Version]:
         possible = Version.parse(input_string)
         return possible
     except ValueError:
-        pass
+        logging.debug(f"Value Error: Failed to parse {input_string} as semver")
     except TypeError:
-        pass
+        logging.debug(f"Type Error: Failed to parse {input_string} as semver")
 
     # Clean pypi version, including 2 part versions
 
@@ -141,7 +144,7 @@ def two_pass_semver_parse(input_string: str) -> Optional[Version]:
         if possible:
             return possible
     except BaseException:
-        pass
+        logging.debug(f"ps.Version/convert2semver: Failed to parse {input_string} as semver")
 
     possible_first = extract_first_semver_version(input_string)
     if possible_first:
@@ -149,9 +152,9 @@ def two_pass_semver_parse(input_string: str) -> Optional[Version]:
             possible = Version.parse(possible_first)
             return possible
         except ValueError:
-            pass
+            logging.debug(f"Version.parse: Failed to parse {input_string} as semver")
         except TypeError:
-            pass
+            logging.debug(f"Version.parse: Failed to parse {input_string} as semver")
 
     possible_first = extract_first_two_part_version(input_string)
     if possible_first:

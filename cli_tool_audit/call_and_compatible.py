@@ -2,6 +2,7 @@
 Merge tool call and compatibility check results.
 """
 
+import logging
 import sys
 import threading
 
@@ -9,7 +10,7 @@ import cli_tool_audit.audit_cache as audit_cache
 import cli_tool_audit.audit_manager as audit_manager
 import cli_tool_audit.models as models
 
-# Old interface
+logger = logging.getLogger(__name__)
 
 
 def check_tool_wrapper(
@@ -29,6 +30,7 @@ def check_tool_wrapper(
 
     if config.if_os and not sys.platform.startswith(config.if_os):
         # This isn't very transparent about what just happened
+        logger.debug(f"Skipping {tool} because it's not needed for {sys.platform}")
         return models.ToolCheckResult(
             is_needed_for_os=False,
             tool=tool,
@@ -49,6 +51,7 @@ def check_tool_wrapper(
     if enable_cache:
         cached_manager = audit_cache.AuditFacade()
         with lock:
+            logger.debug(f"Checking {tool} with cache")
             return cached_manager.call_and_check(tool_config=config)
 
     manager = audit_manager.AuditManager()

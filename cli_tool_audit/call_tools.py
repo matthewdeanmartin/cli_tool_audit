@@ -68,7 +68,7 @@ def check_tool_availability(
 
     last_modified = get_command_last_modified_date(tool_name)
     if not last_modified:
-        logger.warning(f"{tool_name} is not on path.")
+        logger.warning(f"{tool_name} is not on path, no last modified.")
         return models.ToolAvailabilityResult(False, True, None, last_modified)
     if schema == models.SchemaType.EXISTENCE:
         logger.debug(f"{tool_name} exists, but not checking for version.")
@@ -85,8 +85,14 @@ def check_tool_availability(
     try:
         command = [tool_name, version_switch]
         timeout = int(os.environ.get("CLI_TOOL_AUDIT_TIMEOUT", 15))
+        use_shell = bool(os.environ.get("CLI_TOOL_AUDIT_USE_SHELL", False))
+        if not use_shell:
+            logger.debug(
+                "Some tools like pipx, may not be found on the path unless you export "
+                "CLI_TOOL_AUDIT_USE_SHELL=1. By default tools are checked without a shell for security."
+            )
         result = subprocess.run(
-            command, capture_output=True, text=True, timeout=timeout, shell=False, check=True
+            command, capture_output=True, text=True, timeout=timeout, shell=use_shell, check=True
         )  # nosec
         # Sometimes version is on line 2 or later.
         version = result.stdout.strip()
@@ -103,7 +109,7 @@ def check_tool_availability(
         logger.error(f"{tool_name} stderr: {exception.stderr}")
         logger.error(f"{tool_name} stdout: {exception.stdout}")
     except FileNotFoundError:
-        logger.error(f"{tool_name} is not on path.")
+        logger.error(f"{tool_name} is not on path, file not found.")
         return models.ToolAvailabilityResult(False, True, None, last_modified)
 
     return models.ToolAvailabilityResult(True, is_broken, version, last_modified)

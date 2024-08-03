@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "cli_tool_audit"
-version = "3.0.2"
+version = "3.0.3"
 description = "Audit for existence and version number of cli tools."
 authors = ["Matthew Martin <matthewdeanmartin@gmail.com>"]
 keywords = ["cli tooling", "version numbers", ]
@@ -287,5 +287,4 @@ shellcheck = {name = "shellcheck", version = ">=0.8.0", schema = "semver"}
 choco = {name = "choco", version = ">=0.10.13", schema = "semver"}
 brew = {name = "brew", version = ">=0.0.0", schema = "semver", if_os = "darwin"}
 poetry = {name = "poetry", version = "Poetry (version 1.5.1)", schema = "snapshot"}
-
-
+isort = {name = "isort", version = "_                 _\n                (_) ___  ___  _ __| |_\n                | |/ _/ / _ \\/ '__  _/\n                | |\\__ \\/\\_\\/| |  | |_\n                |_|\\___/\\___/\\_/   \\_/\n\n      isort your imports, so you don't have to.\n\n                    VERSION 5.13.2"}

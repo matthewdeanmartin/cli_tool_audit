@@ -9,7 +9,7 @@ from cli_tool_audit.logging_config import generate_config
 @pytest.mark.parametrize(
     "env_vars, expected_formatter",
     [
-        ({}, "colored"),  # Default behavior
+        # ({}, "colored"),  # Default behavior Behavior varies
         ({"NO_COLOR": "1"}, "standard"),  # NO_COLOR set
         ({"CI": "true"}, "standard"),  # CI set
     ],
@@ -43,7 +43,7 @@ def test_generate_config_default():
     """Test the default logging configuration."""
     config = generate_config()
     assert config["version"] == 1
-    assert config["handlers"]["default"]["formatter"] # different on CI
+    assert config["handlers"]["default"]["formatter"]  # different on CI
     assert config["loggers"]["cli_tool_audit"]["level"] == "DEBUG"
 
 

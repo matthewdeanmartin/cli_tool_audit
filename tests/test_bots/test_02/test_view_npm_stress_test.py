@@ -1,12 +1,4 @@
-from cli_tool_audit.models import CliToolConfig, ToolCheckResult
-from cli_tool_audit.view_npm_stress_test import list_global_npm_executables, report_for_npm_tools
-from unittest.mock import patch, Mock
-import os
 import pytest
-
-
-
-
 
 # 1. We will write a unit test to ensure that the `list_global_npm_executables`
 #    function correctly lists the executables in the global node_modules path.
@@ -17,7 +9,7 @@ import pytest
 # 4. We will write a unit test to ensure that the `report_for_npm_tools` function
 #    correctly processes the ToolCheckResult objects and prints the results
 #    properly.
-# 
+#
 # Here are the unit tests:
 
 
@@ -28,6 +20,3 @@ def mock_listdir(tmp_path):
     (test_path / "executable1").touch()
     (test_path / "executable2").touch()
     return test_path
-
-
-

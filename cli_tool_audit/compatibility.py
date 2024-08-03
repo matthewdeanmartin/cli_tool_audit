@@ -89,12 +89,19 @@ def check_compatibility(desired_version: str, found_version: Optional[str]) -> t
 
     # Handle non-semver match patterns
     symbols, desired_version_text = split_version_match_pattern(desired_version)
-    clean_desired_version = version_parsing.two_pass_semver_parse(desired_version_text)
+    clean_desired_version = None
+    try:
+        logger.debug("1st check.")
+        clean_desired_version = version_parsing.two_pass_semver_parse(desired_version_text)
+    except ValueError:
+        logger.warning("Can't parse desired version as semver")
+
     if clean_desired_version:
         desired_version = f"{symbols}{clean_desired_version}"
 
     found_semversion = None
     try:
+        logger.debug("2nd check.")
         found_semversion = version_parsing.two_pass_semver_parse(found_version)
         if found_semversion is None:
             logger.warning(f"SemVer failed to parse {desired_version}/{found_version}")

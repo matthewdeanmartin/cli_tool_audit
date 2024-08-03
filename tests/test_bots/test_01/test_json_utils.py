@@ -49,7 +49,6 @@ def test_custom_json_serializer_invalid(input_value):
         custom_json_serializer(input_value)
 
 
-
 # Example dataclass and enum for testing purposes
 @dataclasses.dataclass
 class ExampleDataClass:

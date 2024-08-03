@@ -273,6 +273,7 @@ class AuditManager:
 
         if config.if_os and not sys.platform.startswith(config.if_os):
             # This isn't very transparent about what just happened
+            logger.debug(f"Skipping {tool} because it's not needed for {sys.platform}")
             return models.ToolCheckResult(
                 tool=tool,
                 is_needed_for_os=False,
@@ -294,23 +295,30 @@ class AuditManager:
 
         # Not pretty.
         if config.schema == models.SchemaType.EXISTENCE:
+            logger.debug(f"Checking {tool} for existence only.")
             existence_checker = ExistenceVersionChecker("Found" if result.is_available else "Not Found")
             version_result = existence_checker.check_compatibility("Found")
             compatibility_report = existence_checker.format_report("Found")
             desired_version = "*"
         elif config.schema == models.SchemaType.SNAPSHOT:
+            logger.debug(f"Checking {tool} for snapshot versioning.")
             snapshot_checker = SnapshotVersionChecker(result.version or "")
             version_result = snapshot_checker.check_compatibility(config.version)
             compatibility_report = snapshot_checker.format_report(config.version or "")
             desired_version = config.version or ""
         elif config.schema == "pep440":
+            logger.debug(f"Checking {tool} for PEP 440 versioning.")
             pep440_checker = Pep440VersionChecker(result.version or "")
             version_result = pep440_checker.check_compatibility(config.version or "0.0.0")
             compatibility_report = pep440_checker.format_report(config.version or "0.0.0")
             desired_version = config.version or "*"
         else:  # config.schema == "semver":
+            logger.debug(f"Checking {tool} for semantic versioning.")
             semver_checker = SemVerChecker(result.version or "")
-            version_result = semver_checker.check_compatibility(config.version)
+
+            # Have to clean up desired semver or semver will blow up on bad input.
+            clean_desired_semver = str(version_parsing.two_pass_semver_parse(config.version or ""))
+            version_result = semver_checker.check_compatibility(clean_desired_semver)
             compatibility_report = semver_checker.format_report(config.version or "0.0.0")
             desired_version = config.version or "*"
 
@@ -351,7 +359,7 @@ class AuditManager:
 
         last_modified = self.get_command_last_modified_date(tool_name)
         if not last_modified:
-            logger.warning(f"{tool_name} is not on path.")
+            logger.warning(f"{tool_name} is not on path, no last modified.")
             return models.ToolAvailabilityResult(False, True, None, last_modified)
         if schema == models.SchemaType.EXISTENCE:
             logger.debug(f"{tool_name} exists, but not checking for version.")
@@ -368,8 +376,14 @@ class AuditManager:
         try:
             command = [tool_name, version_switch]
             timeout = int(os.environ.get("CLI_TOOL_AUDIT_TIMEOUT", 15))
+            use_shell = bool(os.environ.get("CLI_TOOL_AUDIT_USE_SHELL", False))
+            if not use_shell:
+                logger.debug(
+                    "Some tools like pipx, may not be found on the path unless you export "
+                    "CLI_TOOL_AUDIT_USE_SHELL=1. By default tools are checked without a shell for security."
+                )
             result = subprocess.run(
-                command, capture_output=True, text=True, timeout=timeout, shell=False, check=True
+                command, capture_output=True, text=True, timeout=timeout, shell=use_shell, check=True
             )  # nosec
             # Sometimes version is on line 2 or later.
             version = result.stdout.strip()
@@ -386,7 +400,7 @@ class AuditManager:
             logger.error(f"{tool_name} stderr: {exception.stderr}")
             logger.error(f"{tool_name} stdout: {exception.stdout}")
         except FileNotFoundError:
-            logger.error(f"{tool_name} is not on path.")
+            logger.error(f"{tool_name} is not on path, file not found.")
             return models.ToolAvailabilityResult(False, True, None, last_modified)
 
         return models.ToolAvailabilityResult(True, is_broken, version, last_modified)

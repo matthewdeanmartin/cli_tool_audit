@@ -1,4 +1,5 @@
-from cli_tool_audit.compatibility import check_compatibility
+from cli_tool_audit import version_parsing
+from cli_tool_audit.compatibility import check_compatibility, split_version_match_pattern
 
 
 def test_any_will_do_compatible():
@@ -60,3 +61,18 @@ def test_ascii_art():
 
                        VERSION 5.13.2"""
     assert check_compatibility("*", again_any)[0] == "Compatible"
+
+
+def test_isort_semver():
+    found_version = r"""_                 _
+                       (_) ___  ___  _ __| |_
+                       | |/ _/ / _ \/ '__  _/
+                       | |\__ \/\_\/| |  | |_
+                       |_|\___/\___/\_/   \_/
+
+             isort your imports, so you don't have to.
+
+                           VERSION 5.13.2"""
+    symbols, desired_version_text = split_version_match_pattern(found_version)
+    version_parsing.two_pass_semver_parse(desired_version_text)
+    version_parsing.two_pass_semver_parse(found_version)

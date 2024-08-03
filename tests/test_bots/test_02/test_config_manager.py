@@ -1,17 +1,8 @@
 from cli_tool_audit.config_manager import ConfigManager
-from pathlib import Path
-from unittest.mock import mock_open, patch
-import os
-import pytest
-import toml
-
-
-
-
 
 # Let's start by identifying any issues in the `ConfigManager` class from
 # `config_manager.py`:
-# 
+#
 # 1. In the `_save_config` method, the line
 #    `with open(self.config_path, encoding="utf-8") as file:` should use
 #    `str(self.config_path)` to open the file for writing.
@@ -21,11 +12,8 @@ import toml
 # 3. The `create_update_tool_config` method should correctly convert the schema
 #    values to a string using `str(models.SchemaType(value))` when updating an
 #    existing tool's config.
-# 
+#
 # Now, let's write pytest-style unit tests for the `ConfigManager` class:
-
-
-
 
 
 def test_create_tool_config(tmp_path):
