@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "cli_tool_audit"
-version = "3.0.3"
+version = "3.1.0"
 description = "Audit for existence and version number of cli tools."
 authors = ["Matthew Martin <matthewdeanmartin@gmail.com>"]
 keywords = ["cli tooling", "version numbers", ]
@@ -40,7 +40,7 @@ cli_tool_audit = 'cli_tool_audit.__main__:main'
 tool_audit = 'cli_tool_audit.__main__:main'
 
 [tool.poetry.dependencies]
-python = ">=3.8"
+python = ">=3.9, <4.0"
 
 # file finding
 whichcraft = ">=0.6.1"
@@ -78,6 +78,7 @@ pytest-randomly=">=3.15.0"
 pytest-sugar =">=0.9.7"
 pytest-mock = ">=3.6.1"
 pytest-network= "*"
+pytest-unused-fixtures = "*"
 
 hypothesis = ">=6.96.0"
 tox = "*"
@@ -287,4 +288,4 @@ shellcheck = {name = "shellcheck", version = ">=0.8.0", schema = "semver"}
 choco = {name = "choco", version = ">=0.10.13", schema = "semver"}
 brew = {name = "brew", version = ">=0.0.0", schema = "semver", if_os = "darwin"}
 poetry = {name = "poetry", version = "Poetry (version 1.5.1)", schema = "snapshot"}
-isort = {name = "isort", version = "_                 _\n                (_) ___  ___  _ __| |_\n                | |/ _/ / _ \\/ '__  _/\n                | |\\__ \\/\\_\\/| |  | |_\n                |_|\\___/\\___/\\_/   \\_/\n\n      isort your imports, so you don't have to.\n\n                    VERSION 5.13.2"}
+isort = {name = "isort", version = "_                 _\n                (_) ___  ___  _ __| |_\n                | |/ _/ / _ \\/ '__  _/\n                | |\\__ \\/\\_\\/| |  | |_\n                |_|\\___/\\___/\\_/   \\_/\n\n      isort your imports, so you don't have to.\n\n                    VERSION 5.13.2", schema = "snapshot"}

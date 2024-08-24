@@ -15,7 +15,13 @@ from cli_tool_audit.__main__ import handle_audit, main
 
 def test_handle_audit():
     args = argparse.Namespace(
-        config="test_config.toml", never_fail=False, format="table", no_cache=False, tags=None, only_errors=False
+        config="test_config.toml",
+        never_fail=False,
+        format="table",
+        no_cache=False,
+        tags=None,
+        only_errors=False,
+        quiet=False,
     )
 
     with patch("cli_tool_audit.views.report_from_pyproject_toml") as mock_report:
@@ -28,6 +34,7 @@ def test_handle_audit():
             no_cache=False,
             tags=None,
             only_errors=False,
+            quiet=False,
         )
 
 
@@ -44,11 +51,12 @@ def test_main_handle_audit_mock(mock_parse_args, mock_basic_config, mock_report)
         only_errors=True,
         verbose=True,
         demo=False,
+        quiet=False,
     )
 
     main()
 
-    mock_report.assert_called_once_with(exit_code_on_failure=True, file_format="table", no_cache=True)
+    mock_report.assert_called_once_with(exit_code_on_failure=True, file_format="table", no_cache=True, quiet=False)
 
 
 # These tests cover the `handle_audit` function in different scenarios. The first

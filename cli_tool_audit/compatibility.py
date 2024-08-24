@@ -89,10 +89,12 @@ def check_compatibility(desired_version: str, found_version: Optional[str]) -> t
 
     # Handle non-semver match patterns
     symbols, desired_version_text = split_version_match_pattern(desired_version)
+    logger.debug(f"Attempted to split {desired_version} and got {symbols} and {desired_version_text}")
     clean_desired_version = None
     try:
-        logger.debug("1st check.")
+        logger.debug("1st check with two_pass_semver_parse")
         clean_desired_version = version_parsing.two_pass_semver_parse(desired_version_text)
+        logger.debug(f"clean_desired_version: {clean_desired_version} for {desired_version_text}")
     except ValueError:
         logger.warning("Can't parse desired version as semver")
 
@@ -101,15 +103,25 @@ def check_compatibility(desired_version: str, found_version: Optional[str]) -> t
 
     found_semversion = None
     try:
-        logger.debug("2nd check.")
+        logger.debug("2nd check with two_pass_semver_parse")
         found_semversion = version_parsing.two_pass_semver_parse(found_version)
+        logger.debug(f"found_semversion: {found_semversion} for {found_version}")
+        logger.debug(f"desired_version: {desired_version}")
         if found_semversion is None:
             logger.warning(f"SemVer failed to parse {desired_version}/{found_version}")
             is_compatible = CANT_TELL
         elif desired_version == "*":
             # not picky, short circuit the logic.
             is_compatible = "Compatible"
-        elif desired_version.startswith("^") or desired_version.startswith("~") or "*" in desired_version:
+        elif (
+            desired_version.startswith("^")
+            or desired_version.startswith("~")
+            or "*" in desired_version
+            or desired_version.startswith("=")
+            or desired_version.startswith("!")
+            or desired_version.startswith("<")
+            or desired_version.startswith(">")
+        ):
             is_compatible = compatibility_complex.check_range_compatibility(desired_version, found_semversion)
         elif found_semversion.match(desired_version):
             is_compatible = "Compatible"

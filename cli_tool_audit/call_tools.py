@@ -91,6 +91,7 @@ def check_tool_availability(
                 "Some tools like pipx, may not be found on the path unless you export "
                 "CLI_TOOL_AUDIT_USE_SHELL=1. By default tools are checked without a shell for security."
             )
+        logger.info(f"Checking {tool_name} with {' '.join(command)}")
         result = subprocess.run(
             command, capture_output=True, text=True, timeout=timeout, shell=use_shell, check=True
         )  # nosec

@@ -126,7 +126,7 @@ class ExistenceVersionChecker(VersionChecker):
         """
         Check if the tool exists.
         Args:
-            desired_version (Optional[str]): The desired version. Ignored.
+            desired_version (strshould_show_progress_bar): The desired version. Ignored.
 
         Returns:
             VersionResult: The result of the check.
@@ -317,7 +317,17 @@ class AuditManager:
             semver_checker = SemVerChecker(result.version or "")
 
             # Have to clean up desired semver or semver will blow up on bad input.
-            clean_desired_semver = str(version_parsing.two_pass_semver_parse(config.version or ""))
+
+            if config.version != "*":
+                symbols, desired_version_text = compatibility.split_version_match_pattern(config.version or "")
+                desired_version_text = str(version_parsing.two_pass_semver_parse(desired_version_text or ""))
+                if symbols:
+                    clean_desired_semver = f"{symbols}{desired_version_text}"
+                else:
+                    clean_desired_semver = desired_version_text
+            else:
+                clean_desired_semver = "*"
+            logger.debug(f"Ready to semver_check with {clean_desired_semver}")
             version_result = semver_checker.check_compatibility(clean_desired_semver)
             compatibility_report = semver_checker.format_report(config.version or "0.0.0")
             desired_version = config.version or "*"

@@ -127,6 +127,7 @@ def handle_audit(args: argparse.Namespace) -> None:
         no_cache=args.no_cache,
         tags=args.tags,
         only_errors=args.only_errors,
+        quiet=args.quiet,
     )
 
 
@@ -185,6 +186,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     )
 
     parser.add_argument("--verbose", action="store_true", help="verbose output")
+
+    parser.add_argument("--quiet", action="store_true", help="suppress output")
 
     parser.add_argument(
         "--demo",
@@ -305,8 +308,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     # Audit
 
     # Default behavior
-    print("No command specified. Auditing environment with pyproject.toml configuration.")
-    return views.report_from_pyproject_toml(exit_code_on_failure=True, file_format="table", no_cache=True)
+    if not args.quiet:
+        print("No command specified. Auditing environment with pyproject.toml configuration.")
+    file_format = "quiet" if args.quiet else "table"
+    return views.report_from_pyproject_toml(
+        exit_code_on_failure=True, file_format=file_format, no_cache=True, quiet=args.quiet
+    )
 
 
 def add_formats(audit_parser):

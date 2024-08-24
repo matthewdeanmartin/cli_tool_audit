@@ -38,7 +38,7 @@ pre:
 
 [doc("Running pylint")]
 pylint: isort black
-	{{VENV}} ruff check .--fix
+	{{VENV}} ruff check . --fix
 	{{VENV}} pylint cli_tool_audit --fail-under 9.8
 
 [doc("Running bandit")]

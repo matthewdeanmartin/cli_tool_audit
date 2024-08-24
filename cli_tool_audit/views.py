@@ -113,6 +113,7 @@ def report_from_pyproject_toml(
     no_cache: bool = False,
     tags: Optional[list[str]] = None,
     only_errors: bool = False,
+    quiet: bool = False,
 ) -> int:
     """
     Report on the compatibility of the tools in the pyproject.toml file.
@@ -125,6 +126,7 @@ def report_from_pyproject_toml(
         no_cache (bool, optional): If True, don't use the cache. Defaults to False.
         tags (Optional[list[str]], optional): Only check tools with these tags. Defaults to None.
         only_errors (bool, optional): Only show errors. Defaults to False.
+        quiet (bool, optional): If True, suppress all output. Defaults to False.
 
     Returns:
         int: The exit code.
@@ -153,7 +155,9 @@ def report_from_pyproject_toml(
 
     failed = policy.apply_policy(results)
 
-    if file_format == "json":
+    if file_format == "quiet" or quiet:
+        logger.debug("Quiet mode enabled, suppressing UI output. If you want no output at all, don't select --verbose")
+    elif file_format == "json":
         print(json.dumps([result.__dict__ for result in results], indent=4, default=json_utils.custom_json_serializer))
     elif file_format == "json-compact":
         print(json.dumps([result.__dict__ for result in results], default=json_utils.custom_json_serializer))
@@ -187,10 +191,12 @@ def report_from_pyproject_toml(
         print(table)
 
     if only_errors and success_and_failure > 0 and len(results) == 0:
-        print("No errors found, all tools meet version policy.")
+        if not quiet:
+            print("No errors found, all tools meet version policy.")
         return 0
     if failed and exit_code_on_failure and file_format == "table":
-        print("Did not pass validation, failing with return value of 1.")
+        if not quiet:
+            print("Did not pass validation, failing with return value of 1.")
         return 1
     return 0
 
@@ -257,6 +263,15 @@ def pretty_print_results(
 
 
 def should_show_progress_bar(cli_tools) -> Optional[bool]:
+    """
+    Determine if a progress bar should be shown.
+
+    Args:
+        cli_tools: A dictionary of tool names and CliToolConfig objects.
+
+    Returns:
+        Optional[bool]: True if the progress bar should be shown, False if it should be hidden, or None if it can't be determined
+    """
     disable = len(cli_tools) < 5 or os.environ.get("CI") or os.environ.get("NO_COLOR")
     return True if disable else None
 

@@ -21,11 +21,16 @@ import cli_tool_audit.views as views
 class DummyLock:
     """For testing"""
 
-    def __enter__(self):
+    def __enter__(self)->None:
         """For testing"""
 
-    def __exit__(self, exc_type, exc_value, traceback):
-        """For testing"""
+    def __exit__(self, exc_type:Any, exc_value:Any, traceback:Any)->None:
+        """For testing
+        Args:
+            exc_type (Any): For testing
+            exc_value (Any): For testing
+            traceback (Any): For testing
+        """
 
 
 def get_pipx_list() -> Any:

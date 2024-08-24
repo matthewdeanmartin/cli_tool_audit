@@ -73,11 +73,23 @@ def check_range_compatibility(desired_version: str, found_semversion: Version) -
         >>> check_range_compatibility("~1.2.0", Version.parse("1.2.5"))
         'Compatible'
     """
-    version_string = convert_version_range(desired_version)
+    if desired_version == "*":
+        return "Compatible"
+    if (
+        desired_version.startswith("=")
+        or desired_version.startswith("!")
+        or desired_version.startswith("<")
+        or desired_version.startswith(">")
+    ):
+        version_string = desired_version
+    else:
+        version_string = convert_version_range(desired_version)
+
     parts = version_string.split(" ")
     if len(parts) == 1:
         if not found_semversion.match(parts[0]):
             return f"{desired_version} != {found_semversion}"
+        return "Compatible"
 
     lower, upper = parts
     if not found_semversion.match(lower):
