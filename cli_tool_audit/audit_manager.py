@@ -11,7 +11,7 @@ import subprocess  # nosec
 import sys
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Literal, Optional
+from typing import Literal
 
 import packaging.specifiers as packaging_specifiers
 import packaging.version as packaging
@@ -65,9 +65,9 @@ class VersionChecker(ABC):
 class SemVerChecker(VersionChecker):
     def __init__(self, version_string: str) -> None:
         self.found_version = self.parse_version(version_string)
-        self.result: Optional[VersionResult] = None
+        self.result: VersionResult | None = None
 
-    def parse_version(self, version_string: str) -> Optional[Version]:
+    def parse_version(self, version_string: str) -> Version | None:
         """
         Parse a version string into a semver Version object.
         Args:
@@ -78,7 +78,7 @@ class SemVerChecker(VersionChecker):
         """
         return version_parsing.two_pass_semver_parse(version_string)
 
-    def check_compatibility(self, desired_version: Optional[str]) -> VersionResult:
+    def check_compatibility(self, desired_version: str | None) -> VersionResult:
         """
         Check if the version is compatible with the desired version.
         Args:
@@ -172,7 +172,7 @@ class SnapshotVersionChecker(VersionChecker):
         """
         return version_string
 
-    def check_compatibility(self, desired_version: Optional[str]) -> VersionResult:
+    def check_compatibility(self, desired_version: str | None) -> VersionResult:
         """
         Check if the version is compatible with the desired version which could be a range.
         Args:
@@ -219,7 +219,7 @@ class Pep440VersionChecker(VersionChecker):
         """
         return packaging.Version(version_string)
 
-    def check_compatibility(self, desired_version: Optional[str]) -> VersionResult:
+    def check_compatibility(self, desired_version: str | None) -> VersionResult:
         """
         Check if the version is compatible with the desired version which could be a range.
 
@@ -415,7 +415,7 @@ class AuditManager:
 
         return models.ToolAvailabilityResult(True, is_broken, version, last_modified)
 
-    def get_command_last_modified_date(self, tool_name: str) -> Optional[datetime.datetime]:
+    def get_command_last_modified_date(self, tool_name: str) -> datetime.datetime | None:
         """
         Get the last modified date of a command's executable.
         Args:

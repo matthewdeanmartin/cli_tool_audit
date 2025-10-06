@@ -9,7 +9,7 @@ import sys
 from collections.abc import Sequence
 from dataclasses import fields
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import cli_tool_audit.config_manager as config_manager
 import cli_tool_audit.freeze as freeze
@@ -152,7 +152,7 @@ def handle_single(args):
     )
 
 
-def main(argv: Optional[Sequence[str]] = None) -> int:
+def main(argv: Sequence[str] | None = None) -> int:
     """Parse arguments and run the CLI tool.
     Args:
         argv: The arguments to parse.

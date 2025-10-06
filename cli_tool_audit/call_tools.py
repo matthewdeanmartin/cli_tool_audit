@@ -14,7 +14,6 @@ import datetime
 import logging
 import os
 import subprocess  # nosec
-from typing import Optional
 
 # pylint: disable=no-name-in-module
 from whichcraft import which
@@ -25,7 +24,7 @@ from cli_tool_audit.known_switches import KNOWN_SWITCHES
 logger = logging.getLogger(__name__)
 
 
-def get_command_last_modified_date(tool_name: str) -> Optional[datetime.datetime]:
+def get_command_last_modified_date(tool_name: str) -> datetime.datetime | None:
     """
     Get the last modified date of a command's executable.
     Args:

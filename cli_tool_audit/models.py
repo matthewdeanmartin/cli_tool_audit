@@ -6,7 +6,6 @@ import datetime
 import enum
 import hashlib
 from dataclasses import asdict, dataclass
-from typing import Optional
 
 
 class SchemaType(enum.Enum):
@@ -31,18 +30,18 @@ class CliToolConfig:
 
     name: str
     """Tool name without path"""
-    version: Optional[str] = None
+    version: str | None = None
     """Desired version"""
-    version_switch: Optional[str] = None
+    version_switch: str | None = None
     """Command line switch to get version, e.g. -V, --version, etc."""
-    schema: Optional[SchemaType] = None
+    schema: SchemaType | None = None
     """Snapshot, semver, pep440, existence"""
-    if_os: Optional[str] = None
+    if_os: str | None = None
     """Which OS this tool is needed for. Single value. Comparison evaluated by prefix. Same values as sys.platform"""
-    tags: Optional[list[str]] = None
-    install_command: Optional[str] = None
+    tags: list[str] | None = None
+    install_command: str | None = None
     """Having failed to find the right version what command can be run. Let the user run it."""
-    install_docs: Optional[str] = None
+    install_docs: str | None = None
     """For failed tool checks, where can the user find out how to install."""
 
     def cache_hash(self) -> str:
@@ -72,13 +71,13 @@ class ToolCheckResult:
     is_available: bool
     is_snapshot: bool
     """Snapshot schema"""
-    found_version: Optional[str]
+    found_version: str | None
     """Same as snapshot_version, the exact text produced by --version switch."""
-    parsed_version: Optional[str]
+    parsed_version: str | None
     """Clean stringification of the version object for current schema."""
     is_compatible: str
     is_broken: bool
-    last_modified: Optional[datetime.datetime]
+    last_modified: datetime.datetime | None
     tool_config: CliToolConfig
 
     def status(self) -> str:
@@ -125,9 +124,9 @@ class ToolAvailabilityResult:
 
     is_available: bool
     is_broken: bool
-    version: Optional[str]
+    version: str | None
     """Desired version"""
-    last_modified: Optional[datetime.datetime]
+    last_modified: datetime.datetime | None
 
 
 if __name__ == "__main__":
