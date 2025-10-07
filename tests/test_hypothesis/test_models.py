@@ -2,7 +2,6 @@
 # and is provided under the Creative Commons Zero public domain dedication.
 
 import datetime
-import typing
 
 from hypothesis import given
 from hypothesis import strategies as st
@@ -23,13 +22,13 @@ from cli_tool_audit.models import CliToolConfig
 )
 def test_fuzz_CliToolConfig(
     name: str,
-    version: typing.Optional[str],
-    version_switch: typing.Optional[str],
-    schema: typing.Optional[cli_tool_audit.models.SchemaType],
-    if_os: typing.Optional[str],
-    tags: typing.Optional[list[str]],
-    install_command: typing.Optional[str],
-    install_docs: typing.Optional[str],
+    version: str | None,
+    version_switch: str | None,
+    schema: cli_tool_audit.models.SchemaType | None,
+    if_os: str | None,
+    tags: list[str] | None,
+    install_command: str | None,
+    install_docs: str | None,
 ) -> None:
     cli_tool_audit.models.CliToolConfig(
         name=name,
@@ -52,8 +51,8 @@ def test_fuzz_CliToolConfig(
 def test_fuzz_ToolAvailabilityResult(
     is_available: bool,
     is_broken: bool,
-    version: typing.Optional[str],
-    last_modified: typing.Optional[datetime.datetime],
+    version: str | None,
+    last_modified: datetime.datetime | None,
 ) -> None:
     cli_tool_audit.models.ToolAvailabilityResult(
         is_available=is_available,
@@ -95,11 +94,11 @@ def test_fuzz_ToolCheckResult(
     is_needed_for_os: bool,
     is_available: bool,
     is_snapshot: bool,
-    found_version: typing.Optional[str],
-    parsed_version: typing.Optional[str],
+    found_version: str | None,
+    parsed_version: str | None,
     is_compatible: str,
     is_broken: bool,
-    last_modified: typing.Optional[datetime.datetime],
+    last_modified: datetime.datetime | None,
     tool_config: cli_tool_audit.models.CliToolConfig,
 ) -> None:
     cli_tool_audit.models.ToolCheckResult(

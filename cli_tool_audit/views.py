@@ -9,7 +9,7 @@ import os
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from threading import Lock
-from typing import Optional, Union
+from typing import Union
 
 import colorama
 from prettytable import PrettyTable
@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 def validate(
     file_path: Path = Path("pyproject.toml"),
     no_cache: bool = False,
-    tags: Optional[list[str]] = None,
+    tags: list[str] | None = None,
     disable_progress_bar: bool = False,
 ) -> list[models.ToolCheckResult]:
     """
@@ -54,7 +54,7 @@ def validate(
 def process_tools(
     cli_tools: dict[str, models.CliToolConfig],
     no_cache: bool = False,
-    tags: Optional[list[str]] = None,
+    tags: list[str] | None = None,
     disable_progress_bar: bool = False,
 ) -> list[models.ToolCheckResult]:
     """
@@ -106,12 +106,12 @@ def process_tools(
 
 
 def report_from_pyproject_toml(
-    file_path: Optional[Path] = Path("pyproject.toml"),
-    config_as_dict: Optional[dict[str, models.CliToolConfig]] = None,
+    file_path: Path | None = Path("pyproject.toml"),
+    config_as_dict: dict[str, models.CliToolConfig] | None = None,
     exit_code_on_failure: bool = True,
     file_format: str = "table",
     no_cache: bool = False,
-    tags: Optional[list[str]] = None,
+    tags: list[str] | None = None,
     only_errors: bool = False,
     quiet: bool = False,
 ) -> int:
@@ -262,7 +262,7 @@ def pretty_print_results(
     return table
 
 
-def should_show_progress_bar(cli_tools) -> Optional[bool]:
+def should_show_progress_bar(cli_tools) -> bool | None:
     """
     Determine if a progress bar should be shown.
 

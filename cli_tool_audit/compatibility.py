@@ -4,7 +4,7 @@ Functions for checking compatibility between versions.
 
 import logging
 import re
-from typing import Any, Optional
+from typing import Any
 
 from semver import Version
 
@@ -58,7 +58,7 @@ def split_version_match_pattern(pattern: str) -> tuple[Any, ...]:
 CANT_TELL = "Can't tell"
 
 
-def check_compatibility(desired_version: str, found_version: Optional[str]) -> tuple[str, Optional[Version]]:
+def check_compatibility(desired_version: str, found_version: str | None) -> tuple[str, Version | None]:
     """
     Check if a found version is compatible with a desired version. Uses semantic versioning.
     When a version isn't semver, we attempt to convert it to semver.

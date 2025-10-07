@@ -7,7 +7,7 @@ import json
 import logging
 import pathlib
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import cli_tool_audit.audit_manager as audit_manager
 import cli_tool_audit.json_utils as json_utils
@@ -39,7 +39,7 @@ logger = logging.getLogger(__name__)
 
 
 class AuditFacade:
-    def __init__(self, cache_dir: Optional[Path] = None) -> None:
+    def __init__(self, cache_dir: Path | None = None) -> None:
         """
         Initialize the facade.
         Args:
@@ -79,7 +79,7 @@ class AuditFacade:
         the_hash = tool_config.cache_hash()
         return self.cache_dir / f"{sanitized_name}_{the_hash}.json"
 
-    def read_from_cache(self, tool_config: models.CliToolConfig) -> Optional[models.ToolCheckResult]:
+    def read_from_cache(self, tool_config: models.CliToolConfig) -> models.ToolCheckResult | None:
         """
         Read the cached result for the given tool.
         Args:

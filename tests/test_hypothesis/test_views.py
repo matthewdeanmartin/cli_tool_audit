@@ -1,7 +1,6 @@
 # This test code was written by the `hypothesis.extra.ghostwriter` module
 # and is provided under the Creative Commons Zero public domain dedication.
 
-import typing
 from pathlib import Path
 
 import pytest
@@ -156,7 +155,7 @@ def test_fuzz_pretty_print_results(
 def test_fuzz_validate(
     file_path: Path,
     no_cache: bool,
-    tags: typing.Optional[list[str]],
+    tags: list[str] | None,
     disable_progress_bar: bool,
 ) -> None:
     pytest.skip("Test is slow and hangs")
