@@ -1,6 +1,7 @@
 """
 Stress test for the cli_tool_audit package using venv as source data.
 """
+
 import concurrent
 import glob
 import os
@@ -10,6 +11,7 @@ from concurrent.futures import ThreadPoolExecutor
 from threading import Lock
 
 from tqdm import tqdm
+
 # pylint: disable=no-name-in-module
 from whichcraft import which
 
@@ -65,8 +67,8 @@ def report_for_venv_tools(max_count: int = -1) -> None:
     enable_cache = len(cli_tools) >= 5
     # Create a ThreadPoolExecutor with one thread per CPU
     with ThreadPoolExecutor(max_workers=num_cpus) as executor:
-    # threaded is faster so far
-    # with ProcessPoolExecutor(max_workers=num_cpus) as executor:
+        # threaded is faster so far
+        # with ProcessPoolExecutor(max_workers=num_cpus) as executor:
         # Submit tasks to the executor
         lock = Lock()
         # lock = Dummy()
@@ -82,7 +84,7 @@ def report_for_venv_tools(max_count: int = -1) -> None:
                 result = future.result()
                 tqdm.update(progress_bar, 1)
                 results.append(result)
-        print(views.pretty_print_results(results,truncate_long_versions=True, include_docs=False))
+        print(views.pretty_print_results(results, truncate_long_versions=True, include_docs=False))
 
 
 if __name__ == "__main__":

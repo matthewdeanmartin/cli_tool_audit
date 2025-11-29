@@ -2,7 +2,6 @@
 # and is provided under the Creative Commons Zero public domain dedication.
 
 
-
 # @given(venv_path=".")
 # def test_fuzz_get_executables_in_venv(venv_path: str) -> None:
 #     cli_tool_audit.view_venv_stress_test.get_executables_in_venv(venv_path=venv_path)

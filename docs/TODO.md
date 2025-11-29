@@ -29,7 +29,7 @@
 ## Logging/Debug
 
 - `--quiet` Just return code?
-- '--log-level'  # debug, info, warning, error, critical
+- `--log-level`  # debug, info, warning, error, critical
 
 ## Tests
 

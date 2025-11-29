@@ -61,10 +61,14 @@ class AuditFacade:
         current_time = datetime.datetime.now()
         expiration_days = 30
         for cache_file in self.cache_dir.glob("*.json"):
-            file_creation_time = datetime.datetime.fromtimestamp(cache_file.stat().st_mtime)
-            if (current_time - file_creation_time) > datetime.timedelta(days=expiration_days):
-                if cache_file.exists():
-                    cache_file.unlink(missing_ok=True)  # Delete the file
+            try:
+                file_creation_time = datetime.datetime.fromtimestamp(cache_file.stat().st_mtime)
+                if (current_time - file_creation_time) > datetime.timedelta(days=expiration_days):
+                    if cache_file.exists():
+                        cache_file.unlink(missing_ok=True)  # Delete the file
+            except FileNotFoundError:
+                # This appears to be intermittent. If it is already gone, no problem, I guess.
+                logger.debug(f"Failed to find cache file {cache_file}")
 
     def get_cache_filename(self, tool_config: models.CliToolConfig) -> Path:
         """

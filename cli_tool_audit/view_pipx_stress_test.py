@@ -21,10 +21,10 @@ import cli_tool_audit.views as views
 class DummyLock:
     """For testing"""
 
-    def __enter__(self)->None:
+    def __enter__(self) -> None:
         """For testing"""
 
-    def __exit__(self, exc_type:Any, exc_value:Any, traceback:Any)->None:
+    def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
         """For testing
         Args:
             exc_type (Any): For testing
