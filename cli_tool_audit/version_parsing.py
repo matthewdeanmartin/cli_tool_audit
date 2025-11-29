@@ -1,6 +1,5 @@
 import logging
 import re
-from typing import Optional
 
 import packaging.specifiers as ps
 import packaging.version
@@ -10,7 +9,7 @@ from semver import Version
 logger = logging.getLogger(__name__)
 
 
-def extract_first_two_part_version(input_string: str) -> Optional[str]:
+def extract_first_two_part_version(input_string: str) -> str | None:
     """
     Extract the first 2 part version from a string.
     Args:
@@ -41,7 +40,7 @@ def extract_first_two_part_version(input_string: str) -> Optional[str]:
     return matches[0] if matches else None
 
 
-def extract_first_semver_version(input_string: str) -> Optional[str]:
+def extract_first_semver_version(input_string: str) -> str | None:
     """
     Extract the first semver version from a string.
     Args:
@@ -98,7 +97,7 @@ def convert2semver(version: packaging.version.Version) -> semver.Version:
     return semver.Version(major, minor, prerelease=pre, build=version.dev)
 
 
-def two_pass_semver_parse(input_string: str) -> Optional[Version]:
+def two_pass_semver_parse(input_string: str) -> Version | None:
     """
     Parse a string into a semver version. This function will attempt to parse the string twice.
     The first pass will attempt to parse the string as a semver version. If that fails, the second pass will attempt to
