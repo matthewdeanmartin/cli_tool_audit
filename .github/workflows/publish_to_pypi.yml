@@ -22,15 +22,9 @@ jobs:
         with:
           python-version: '3.14'
 
-      - name: Install uv and pipx
+      - name: Install poetry and pipx
         run: |
-          pip install uv && pip install pipx
-
-      - name: Install global dependencies
-        run: |
-          pipx install uv && pipx install "coderoller" && \
-          pipx install isort && pipx install black && pipx install bandit && \
-          pipx install pylint && pipx install pre-commit && pipx install poetry && pipx install hatch
+          pip install pipx && pip install uv && pipx install uv && pipx install hatchling && uv sync
 
       - name: Install Dependencies
         run: uv sync --all-extras
@@ -59,7 +53,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: pypi
-      url: https://pypi.org/p/bitrab
+      url: https://pypi.org/p/cli-tool-audit
     permissions:
       id-token: write
     needs: build

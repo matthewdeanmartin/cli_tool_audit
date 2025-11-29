@@ -16,17 +16,7 @@ jobs:
           # cache: 'pipenv' # caching pipenv dependencies
     - name: Install poetry and pipx
       run: |
-        pip install pipx && pip install uv && pipx install uv && uv sync
+        pip install pipx && pip install uv && pipx install uv && pipx install hatchling && uv sync
 
     - name: Run Makefile
       run: make check
-    - name: Run make
-      run: uv run hatch publish
-    - name: Upload Package
-      uses: actions/upload-artifact@v4.5.0
-      with:
-        name: packages
-        path: dist/
-        if-no-files-found: error
-        retention-days: 1
-
