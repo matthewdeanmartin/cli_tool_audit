@@ -8,9 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [3.2.0] - 2026-03-26
 
 ### Added
-- GUI for discoverability and ease of use `cli_tool_audit gui`
-- `--format pretty`
-- `--quiet` option
+- GUI for discoverability and ease of use (`cli_tool_audit gui` or `cli_tool_audit-gui`)
+- `discover` subcommand to scan project files (Makefile, workflows, `package.json`, Dockerfiles, shell scripts) for CLI tool references
+- `--quiet` option to suppress output
+- `--gui` flag as an alias for the `gui` subcommand
 
 
 ## [3.1.0] - 2024-08-24

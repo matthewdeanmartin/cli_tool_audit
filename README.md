@@ -70,15 +70,18 @@ All commands
 
 ```text
 ❯ cli_tool_audit --help
-usage: cli_tool_audit [-h] [-V] [--verbose] [--demo {pipx,venv,npm}]
-                      {interactive,freeze,audit,single,read,create,update,delete} ...
+usage: cli_tool_audit [-h] [-V] [--verbose] [--quiet] [--gui]
+                      [--demo {pipx,venv,npm}]
+                      {gui,interactive,discover,freeze,audit,single,read,create,update,delete} ...
 
 Audit for existence and version number of cli tools.
 
 positional arguments:
-  {interactive,freeze,audit,single,read,create,update,delete}
+  {gui,interactive,discover,freeze,audit,single,read,create,update,delete}
                         Subcommands.
+    gui                 Launch the graphical interface
     interactive         Interactively edit configuration
+    discover            Scan project files for CLI tool references
     freeze              Freeze the versions of specified tools
     audit               Audit environment with current configuration
     single              Audit one tool without configuration file
@@ -91,19 +94,31 @@ options:
   -h, --help            show this help message and exit
   -V, --version         Show program's version number and exit.
   --verbose             verbose output
+  --quiet               suppress output
+  --gui                 Launch the graphical interface
   --demo {pipx,venv,npm}
                         Demo for values of npm, pipx or venv
-
-    Examples:
-
-        # Audit and report using pyproject.toml
-        cli_tool_audit audit
-
-        # Generate config for snapshots
-        cli_tool_audit freeze python java make rustc
 ```
 
 Note. If you use the create/update commands and specify the `--version` switch, it must have an equal sign.
+
+## GUI
+
+A Tkinter-based graphical interface is included for users who prefer not to use the command line.
+
+```bash
+cli_tool_audit gui
+# or
+cli_tool_audit-gui
+```
+
+## Auto-Discovery
+
+Scan project files (Makefile, GitHub workflows, `package.json`, `pyproject.toml`, Dockerfiles, shell scripts) to find CLI tools referenced in your project:
+
+```bash
+cli_tool_audit discover
+```
 
 Here is how to generate a freeze, a list of current versions by snapshot, for a lis tof tools. All tools will be
 check with `--version` unless they are well known.

@@ -1,0 +1,31 @@
+site_name: cli_tool_audit
+site_description: Verify CLI tools are available at compatible versions
+site_url: https://cli-tool-audit.readthedocs.io/
+repo_url: https://github.com/matthewdeanmartin/cli_tool_audit
+repo_name: matthewdeanmartin/cli_tool_audit
+
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - content.code.copy
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [.]
+
+nav:
+  - Home: index.md
+  - Use Cases: UseCases.md
+  - Environment Variables: EnvironmentVariables.md
+  - GUI: gui.md
+  - API Reference: api.md
+  - Changelog: changelog.md
+
+markdown_extensions:
+  - pymdownx.highlight
+  - pymdownx.inlinehilite
+  - pymdownx.superfences

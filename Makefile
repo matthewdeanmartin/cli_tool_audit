@@ -91,6 +91,15 @@ check_docs:
 make_docs:
 	pdoc cli_tool_audit --html -o docs --force
 
+docs-build:
+	$(VENV) mkdocs build
+
+docs-serve:
+	$(VENV) mkdocs serve
+
+docs-deploy:
+	$(VENV) mkdocs gh-deploy
+
 check_md:
 	$(VENV) linkcheckMarkdown README.md
 	$(VENV) markdownlint README.md --config .markdownlintrc
@@ -113,3 +122,6 @@ check_all_docs: check_docs check_md check_spelling check_changelog
 check_self:
 	# Can it verify itself?
 	$(VENV) ./scripts/dog_food.sh
+
+pin_actions:
+	pinact run --update .github/workflows/build.yml .github/workflows/publish_to_pypi.yml

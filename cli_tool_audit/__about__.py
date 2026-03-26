@@ -12,7 +12,7 @@ __all__ = [
 ]
 
 __title__ = "cli_tool_audit"
-__version__ = "3.1.0"
+__version__ = "3.2.0"
 __description__ = "Audit for existence and version number of cli tools."
 __credits__ = [{"name": "Matthew Martin", "email": "matthewdeanmartin@gmail.com"}]
 __readme__ = "README.md"
