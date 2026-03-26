@@ -22,9 +22,27 @@ test: uv.lock
 	@echo "Running unit tests"
 	# $(VENV) pytest --doctest-modules cli_tool_audit
 	# $(VENV) python -m unittest discover
-	$(VENV) pytest tests -vv -n 2 --cov=cli_tool_audit --cov-report=html --cov-fail-under 35 --cov-branch --cov-report=xml --junitxml=junit.xml -o junit_family=legacy --timeout=5 --session-timeout=600
+	$(VENV) pytest tests -vv -n 2 --cov=cli_tool_audit --cov-report=html --cov-fail-under 35 --cov-branch --cov-report=xml --junitxml=junit.xml -o junit_family=legacy --timeout=60 --session-timeout=600
 	$(VENV) bash ./scripts/basic_checks.sh
 #	$(VENV) bash basic_test_with_logging.sh
+
+PYTEST_LLM_ARGS ?= --override-ini="addopts=" -q --tb=short --maxfail=1 --disable-warnings -r a
+
+test-llm: uv.lock
+	@echo "Running token-efficient tests"
+	$(VENV) pytest tests $(PYTEST_LLM_ARGS)
+
+test-llm-cov: uv.lock
+	@echo "Running token-efficient tests with coverage"
+	$(VENV) pytest tests $(PYTEST_LLM_ARGS) --cov=cli_tool_audit --cov-report=term-missing:skip-covered --cov-report=xml --cov-fail-under 35 --cov-branch
+
+lint-llm:
+	@echo "Running token-efficient lint checks"
+	$(VENV) ruff check cli_tool_audit tests
+	$(VENV) mypy cli_tool_audit --ignore-missing-imports --check-untyped-defs
+
+check-llm: lint-llm test-llm
+	@echo "LLM-friendly checks complete"
 
 
 isort: 

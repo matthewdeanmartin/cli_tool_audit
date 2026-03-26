@@ -24,6 +24,23 @@ from cli_tool_audit.known_switches import KNOWN_SWITCHES
 logger = logging.getLogger(__name__)
 
 
+def extract_version_output(stdout: str | None, stderr: str | None) -> str | None:
+    """
+    Extract the first usable version output from a subprocess result.
+
+    Args:
+        stdout (str | None): Standard output from the command.
+        stderr (str | None): Standard error from the command.
+
+    Returns:
+        str | None: The stripped version output if any was emitted.
+    """
+    for candidate in (stdout, stderr):
+        if candidate and candidate.strip():
+            return candidate.strip()
+    return None
+
+
 def get_command_last_modified_date(tool_name: str) -> datetime.datetime | None:
     """
     Get the last modified date of a command's executable.
@@ -95,19 +112,19 @@ def check_tool_availability(
             command, capture_output=True, text=True, timeout=timeout, shell=use_shell, check=True
         )  # nosec
         # Sometimes version is on line 2 or later.
-        version = result.stdout.strip()
-        if not version:
-            # check stderror
-            logger.debug("Got nothing from stdout, checking stderror")
-            version = result.stderr.strip()
+        version = extract_version_output(result.stdout, result.stderr)
 
         logger.debug(f"Called tool with {' '.join(command)}, got  {version}")
         is_broken = False
     except subprocess.CalledProcessError as exception:
-        is_broken = True
-        logger.error(f"{tool_name} failed invocation with {exception}")
-        logger.error(f"{tool_name} stderr: {exception.stderr}")
-        logger.error(f"{tool_name} stdout: {exception.stdout}")
+        version = extract_version_output(exception.stdout, exception.stderr)
+        is_broken = version is None
+        if is_broken:
+            logger.error(f"{tool_name} failed invocation with {exception}")
+            logger.error(f"{tool_name} stderr: {exception.stderr}")
+            logger.error(f"{tool_name} stdout: {exception.stdout}")
+        else:
+            logger.warning(f"{tool_name} returned a non-zero exit code but still produced version output.")
     except FileNotFoundError:
         logger.error(f"{tool_name} is not on path, file not found.")
         return models.ToolAvailabilityResult(False, True, None, last_modified)

@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 import cli_tool_audit.config_manager as config_manager
+import cli_tool_audit.discover as discover
 import cli_tool_audit.freeze as freeze
 import cli_tool_audit.interactive as interactive
 import cli_tool_audit.logging_config as logging_config
@@ -99,6 +100,13 @@ def handle_interactive(args: argparse.Namespace) -> None:
     interactive.interactive_config_manager(manager)
 
 
+def handle_gui() -> int:
+    """Launch the tkinter GUI. Import is deferred to avoid overhead on CLI path."""
+    from cli_tool_audit.gui.app import launch_gui
+
+    return launch_gui()
+
+
 def add_update_args(parser: argparse.ArgumentParser) -> None:
     """
     Add arguments to the add or update parser.
@@ -111,6 +119,59 @@ def add_update_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--if-os", help="Check only on this os.")
 
     # TODO: Add more arguments
+
+
+def handle_discover(args: argparse.Namespace) -> None:
+    """
+    Discover CLI tool references across project files.
+
+    Args:
+        args: The args from the command line.
+    """
+    root = Path(args.root) if args.root else None
+    sources = discover.discover_tools(root)
+    if not sources:
+        print("No tool references found.")
+        return
+    if args.generate:
+        tool_names = list(sources.keys())
+        freeze.freeze_to_screen(tool_names, schema=models.SchemaType.SNAPSHOT)
+    else:
+        print(f"Discovered {len(sources)} tool(s):\n")
+        for tool, locs in sources.items():
+            print(f"  {tool:30s} found in: {', '.join(locs)}")
+        print("\nRun `cli_tool_audit discover --generate` to produce a freeze config for these tools.")
+
+
+def handle_freeze(args: argparse.Namespace) -> None:
+    """
+    Freeze tool versions — either from explicit list, Makefile, or PATH category.
+
+    Args:
+        args: The args from the command line.
+    """
+    if args.from_makefile:
+        makefile_path = Path(args.from_makefile) if isinstance(args.from_makefile, str) else None
+        tool_names = freeze.infer_tools_from_makefile(makefile_path)
+        if not tool_names:
+            print("No tools discovered in Makefile (or none found on PATH).")
+            return
+        print(f"# Discovered from Makefile: {', '.join(tool_names)}\n")
+    elif args.from_path is not None:
+        category = args.from_path if args.from_path else None  # "" -> None (scan all)
+        tool_names = freeze.infer_tools_from_path(category)
+        if not tool_names:
+            label = f"category '{category}'" if category else "any category"
+            print(f"No tools found on PATH for {label}.")
+            return
+        label = f"'{category}'" if category else "all categories"
+        print(f"# Discovered on PATH ({label}): {', '.join(tool_names)}\n")
+    else:
+        if not args.tools:
+            print("Error: specify tool names, --from-makefile, or --from-path.")
+            return
+        tool_names = list(args.tools)
+    freeze.freeze_to_screen(tool_names, args.schema)
 
 
 def handle_audit(args: argparse.Namespace) -> None:
@@ -128,6 +189,7 @@ def handle_audit(args: argparse.Namespace) -> None:
         tags=args.tags,
         only_errors=args.only_errors,
         quiet=args.quiet,
+        show_fix=args.fix,
     )
 
 
@@ -189,6 +251,8 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     parser.add_argument("--quiet", action="store_true", help="suppress output")
 
+    parser.add_argument("--gui", action="store_true", help="Launch the graphical interface")
+
     parser.add_argument(
         "--demo",
         type=str,
@@ -198,16 +262,54 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     subparsers = parser.add_subparsers(help="Subcommands.")
 
+    # GUI command
+    gui_parser = subparsers.add_parser("gui", help="Launch the graphical interface")
+    gui_parser.set_defaults(func=lambda _args: handle_gui())
+
     # Interactive command
     interactive_parser = subparsers.add_parser("interactive", help="Interactively edit configuration")
     add_config_to_subparser(interactive_parser)
     interactive_parser.set_defaults(func=handle_interactive)
 
+    # Add 'discover' sub-command
+    discover_parser = subparsers.add_parser("discover", help="Scan project files for CLI tool references")
+    discover_parser.add_argument(
+        "--root",
+        default=None,
+        help="Project root directory to scan (default: current directory)",
+    )
+    discover_parser.add_argument(
+        "--generate",
+        action="store_true",
+        help="Output a freeze config snippet for all discovered tools",
+    )
+    discover_parser.set_defaults(func=handle_discover)
+
     # Add 'freeze' sub-command
     freeze_parser = subparsers.add_parser("freeze", help="Freeze the versions of specified tools")
-    freeze_parser.add_argument("tools", nargs="+", help="List of tool names to freeze")
+    freeze_parser.add_argument("tools", nargs="*", help="List of tool names to freeze")
+    freeze_parser.add_argument(
+        "--from-makefile",
+        "--from_makefile",
+        nargs="?",
+        const=True,
+        metavar="MAKEFILE_PATH",
+        help="Discover tools from Makefile (optionally specify path, default: ./Makefile)",
+    )
+    freeze_parser.add_argument(
+        "--from-path",
+        "--from_path",
+        nargs="?",
+        const="",
+        metavar="CATEGORY",
+        help=(
+            "Discover tools present on PATH, optionally filtered by category. "
+            f"Known categories: {', '.join(freeze.list_path_categories())}"
+        ),
+    )
     add_schema_argument(freeze_parser)
     add_config_to_subparser(freeze_parser)
+    freeze_parser.set_defaults(func=handle_freeze)
 
     # Add 'audit' sub-command
     audit_parser = subparsers.add_parser("audit", help="Audit environment with current configuration")
@@ -232,6 +334,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         # action='append',
         nargs="+",
         help="Tag for filtering tools.",
+    )
+    audit_parser.add_argument(
+        "--fix",
+        action="store_true",
+        help="Print install commands and documentation for failed tools.",
     )
     audit_parser.set_defaults(func=handle_audit)
 
@@ -285,6 +392,10 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     logger.debug(f"command line args: {args}")
 
+    # GUI — deferred import to avoid tkinter overhead on normal CLI use
+    if getattr(args, "gui", False):
+        return handle_gui()
+
     # Demos
     if args.demo and args.demo == "pipx":
         demo_pipx.report_for_pipx_tools()
@@ -300,11 +411,6 @@ def main(argv: Sequence[str] | None = None) -> int:
         args.func(args)
         return 0
 
-    # Namespace doesn't have word "freeze" in it.
-    if hasattr(args, "tools") and args.tools:
-        freeze.freeze_to_screen(args.tools, args.schema)
-        return 0
-
     # Audit
 
     # Default behavior
@@ -312,7 +418,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         print("No command specified. Auditing environment with pyproject.toml configuration.")
     file_format = "quiet" if args.quiet else "table"
     return views.report_from_pyproject_toml(
-        exit_code_on_failure=True, file_format=file_format, no_cache=True, quiet=args.quiet
+        exit_code_on_failure=True, file_format=file_format, no_cache=False, quiet=args.quiet
     )
 
 
@@ -322,7 +428,7 @@ def add_formats(audit_parser):
         "--format",
         default="table",
         type=str,
-        choices=("json", "json-compact", "xml", "table", "csv", "html"),
+        choices=("json", "json-compact", "xml", "table", "csv", "html", "pretty"),
         help="Output results in the specified format. (default is %(default)s)",
     )
 
@@ -344,4 +450,4 @@ def add_config_to_subparser(interactive_parser):
 
 
 if __name__ == "__main__":
-    sys.exit(main(["audit"]))
+    sys.exit(main())

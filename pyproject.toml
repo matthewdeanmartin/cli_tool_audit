@@ -42,6 +42,9 @@ dependencies = [
 cli_tool_audit = 'cli_tool_audit.__main__:main'
 tool_audit = 'cli_tool_audit.__main__:main'
 
+[project.gui-scripts]
+"cli_tool_audit-gui" = 'cli_tool_audit.gui.app:launch_gui'
+
 
 [dependency-groups]
 dev = [
@@ -89,6 +92,13 @@ dev = [
     "codespell>=2.2.6; python_version >= '3.8'",
     "pyenchant>=3.2.2; python_version >= '3.8'",
 ]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.uv]
+package = true
 
 [tool.black]
 line-length = 120

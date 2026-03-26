@@ -5,6 +5,7 @@ This module provides a facade for the audit manager that caches results.
 import datetime
 import json
 import logging
+import os
 import pathlib
 from pathlib import Path
 from typing import Any
@@ -46,10 +47,12 @@ class AuditFacade:
             cache_dir (Optional[str], optional): The directory to use for caching. Defaults to None.
         """
         self.audit_manager = audit_manager.AuditManager()
-        self.cache_dir = cache_dir if cache_dir else Path.cwd() / ".cli_tool_audit_cache"
-        self.cache_dir.mkdir(exist_ok=True)
-        with open(self.cache_dir / ".gitignore", "w", encoding="utf-8") as file:
-            file.write("*\n!.gitignore\n")
+        self.cache_dir = cache_dir if cache_dir else Path.cwd() / ".cli_tool_audit_cache" / str(os.getpid())
+        self.cache_dir.mkdir(parents=True, exist_ok=True)
+        gitignore = self.cache_dir.parent / ".gitignore"
+        if not gitignore.exists():
+            with open(gitignore, "w", encoding="utf-8") as file:
+                file.write("*\n!.gitignore\n")
 
         self.clear_old_cache_files()
         self.cache_hit = False

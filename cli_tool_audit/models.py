@@ -80,6 +80,39 @@ class ToolCheckResult:
     last_modified: datetime.datetime | None
     tool_config: CliToolConfig
 
+    def _uses_existence_schema(self) -> bool:
+        schema = self.tool_config.schema
+        return schema == SchemaType.EXISTENCE or schema == "existence"
+
+    def failure_reason(self) -> str:
+        """
+        Produce a short, human-readable reason for the current result state.
+
+        Returns:
+            str: The concise reason string.
+        """
+        if not self.is_needed_for_os:
+            return "wrong os"
+        if not self.is_available:
+            return "not found"
+        if self._uses_existence_schema():
+            return "available"
+        if self.is_broken:
+            return "broken"
+        compatibility = (self.is_compatible or "").strip()
+        if compatibility == "Compatible":
+            return "compatible"
+        if compatibility == "Can't tell":
+            return "unknown version"
+        if compatibility == "Not Found":
+            return "not found"
+        if compatibility == "different":
+            return "different version"
+        if " != " in compatibility:
+            desired_version, found_version = compatibility.split(" != ", 1)
+            return f"outdated (have {found_version}, need {desired_version})"
+        return compatibility.lower()
+
     def status(self) -> str:
         """Compress many status fields into one for display
         Returns:
@@ -92,18 +125,22 @@ class ToolCheckResult:
         # Runnable/Not. If not, "Not Runnable"
         # Compatible/Not. If yes, "Compatible"
         # If no "Incompatible"
-        if not self.is_needed_for_os:
-            status = "Wrong OS"
-        elif not self.is_available:
-            status = "Not available"
-        # need schema!
-        elif self.tool_config.schema == "existence":
-            status = "Available"
-        elif self.is_broken:
-            status = "Can't run"
-        else:
-            status = self.is_compatible
-        return status
+        reason = self.failure_reason()
+        if reason == "wrong os":
+            return "Wrong OS"
+        if reason == "not found":
+            return "Not found"
+        if reason == "available":
+            return "Available"
+        if reason == "broken":
+            return "Broken (version check failed)"
+        if reason == "compatible":
+            return "Compatible"
+        if reason == "unknown version":
+            return "Unknown version"
+        if reason == "different version":
+            return "Different version"
+        return reason[0].upper() + reason[1:] if reason else ""
 
     def is_problem(self) -> bool:
         """Is this tool's state a problem?

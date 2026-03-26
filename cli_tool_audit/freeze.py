@@ -3,12 +3,46 @@ Capture current version of a list of tools.
 """
 
 import os
+import shutil
 import tempfile
 from pathlib import Path
 
 import cli_tool_audit.call_tools as call_tools
 import cli_tool_audit.config_manager as cm
 import cli_tool_audit.models as models
+
+# Broad categories of tools on PATH for --from-path --category
+_PATH_CATEGORIES: dict[str, list[str]] = {
+    "python": [
+        "python",
+        "python3",
+        "pip",
+        "pip3",
+        "uv",
+        "poetry",
+        "ruff",
+        "mypy",
+        "black",
+        "isort",
+        "pytest",
+        "hatch",
+        "pipx",
+        "tox",
+        "nox",
+        "pdm",
+    ],
+    "node": ["node", "npm", "npx", "yarn", "pnpm", "bun"],
+    "java": ["java", "javac", "mvn", "gradle", "kotlin"],
+    "rust": ["rustc", "cargo", "rustfmt", "clippy"],
+    "go": ["go", "gofmt", "golint", "staticcheck"],
+    "ruby": ["ruby", "gem", "bundle", "rake"],
+    "docker": ["docker", "docker-compose", "podman", "buildah"],
+    "cloud": ["aws", "gcloud", "az", "kubectl", "helm", "terraform", "pulumi"],
+    "build": ["make", "cmake", "ninja", "just", "bazel", "buck"],
+    "git": ["git", "gh", "hub", "git-lfs"],
+    "lint": ["shellcheck", "hadolint", "yamllint", "markdownlint", "eslint", "prettier"],
+    "security": ["trivy", "snyk", "bandit", "safety"],
+}
 
 
 def freeze_requirements(tool_names: list[str], schema: models.SchemaType) -> dict[str, models.ToolAvailabilityResult]:
@@ -75,6 +109,46 @@ def freeze_to_screen(tool_names: list[str], schema: models.SchemaType) -> None:
         with open(temp_config_path, encoding="utf-8") as file:
             config_content = file.read()
             print(config_content)
+
+
+def infer_tools_from_makefile(makefile_path: Path | None = None) -> list[str]:
+    """
+    Discover tool names referenced in a Makefile and return those present on PATH.
+
+    Args:
+        makefile_path: Path to the Makefile. Defaults to ./Makefile in cwd.
+
+    Returns:
+        Sorted list of tool names found in the Makefile that exist on PATH.
+    """
+    from cli_tool_audit.discover import _scan_makefile  # local import to avoid cycles
+
+    if makefile_path is None:
+        makefile_path = Path.cwd() / "Makefile"
+    found = _scan_makefile(makefile_path)
+    return sorted(t for t in found if shutil.which(t))
+
+
+def infer_tools_from_path(category: str | None = None) -> list[str]:
+    """
+    Return tools from PATH that match a known category (or all categories).
+
+    Args:
+        category: One of the known category names, or None to check everything.
+
+    Returns:
+        Sorted list of tool names present on PATH.
+    """
+    if category is not None:
+        candidates = _PATH_CATEGORIES.get(category, [])
+    else:
+        candidates = [tool for tools in _PATH_CATEGORIES.values() for tool in tools]
+    return sorted({t for t in candidates if shutil.which(t)})
+
+
+def list_path_categories() -> list[str]:
+    """Return the available category names for --from-path."""
+    return sorted(_PATH_CATEGORIES.keys())
 
 
 if __name__ == "__main__":

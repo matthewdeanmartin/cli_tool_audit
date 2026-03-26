@@ -21,6 +21,7 @@ from whichcraft import which
 import cli_tool_audit.compatibility as compatibility
 import cli_tool_audit.models as models
 import cli_tool_audit.version_parsing as version_parsing
+from cli_tool_audit.call_tools import extract_version_output
 from cli_tool_audit.known_switches import KNOWN_SWITCHES
 
 ExistenceVersionStatus = Literal["Found", "Not Found"]
@@ -396,19 +397,19 @@ class AuditManager:
                 command, capture_output=True, text=True, timeout=timeout, shell=use_shell, check=True
             )  # nosec
             # Sometimes version is on line 2 or later.
-            version = result.stdout.strip()
-            if not version:
-                # check stderror
-                logger.debug("Got nothing from stdout, checking stderror")
-                version = result.stderr.strip()
+            version = extract_version_output(result.stdout, result.stderr)
 
             logger.debug(f"Called tool with {' '.join(command)}, got  {version}")
             is_broken = False
         except subprocess.CalledProcessError as exception:
-            is_broken = True
-            logger.error(f"{tool_name} failed invocation with {exception}")
-            logger.error(f"{tool_name} stderr: {exception.stderr}")
-            logger.error(f"{tool_name} stdout: {exception.stdout}")
+            version = extract_version_output(exception.stdout, exception.stderr)
+            is_broken = version is None
+            if is_broken:
+                logger.error(f"{tool_name} failed invocation with {exception}")
+                logger.error(f"{tool_name} stderr: {exception.stderr}")
+                logger.error(f"{tool_name} stdout: {exception.stdout}")
+            else:
+                logger.warning(f"{tool_name} returned a non-zero exit code but still produced version output.")
         except FileNotFoundError:
             logger.error(f"{tool_name} is not on path, file not found.")
             return models.ToolAvailabilityResult(False, True, None, last_modified)

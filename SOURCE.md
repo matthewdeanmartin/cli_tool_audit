@@ -22,7 +22,10 @@
 ├── compatibility_complex.py
 ├── config_manager.py
 ├── config_reader.py
+├── discover.py
 ├── freeze.py
+├── gui/
+│   └── app.py
 ├── interactive.py
 ├── json_utils.py
 ├── known_switches.py
@@ -48,6 +51,7 @@ This module provides a facade for the audit manager that caches results.
 import datetime
 import json
 import logging
+import os
 import pathlib
 from pathlib import Path
 from typing import Any
@@ -89,10 +93,12 @@ class AuditFacade:
             cache_dir (Optional[str], optional): The directory to use for caching. Defaults to None.
         """
         self.audit_manager = audit_manager.AuditManager()
-        self.cache_dir = cache_dir if cache_dir else Path.cwd() / ".cli_tool_audit_cache"
-        self.cache_dir.mkdir(exist_ok=True)
-        with open(self.cache_dir / ".gitignore", "w", encoding="utf-8") as file:
-            file.write("*\n!.gitignore\n")
+        self.cache_dir = cache_dir if cache_dir else Path.cwd() / ".cli_tool_audit_cache" / str(os.getpid())
+        self.cache_dir.mkdir(parents=True, exist_ok=True)
+        gitignore = self.cache_dir.parent / ".gitignore"
+        if not gitignore.exists():
+            with open(gitignore, "w", encoding="utf-8") as file:
+                file.write("*\n!.gitignore\n")
 
         self.clear_old_cache_files()
         self.cache_hit = False
@@ -207,6 +213,7 @@ from whichcraft import which
 import cli_tool_audit.compatibility as compatibility
 import cli_tool_audit.models as models
 import cli_tool_audit.version_parsing as version_parsing
+from cli_tool_audit.call_tools import extract_version_output
 from cli_tool_audit.known_switches import KNOWN_SWITCHES
 
 ExistenceVersionStatus = Literal["Found", "Not Found"]
@@ -582,19 +589,19 @@ class AuditManager:
                 command, capture_output=True, text=True, timeout=timeout, shell=use_shell, check=True
             )  # nosec
             # Sometimes version is on line 2 or later.
-            version = result.stdout.strip()
-            if not version:
-                # check stderror
-                logger.debug("Got nothing from stdout, checking stderror")
-                version = result.stderr.strip()
+            version = extract_version_output(result.stdout, result.stderr)
 
             logger.debug(f"Called tool with {' '.join(command)}, got  {version}")
             is_broken = False
         except subprocess.CalledProcessError as exception:
-            is_broken = True
-            logger.error(f"{tool_name} failed invocation with {exception}")
-            logger.error(f"{tool_name} stderr: {exception.stderr}")
-            logger.error(f"{tool_name} stdout: {exception.stdout}")
+            version = extract_version_output(exception.stdout, exception.stderr)
+            is_broken = version is None
+            if is_broken:
+                logger.error(f"{tool_name} failed invocation with {exception}")
+                logger.error(f"{tool_name} stderr: {exception.stderr}")
+                logger.error(f"{tool_name} stdout: {exception.stdout}")
+            else:
+                logger.warning(f"{tool_name} returned a non-zero exit code but still produced version output.")
         except FileNotFoundError:
             logger.error(f"{tool_name} is not on path, file not found.")
             return models.ToolAvailabilityResult(False, True, None, last_modified)
@@ -710,6 +717,23 @@ from cli_tool_audit.known_switches import KNOWN_SWITCHES
 logger = logging.getLogger(__name__)
 
 
+def extract_version_output(stdout: str | None, stderr: str | None) -> str | None:
+    """
+    Extract the first usable version output from a subprocess result.
+
+    Args:
+        stdout (str | None): Standard output from the command.
+        stderr (str | None): Standard error from the command.
+
+    Returns:
+        str | None: The stripped version output if any was emitted.
+    """
+    for candidate in (stdout, stderr):
+        if candidate and candidate.strip():
+            return candidate.strip()
+    return None
+
+
 def get_command_last_modified_date(tool_name: str) -> datetime.datetime | None:
     """
     Get the last modified date of a command's executable.
@@ -781,19 +805,19 @@ def check_tool_availability(
             command, capture_output=True, text=True, timeout=timeout, shell=use_shell, check=True
         )  # nosec
         # Sometimes version is on line 2 or later.
-        version = result.stdout.strip()
-        if not version:
-            # check stderror
-            logger.debug("Got nothing from stdout, checking stderror")
-            version = result.stderr.strip()
+        version = extract_version_output(result.stdout, result.stderr)
 
         logger.debug(f"Called tool with {' '.join(command)}, got  {version}")
         is_broken = False
     except subprocess.CalledProcessError as exception:
-        is_broken = True
-        logger.error(f"{tool_name} failed invocation with {exception}")
-        logger.error(f"{tool_name} stderr: {exception.stderr}")
-        logger.error(f"{tool_name} stdout: {exception.stdout}")
+        version = extract_version_output(exception.stdout, exception.stderr)
+        is_broken = version is None
+        if is_broken:
+            logger.error(f"{tool_name} failed invocation with {exception}")
+            logger.error(f"{tool_name} stderr: {exception.stderr}")
+            logger.error(f"{tool_name} stdout: {exception.stdout}")
+        else:
+            logger.warning(f"{tool_name} returned a non-zero exit code but still produced version output.")
     except FileNotFoundError:
         logger.error(f"{tool_name} is not on path, file not found.")
         return models.ToolAvailabilityResult(False, True, None, last_modified)
@@ -1280,6 +1304,329 @@ def read_config(file_path: Path) -> dict[str, models.CliToolConfig]:
         print(f"Error reading pyproject.toml: {e}")
         return {}
 ```
+## File: discover.py
+```python
+"""
+Discover CLI tool references in common project files.
+
+Scans Makefile, GitHub Actions workflows, package.json, pyproject.toml,
+Dockerfile, shell scripts, and .pre-commit-config.yaml to find tool names.
+"""
+
+import re
+import shlex
+from pathlib import Path
+
+# Tools that are too generic or OS-level to be useful to audit
+_IGNORE = {
+    "echo",
+    "cat",
+    "ls",
+    "cd",
+    "rm",
+    "mkdir",
+    "cp",
+    "mv",
+    "grep",
+    "awk",
+    "sed",
+    "find",
+    "chmod",
+    "chown",
+    "export",
+    "set",
+    "source",
+    "true",
+    "false",
+    "env",
+    "test",
+    "if",
+    "then",
+    "else",
+    "fi",
+    "do",
+    "done",
+    "for",
+    "while",
+    "sh",
+    "bash",
+    "zsh",
+    "python",  # usually present; users can add explicitly
+    "python3",
+    "pip",
+    "pip3",
+    "sudo",
+    "su",
+    "curl",
+    "wget",
+    "tar",
+    "gzip",
+    "unzip",
+    "xargs",
+    "sort",
+    "uniq",
+    "head",
+    "tail",
+    "wc",
+    "date",
+    "printf",
+    "read",
+    "exit",
+    "return",
+    "eval",
+    "exec",
+    "trap",
+    "wait",
+    "kill",
+    "sleep",
+    "touch",
+    "tee",
+    "cut",
+    "tr",
+    "diff",
+    "patch",
+    "type",
+    "which",
+    "command",
+    "hash",
+    "pwd",
+    "dirname",
+    "basename",
+    "ln",
+    "stat",
+    "file",
+    "strings",
+    "xxd",
+    "od",
+    "dd",
+    "mount",
+    "umount",
+    "df",
+    "du",
+    "ps",
+    "top",
+    "pkill",
+    "pgrep",
+    "nohup",
+    "nice",
+    "renice",
+}
+
+# Regex for a word that looks like a CLI tool name (no path separators, not a flag)
+_TOOL_RE = re.compile(r"^[a-zA-Z][a-zA-Z0-9_\-]{1,40}$")
+
+
+def _is_tool_candidate(word: str) -> bool:
+    return bool(_TOOL_RE.match(word)) and word not in _IGNORE
+
+
+def _first_word_of_shell_line(line: str) -> str | None:
+    """Return the first word of a shell command line, or None."""
+    line = line.strip()
+    if not line or line.startswith("#"):
+        return None
+    try:
+        tokens = shlex.split(line)
+    except ValueError:
+        tokens = line.split()
+    if tokens and _is_tool_candidate(tokens[0]):
+        return tokens[0]
+    return None
+
+
+def _scan_makefile(path: Path) -> set[str]:
+    """Extract tools from recipe lines in a Makefile."""
+    tools: set[str] = set()
+    if not path.exists():
+        return tools
+    for line in path.read_text(encoding="utf-8", errors="ignore").splitlines():
+        # Recipe lines start with a tab
+        if line.startswith("\t"):
+            cmd = line.lstrip("\t").strip()
+            # Handle $(VENV) prefix pattern common in this project
+            cmd = re.sub(r"^\$\([A-Z_]+\)\s*", "", cmd)
+            tool = _first_word_of_shell_line(cmd)
+            if tool:
+                tools.add(tool)
+    return tools
+
+
+def _scan_github_workflows(root: Path) -> set[str]:
+    """Extract tools from 'run:' lines in GitHub Actions workflow YAML files."""
+    tools: set[str] = set()
+    workflows_dir = root / ".github" / "workflows"
+    if not workflows_dir.exists():
+        return tools
+    for yml_path in workflows_dir.glob("*.yml"):
+        text = yml_path.read_text(encoding="utf-8", errors="ignore")
+        in_run_block = False
+        for line in text.splitlines():
+            stripped = line.strip()
+            # Match `run: <cmd>` or `- run: <cmd>` (single-line)
+            m = re.match(r"(?:-\s+)?run:\s+(.+)", stripped)
+            if m:
+                in_run_block = False
+                value = m.group(1).strip()
+                if value == "|" or value == ">":
+                    in_run_block = True
+                else:
+                    for part in re.split(r"&&|\|\|", value):
+                        tool = _first_word_of_shell_line(part.strip())
+                        if tool:
+                            tools.add(tool)
+            elif in_run_block:
+                # Inside a YAML block scalar — collect shell lines
+                if not stripped or re.match(r"\w+:|^-\s", stripped):
+                    in_run_block = False
+                else:
+                    for part in re.split(r"&&|\|\|", stripped):
+                        tool = _first_word_of_shell_line(part.strip())
+                        if tool:
+                            tools.add(tool)
+    return tools
+
+
+def _scan_package_json(path: Path) -> set[str]:
+    """Extract tools from package.json scripts section."""
+    tools: set[str] = set()
+    if not path.exists():
+        return tools
+
+    import json
+
+    data = json.loads(path.read_text(encoding="utf-8"))
+    scripts = data.get("scripts", {})
+    for script_value in scripts.values():
+        for part in re.split(r"&&|\||\||;", script_value):
+            tool = _first_word_of_shell_line(part.strip())
+            if tool:
+                tools.add(tool)
+
+    return tools
+
+
+def _scan_pyproject_toml(path: Path) -> set[str]:
+    """Extract tools from pyproject.toml [tool.hatch.envs.*.scripts] and [project.scripts]."""
+    tools: set[str] = set()
+    if not path.exists():
+        return tools
+
+    import toml
+
+    data = toml.loads(path.read_text(encoding="utf-8"))
+    # [tool.hatch.envs.*.scripts] values
+    hatch_envs = data.get("tool", {}).get("hatch", {}).get("envs", {})
+    for env_cfg in hatch_envs.values():
+        for script_value in env_cfg.get("scripts", {}).values():
+            if isinstance(script_value, str):
+                tool = _first_word_of_shell_line(script_value)
+                if tool:
+                    tools.add(tool)
+            elif isinstance(script_value, list):
+                for line in script_value:
+                    tool = _first_word_of_shell_line(line)
+                    if tool:
+                        tools.add(tool)
+
+    return tools
+
+
+def _scan_dockerfile(path: Path) -> set[str]:
+    """Extract tools from RUN lines in a Dockerfile."""
+    tools: set[str] = set()
+    if not path.exists():
+        return tools
+    for line in path.read_text(encoding="utf-8", errors="ignore").splitlines():
+        m = re.match(r"RUN\s+(.+)", line.strip(), re.IGNORECASE)
+        if m:
+            run_cmd = m.group(1)
+            for part in re.split(r"&&|\||\||;|\\", run_cmd):
+                tool = _first_word_of_shell_line(part.strip())
+                if tool:
+                    tools.add(tool)
+    return tools
+
+
+def _scan_shell_scripts(root: Path) -> set[str]:
+    """Extract tools from shell scripts in scripts/ directory."""
+    tools: set[str] = set()
+    scripts_dir = root / "scripts"
+    if not scripts_dir.exists():
+        return tools
+    for script in scripts_dir.iterdir():
+        if script.suffix in (".sh", ".bash") or (
+            script.is_file() and not script.suffix and script.stat().st_size < 100_000
+        ):
+            for line in script.read_text(encoding="utf-8", errors="ignore").splitlines():
+                tool = _first_word_of_shell_line(line)
+                if tool:
+                    tools.add(tool)
+    return tools
+
+
+def _scan_pre_commit_config(path: Path) -> set[str]:
+    """Extract repo/hook ids from .pre-commit-config.yaml."""
+    tools: set[str] = set()
+    if not path.exists():
+        return tools
+
+    import yaml  # type: ignore[import]
+
+    data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    for repo in data.get("repos", []):
+        for hook in repo.get("hooks", []):
+            hook_id = hook.get("id", "")
+            if hook_id and _is_tool_candidate(hook_id):
+                tools.add(hook_id)
+
+    return tools
+
+
+def discover_tools(root: Path | None = None) -> dict[str, list[str]]:
+    """
+    Scan a project directory for CLI tool references.
+
+    Args:
+        root: Root of the project directory. Defaults to current working directory.
+
+    Returns:
+        A dict mapping tool name -> list of source files where it was found.
+    """
+    if root is None:
+        root = Path.cwd()
+
+    sources: dict[str, list[str]] = {}
+
+    def _add(tool: str, source: str) -> None:
+        sources.setdefault(tool, [])
+        if source not in sources[tool]:
+            sources[tool].append(source)
+
+    for tool in _scan_makefile(root / "Makefile"):
+        _add(tool, "Makefile")
+    for tool in _scan_makefile(root / "GNUmakefile"):
+        _add(tool, "GNUmakefile")
+
+    for tool in _scan_github_workflows(root):
+        _add(tool, ".github/workflows")
+
+    for tool in _scan_package_json(root / "package.json"):
+        _add(tool, "package.json")
+
+    for tool in _scan_pyproject_toml(root / "pyproject.toml"):
+        _add(tool, "pyproject.toml")
+
+    for tool in _scan_dockerfile(root / "Dockerfile"):
+        _add(tool, "Dockerfile")
+
+    for tool in _scan_shell_scripts(root):
+        _add(tool, "scripts/")
+
+    for tool in _scan_pre_commit_config(root / ".pre-commit-config.yaml"):
+        _add(tool, ".pre-commit-config.yaml")
+
+    return dict(sorted(sources.items()))
+```
 ## File: freeze.py
 ```python
 """
@@ -1287,12 +1634,46 @@ Capture current version of a list of tools.
 """
 
 import os
+import shutil
 import tempfile
 from pathlib import Path
 
 import cli_tool_audit.call_tools as call_tools
 import cli_tool_audit.config_manager as cm
 import cli_tool_audit.models as models
+
+# Broad categories of tools on PATH for --from-path --category
+_PATH_CATEGORIES: dict[str, list[str]] = {
+    "python": [
+        "python",
+        "python3",
+        "pip",
+        "pip3",
+        "uv",
+        "poetry",
+        "ruff",
+        "mypy",
+        "black",
+        "isort",
+        "pytest",
+        "hatch",
+        "pipx",
+        "tox",
+        "nox",
+        "pdm",
+    ],
+    "node": ["node", "npm", "npx", "yarn", "pnpm", "bun"],
+    "java": ["java", "javac", "mvn", "gradle", "kotlin"],
+    "rust": ["rustc", "cargo", "rustfmt", "clippy"],
+    "go": ["go", "gofmt", "golint", "staticcheck"],
+    "ruby": ["ruby", "gem", "bundle", "rake"],
+    "docker": ["docker", "docker-compose", "podman", "buildah"],
+    "cloud": ["aws", "gcloud", "az", "kubectl", "helm", "terraform", "pulumi"],
+    "build": ["make", "cmake", "ninja", "just", "bazel", "buck"],
+    "git": ["git", "gh", "hub", "git-lfs"],
+    "lint": ["shellcheck", "hadolint", "yamllint", "markdownlint", "eslint", "prettier"],
+    "security": ["trivy", "snyk", "bandit", "safety"],
+}
 
 
 def freeze_requirements(tool_names: list[str], schema: models.SchemaType) -> dict[str, models.ToolAvailabilityResult]:
@@ -1359,6 +1740,46 @@ def freeze_to_screen(tool_names: list[str], schema: models.SchemaType) -> None:
         with open(temp_config_path, encoding="utf-8") as file:
             config_content = file.read()
             print(config_content)
+
+
+def infer_tools_from_makefile(makefile_path: Path | None = None) -> list[str]:
+    """
+    Discover tool names referenced in a Makefile and return those present on PATH.
+
+    Args:
+        makefile_path: Path to the Makefile. Defaults to ./Makefile in cwd.
+
+    Returns:
+        Sorted list of tool names found in the Makefile that exist on PATH.
+    """
+    from cli_tool_audit.discover import _scan_makefile  # local import to avoid cycles
+
+    if makefile_path is None:
+        makefile_path = Path.cwd() / "Makefile"
+    found = _scan_makefile(makefile_path)
+    return sorted(t for t in found if shutil.which(t))
+
+
+def infer_tools_from_path(category: str | None = None) -> list[str]:
+    """
+    Return tools from PATH that match a known category (or all categories).
+
+    Args:
+        category: One of the known category names, or None to check everything.
+
+    Returns:
+        Sorted list of tool names present on PATH.
+    """
+    if category is not None:
+        candidates = _PATH_CATEGORIES.get(category, [])
+    else:
+        candidates = [tool for tools in _PATH_CATEGORIES.values() for tool in tools]
+    return sorted({t for t in candidates if shutil.which(t)})
+
+
+def list_path_categories() -> list[str]:
+    """Return the available category names for --from-path."""
+    return sorted(_PATH_CATEGORIES.keys())
 
 
 if __name__ == "__main__":
@@ -1631,6 +2052,39 @@ class ToolCheckResult:
     last_modified: datetime.datetime | None
     tool_config: CliToolConfig
 
+    def _uses_existence_schema(self) -> bool:
+        schema = self.tool_config.schema
+        return schema == SchemaType.EXISTENCE or schema == "existence"
+
+    def failure_reason(self) -> str:
+        """
+        Produce a short, human-readable reason for the current result state.
+
+        Returns:
+            str: The concise reason string.
+        """
+        if not self.is_needed_for_os:
+            return "wrong os"
+        if not self.is_available:
+            return "not found"
+        if self._uses_existence_schema():
+            return "available"
+        if self.is_broken:
+            return "broken"
+        compatibility = (self.is_compatible or "").strip()
+        if compatibility == "Compatible":
+            return "compatible"
+        if compatibility == "Can't tell":
+            return "unknown version"
+        if compatibility == "Not Found":
+            return "not found"
+        if compatibility == "different":
+            return "different version"
+        if " != " in compatibility:
+            desired_version, found_version = compatibility.split(" != ", 1)
+            return f"outdated (have {found_version}, need {desired_version})"
+        return compatibility.lower()
+
     def status(self) -> str:
         """Compress many status fields into one for display
         Returns:
@@ -1643,18 +2097,22 @@ class ToolCheckResult:
         # Runnable/Not. If not, "Not Runnable"
         # Compatible/Not. If yes, "Compatible"
         # If no "Incompatible"
-        if not self.is_needed_for_os:
-            status = "Wrong OS"
-        elif not self.is_available:
-            status = "Not available"
-        # need schema!
-        elif self.tool_config.schema == "existence":
-            status = "Available"
-        elif self.is_broken:
-            status = "Can't run"
-        else:
-            status = self.is_compatible
-        return status
+        reason = self.failure_reason()
+        if reason == "wrong os":
+            return "Wrong OS"
+        if reason == "not found":
+            return "Not found"
+        if reason == "available":
+            return "Available"
+        if reason == "broken":
+            return "Broken (version check failed)"
+        if reason == "compatible":
+            return "Compatible"
+        if reason == "unknown version":
+            return "Unknown version"
+        if reason == "different version":
+            return "Different version"
+        return reason[0].upper() + reason[1:] if reason else ""
 
     def is_problem(self) -> bool:
         """Is this tool's state a problem?
@@ -2007,6 +2465,19 @@ def process_tools(
     return results
 
 
+def get_default_tools() -> dict[str, models.CliToolConfig]:
+    """Get a default set of tools to check if none are configured."""
+    return {
+        "python": models.CliToolConfig(name="python"),
+        "java": models.CliToolConfig(name="java"),
+        "node": models.CliToolConfig(name="node"),
+        "go": models.CliToolConfig(name="go"),
+        "rustc": models.CliToolConfig(name="rustc"),
+        "make": models.CliToolConfig(name="make"),
+        "git": models.CliToolConfig(name="git"),
+    }
+
+
 def report_from_pyproject_toml(
     file_path: Path | None = Path("pyproject.toml"),
     config_as_dict: dict[str, models.CliToolConfig] | None = None,
@@ -2016,6 +2487,7 @@ def report_from_pyproject_toml(
     tags: list[str] | None = None,
     only_errors: bool = False,
     quiet: bool = False,
+    show_fix: bool = False,
 ) -> int:
     """
     Report on the compatibility of the tools in the pyproject.toml file.
@@ -2029,6 +2501,7 @@ def report_from_pyproject_toml(
         tags (Optional[list[str]], optional): Only check tools with these tags. Defaults to None.
         only_errors (bool, optional): Only show errors. Defaults to False.
         quiet (bool, optional): If True, suppress all output. Defaults to False.
+        show_fix (bool, optional): If True, print install hints for failed tools. Defaults to False.
 
     Returns:
         int: The exit code.
@@ -2046,7 +2519,10 @@ def report_from_pyproject_toml(
             one_up = ".." / file_path
             if one_up.exists():
                 file_path = one_up
-        results = validate(file_path, no_cache=no_cache, tags=tags, disable_progress_bar=file_format != "table")
+        cli_tools = config_reader.read_config(file_path)
+        if not cli_tools and file_format == "pretty":
+            cli_tools = get_default_tools()
+        results = process_tools(cli_tools, no_cache, tags, disable_progress_bar=file_format != "table")
     else:
         raise TypeError("Must provide either file_path or config_as_dict.")
 
@@ -2074,6 +2550,18 @@ def report_from_pyproject_toml(
     elif file_format == "table":
         table = pretty_print_results(results, truncate_long_versions=True, include_docs=False)
         print(table)
+        if not quiet:
+            summary = summarize_failures(results)
+            if summary:
+                print(summary)
+            if show_fix:
+                install_hints = get_install_hints(results)
+                if install_hints:
+                    print("Install hints:")
+                    for hint in install_hints:
+                        print(f"- {hint}")
+                elif failed:
+                    print("No install hints configured for failed tools.")
     elif file_format == "csv":
         print(
             "tool,desired_version,is_available,is_snapshot,found_version,parsed_version,is_compatible,is_broken,last_modified"
@@ -2085,6 +2573,24 @@ def report_from_pyproject_toml(
     elif file_format == "html":
         table = pretty_print_results(results, truncate_long_versions=False, include_docs=True)
         print(table.get_html_string())
+    elif file_format == "pretty":
+        pretty_print_results_pretty(results)
+        if not quiet:
+            no_color = bool(os.environ.get("NO_COLOR") or os.environ.get("CI"))
+            red = "" if no_color else colorama.Fore.RED
+            green = "" if no_color else colorama.Fore.GREEN
+            reset = "" if no_color else colorama.Style.RESET_ALL
+            failures = [r for r in results if r.is_problem()]
+            if failures:
+                print(f"{red}{len(failures)} tools failed validation!{reset}")
+            else:
+                print(f"{green}All tools passed validation.{reset}")
+            if show_fix:
+                install_hints = get_install_hints(results)
+                if install_hints:
+                    print("\nInstall hints:")
+                    for hint in install_hints:
+                        print(f"- {hint}")
     else:
         print(
             f"Unknown file format: {file_format}, defaulting to table output. Supported formats: json, json-compact, xml, table, csv."
@@ -2164,6 +2670,47 @@ def pretty_print_results(
     return table
 
 
+def summarize_failures(results: list[models.ToolCheckResult]) -> str | None:
+    """
+    Build a short, human-readable summary of failed tool checks.
+
+    Args:
+        results (list[models.ToolCheckResult]): The results to summarize.
+
+    Returns:
+        str | None: A summary line, or None when there are no failures.
+    """
+    failures = sorted((result for result in results if result.is_problem()), key=lambda result: result.tool.lower())
+    if not failures:
+        return None
+    tool_label = "tool" if len(failures) == 1 else "tools"
+    details = ", ".join(f"{result.tool} ({result.failure_reason()})" for result in failures)
+    return f"{len(failures)} {tool_label} failed: {details}"
+
+
+def get_install_hints(results: list[models.ToolCheckResult]) -> list[str]:
+    """
+    Collect install hints for failed tools.
+
+    Args:
+        results (list[models.ToolCheckResult]): The results to inspect.
+
+    Returns:
+        list[str]: Human-readable install hints for failed tools that define them.
+    """
+    hints: list[str] = []
+    failures = sorted((result for result in results if result.is_problem()), key=lambda result: result.tool.lower())
+    for result in failures:
+        hint_parts = [result.tool]
+        if result.tool_config.install_command:
+            hint_parts.append(f"run `{result.tool_config.install_command}`")
+        if result.tool_config.install_docs:
+            hint_parts.append(f"see `{result.tool_config.install_docs}`")
+        if len(hint_parts) > 1:
+            hints.append(": ".join([hint_parts[0], "; ".join(hint_parts[1:])]))
+    return hints
+
+
 def should_show_progress_bar(cli_tools) -> bool | None:
     """
     Determine if a progress bar should be shown.
@@ -2176,6 +2723,147 @@ def should_show_progress_bar(cli_tools) -> bool | None:
     """
     disable = len(cli_tools) < 5 or os.environ.get("CI") or os.environ.get("NO_COLOR")
     return True if disable else None
+
+
+def detect_language() -> str:
+    """Detect the primary language of the project."""
+    cwd = Path.cwd()
+    if (cwd / "pyproject.toml").exists() or (cwd / "requirements.txt").exists() or (cwd / "setup.py").exists():
+        return "python"
+    if (cwd / "pom.xml").exists() or (cwd / "build.gradle").exists() or (cwd / "build.gradle.kts").exists():
+        return "java"
+    if (cwd / "go.mod").exists():
+        return "go"
+    if (cwd / "Cargo.toml").exists():
+        return "rust"
+    if (cwd / "package.json").exists():
+        return "javascript"
+    return "default"
+
+
+def get_logo(lang: str, no_color: bool) -> list[str]:
+    """Get the ANSI logo for the detected language."""
+    cyan = "" if no_color else colorama.Fore.CYAN
+    yellow = "" if no_color else colorama.Fore.YELLOW
+    blue = "" if no_color else colorama.Fore.BLUE
+    red = "" if no_color else colorama.Fore.RED
+    green = "" if no_color else colorama.Fore.GREEN
+    # magenta = "" if no_color else colorama.Fore.MAGENTA
+    reset = "" if no_color else colorama.Style.RESET_ALL
+
+    logos = {
+        "python": [
+            f"{blue}   _____  {reset}",
+            f"{blue}  /  _  \\ {reset}",
+            f"{blue} /  / \\  \\{reset}",
+            f"{yellow}|  |   |  |{reset}",
+            f"{yellow} \\  \\_/  /{reset}",
+            f"{yellow}  \\_____/ {reset}",
+        ],
+        "java": [
+            f"{red}   _     {reset}",
+            f"{red}  (_)    {reset}",
+            f"{red}  | |    {reset}",
+            f"{red}  | |    {reset}",
+            f"{yellow} /___\\   {reset}",
+            f"{yellow}(_____)  {reset}",
+        ],
+        "go": [
+            f"{cyan}  ____   {reset}",
+            f"{cyan} /    \\  {reset}",
+            f"{cyan}|  go  | {reset}",
+            f"{cyan} \\____/  {reset}",
+            f"{cyan}  |  |   {reset}",
+            f"{cyan}  |__|   {reset}",
+        ],
+        "rust": [
+            f"{red}  ____   {reset}",
+            f"{red} /    \\  {reset}",
+            f"{red}| rust | {reset}",
+            f"{red} \\____/  {reset}",
+            f"{red}  |  |   {reset}",
+            f"{red}  |__|   {reset}",
+        ],
+        "javascript": [
+            f"{yellow}  _____  {reset}",
+            f"{yellow} |     | {reset}",
+            f"{yellow} |  JS | {reset}",
+            f"{yellow} |     | {reset}",
+            f"{yellow} |_____| {reset}",
+            f"{yellow}         {reset}",
+        ],
+        "default": [
+            f"{green}  _____  {reset}",
+            f"{green} /     \\ {reset}",
+            f"{green}| AUDIT |{reset}",
+            f"{green} \\_____/ {reset}",
+            f"{green}  |   |  {reset}",
+            f"{green}  |___|  {reset}",
+        ],
+    }
+    return logos.get(lang, logos["default"])
+
+
+def pretty_print_results_pretty(results: list[models.ToolCheckResult]):
+    """Pretty print results in a neofetch-style layout."""
+    no_color = bool(os.environ.get("NO_COLOR") or os.environ.get("CI"))
+    lang = detect_language()
+    logo = get_logo(lang, no_color)
+    logo_width = 12
+
+    bold = "" if no_color else colorama.Style.BRIGHT
+    reset = "" if no_color else colorama.Style.RESET_ALL
+    red = "" if no_color else colorama.Fore.RED
+    green = "" if no_color else colorama.Fore.GREEN
+    yellow = "" if no_color else colorama.Fore.YELLOW
+
+    # System info-like header
+    import platform
+
+    from cli_tool_audit.__about__ import __version__
+
+    node_name = platform.node()
+    header = f"{bold}{yellow}cli_tool_audit{reset} @ {bold}{yellow}{node_name}{reset}"
+    info_lines = [
+        header,
+        f"{'-' * (len(node_name) + 17)}",
+        f"{bold}Version:{reset} {__version__}",
+        f"{bold}OS:{reset}      {platform.system()} {platform.release()}",
+        f"{bold}Language:{reset}{lang.capitalize()}",
+        "",
+    ]
+
+    # Tool results
+    for result in sorted(results, key=lambda x: x.tool):
+        status_char = f"{red}*{reset}" if result.is_problem() else " "
+        found_version = result.found_version or "N/A"
+        # Only take first line of version and strip it
+        found_version = found_version.split("\n")[0].strip()
+        if len(found_version) > 40:
+            found_version = found_version[:37] + "..."
+
+        tool_color = red if result.is_problem() else green
+        info_lines.append(f"{status_char} {tool_color}{result.tool:12}{reset}: {found_version}")
+
+    # Print logo and info side by side
+    max_lines = max(len(logo), len(info_lines))
+    for i in range(max_lines):
+        # We need to handle ANSI codes for width calculation if we wanted to be perfect,
+        # but since we know our logos, we can just use a fixed width.
+        # The logos are about 10-12 chars wide excluding ANSI codes.
+        raw_logo = logo[i] if i < len(logo) else ""
+
+        # Calculate padding: logo is ~10 chars, let's use 15 for space
+        # Since raw_logo has ANSI codes, len(raw_logo) is larger than visible width.
+        # But we can just use a fixed padding for the info part.
+
+        line_info = info_lines[i] if i < len(info_lines) else ""
+
+        if i < len(logo):
+            print(f" {raw_logo}   {line_info}")
+        else:
+            print(f" {' ' * logo_width}   {line_info}")
+    print()
 
 
 if __name__ == "__main__":
@@ -2548,6 +3236,7 @@ from pathlib import Path
 from typing import Any
 
 import cli_tool_audit.config_manager as config_manager
+import cli_tool_audit.discover as discover
 import cli_tool_audit.freeze as freeze
 import cli_tool_audit.interactive as interactive
 import cli_tool_audit.logging_config as logging_config
@@ -2635,6 +3324,13 @@ def handle_interactive(args: argparse.Namespace) -> None:
     interactive.interactive_config_manager(manager)
 
 
+def handle_gui() -> int:
+    """Launch the tkinter GUI. Import is deferred to avoid overhead on CLI path."""
+    from cli_tool_audit.gui.app import launch_gui
+
+    return launch_gui()
+
+
 def add_update_args(parser: argparse.ArgumentParser) -> None:
     """
     Add arguments to the add or update parser.
@@ -2647,6 +3343,59 @@ def add_update_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--if-os", help="Check only on this os.")
 
     # TODO: Add more arguments
+
+
+def handle_discover(args: argparse.Namespace) -> None:
+    """
+    Discover CLI tool references across project files.
+
+    Args:
+        args: The args from the command line.
+    """
+    root = Path(args.root) if args.root else None
+    sources = discover.discover_tools(root)
+    if not sources:
+        print("No tool references found.")
+        return
+    if args.generate:
+        tool_names = list(sources.keys())
+        freeze.freeze_to_screen(tool_names, schema=models.SchemaType.SNAPSHOT)
+    else:
+        print(f"Discovered {len(sources)} tool(s):\n")
+        for tool, locs in sources.items():
+            print(f"  {tool:30s} found in: {', '.join(locs)}")
+        print("\nRun `cli_tool_audit discover --generate` to produce a freeze config for these tools.")
+
+
+def handle_freeze(args: argparse.Namespace) -> None:
+    """
+    Freeze tool versions — either from explicit list, Makefile, or PATH category.
+
+    Args:
+        args: The args from the command line.
+    """
+    if args.from_makefile:
+        makefile_path = Path(args.from_makefile) if isinstance(args.from_makefile, str) else None
+        tool_names = freeze.infer_tools_from_makefile(makefile_path)
+        if not tool_names:
+            print("No tools discovered in Makefile (or none found on PATH).")
+            return
+        print(f"# Discovered from Makefile: {', '.join(tool_names)}\n")
+    elif args.from_path is not None:
+        category = args.from_path if args.from_path else None  # "" -> None (scan all)
+        tool_names = freeze.infer_tools_from_path(category)
+        if not tool_names:
+            label = f"category '{category}'" if category else "any category"
+            print(f"No tools found on PATH for {label}.")
+            return
+        label = f"'{category}'" if category else "all categories"
+        print(f"# Discovered on PATH ({label}): {', '.join(tool_names)}\n")
+    else:
+        if not args.tools:
+            print("Error: specify tool names, --from-makefile, or --from-path.")
+            return
+        tool_names = list(args.tools)
+    freeze.freeze_to_screen(tool_names, args.schema)
 
 
 def handle_audit(args: argparse.Namespace) -> None:
@@ -2664,6 +3413,7 @@ def handle_audit(args: argparse.Namespace) -> None:
         tags=args.tags,
         only_errors=args.only_errors,
         quiet=args.quiet,
+        show_fix=args.fix,
     )
 
 
@@ -2725,6 +3475,8 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     parser.add_argument("--quiet", action="store_true", help="suppress output")
 
+    parser.add_argument("--gui", action="store_true", help="Launch the graphical interface")
+
     parser.add_argument(
         "--demo",
         type=str,
@@ -2734,16 +3486,54 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     subparsers = parser.add_subparsers(help="Subcommands.")
 
+    # GUI command
+    gui_parser = subparsers.add_parser("gui", help="Launch the graphical interface")
+    gui_parser.set_defaults(func=lambda _args: handle_gui())
+
     # Interactive command
     interactive_parser = subparsers.add_parser("interactive", help="Interactively edit configuration")
     add_config_to_subparser(interactive_parser)
     interactive_parser.set_defaults(func=handle_interactive)
 
+    # Add 'discover' sub-command
+    discover_parser = subparsers.add_parser("discover", help="Scan project files for CLI tool references")
+    discover_parser.add_argument(
+        "--root",
+        default=None,
+        help="Project root directory to scan (default: current directory)",
+    )
+    discover_parser.add_argument(
+        "--generate",
+        action="store_true",
+        help="Output a freeze config snippet for all discovered tools",
+    )
+    discover_parser.set_defaults(func=handle_discover)
+
     # Add 'freeze' sub-command
     freeze_parser = subparsers.add_parser("freeze", help="Freeze the versions of specified tools")
-    freeze_parser.add_argument("tools", nargs="+", help="List of tool names to freeze")
+    freeze_parser.add_argument("tools", nargs="*", help="List of tool names to freeze")
+    freeze_parser.add_argument(
+        "--from-makefile",
+        "--from_makefile",
+        nargs="?",
+        const=True,
+        metavar="MAKEFILE_PATH",
+        help="Discover tools from Makefile (optionally specify path, default: ./Makefile)",
+    )
+    freeze_parser.add_argument(
+        "--from-path",
+        "--from_path",
+        nargs="?",
+        const="",
+        metavar="CATEGORY",
+        help=(
+            "Discover tools present on PATH, optionally filtered by category. "
+            f"Known categories: {', '.join(freeze.list_path_categories())}"
+        ),
+    )
     add_schema_argument(freeze_parser)
     add_config_to_subparser(freeze_parser)
+    freeze_parser.set_defaults(func=handle_freeze)
 
     # Add 'audit' sub-command
     audit_parser = subparsers.add_parser("audit", help="Audit environment with current configuration")
@@ -2768,6 +3558,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         # action='append',
         nargs="+",
         help="Tag for filtering tools.",
+    )
+    audit_parser.add_argument(
+        "--fix",
+        action="store_true",
+        help="Print install commands and documentation for failed tools.",
     )
     audit_parser.set_defaults(func=handle_audit)
 
@@ -2821,6 +3616,10 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     logger.debug(f"command line args: {args}")
 
+    # GUI — deferred import to avoid tkinter overhead on normal CLI use
+    if getattr(args, "gui", False):
+        return handle_gui()
+
     # Demos
     if args.demo and args.demo == "pipx":
         demo_pipx.report_for_pipx_tools()
@@ -2836,11 +3635,6 @@ def main(argv: Sequence[str] | None = None) -> int:
         args.func(args)
         return 0
 
-    # Namespace doesn't have word "freeze" in it.
-    if hasattr(args, "tools") and args.tools:
-        freeze.freeze_to_screen(args.tools, args.schema)
-        return 0
-
     # Audit
 
     # Default behavior
@@ -2848,7 +3642,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         print("No command specified. Auditing environment with pyproject.toml configuration.")
     file_format = "quiet" if args.quiet else "table"
     return views.report_from_pyproject_toml(
-        exit_code_on_failure=True, file_format=file_format, no_cache=True, quiet=args.quiet
+        exit_code_on_failure=True, file_format=file_format, no_cache=False, quiet=args.quiet
     )
 
 
@@ -2858,7 +3652,7 @@ def add_formats(audit_parser):
         "--format",
         default="table",
         type=str,
-        choices=("json", "json-compact", "xml", "table", "csv", "html"),
+        choices=("json", "json-compact", "xml", "table", "csv", "html", "pretty"),
         help="Output results in the specified format. (default is %(default)s)",
     )
 
@@ -2880,7 +3674,7 @@ def add_config_to_subparser(interactive_parser):
 
 
 if __name__ == "__main__":
-    sys.exit(main(["audit"]))
+    sys.exit(main())
 ```
 ## File: .cli_tool_audit_cache\.gitignore
 ```
@@ -3197,4 +3991,1146 @@ if __name__ == "__main__":
         "install_docs": null
     }
 }
+```
+## File: gui\app.py
+```python
+"""
+cli_tool_audit GUI — tkinter application.
+
+Layout: sidebar (left) | main panel (centre) | help panel (right)
+
+All heavy I/O runs in background threads via _BackgroundRunner so the
+UI stays responsive.  The GUI never reads config or calls tools directly;
+it delegates to the existing CLI modules.
+"""
+
+import threading
+import tkinter as tk
+from pathlib import Path
+from tkinter import filedialog, messagebox, ttk
+from typing import Any, Literal
+
+# ── Colour palette (Catppuccin Mocha inspired) ─────────────────────
+_CLR_OK = "#22c55e"
+_CLR_WARN = "#eab308"
+_CLR_ERR = "#ef4444"
+_CLR_DIM = "#9ca3af"
+_CLR_BG = "#1e1e2e"
+_CLR_BG_ALT = "#252536"
+_CLR_FG = "#cdd6f4"
+_CLR_ACCENT = "#89b4fa"
+_CLR_SIDEBAR = "#181825"
+_CLR_BTN = "#313244"
+_CLR_BTN_ACTIVE = "#45475a"
+_CLR_HELP_BG = "#1a1a2e"
+
+_FONT_UI = ("Segoe UI", 11)
+_FONT_UI_BOLD = ("Segoe UI", 11, "bold")
+_FONT_HEADING = ("Segoe UI", 14, "bold")
+_FONT_MONO = ("Consolas", 10)
+_FONT_MONO_SMALL = ("Consolas", 9)
+_FONT_HELP_HEADING = ("Segoe UI", 12, "bold")
+_FONT_HELP = ("Segoe UI", 10)
+
+_MIN_WIDTH = 1280
+_MIN_HEIGHT = 720
+
+
+# ── Background runner ───────────────────────────────────────────────
+
+
+class _BackgroundRunner:
+    """Run a callable off the UI thread and post results back via root.after."""
+
+    def __init__(self, root: tk.Tk):
+        self._root = root
+
+    def run(self, func, *, args=(), on_success=None, on_error=None):
+        def _worker():
+            try:
+                result = func(*args)
+                if on_success:
+                    self._root.after(0, on_success, result)
+            except Exception as exc:  # noqa: BLE001
+                if on_error:
+                    self._root.after(0, on_error, exc)
+
+        t = threading.Thread(target=_worker, daemon=True)
+        t.start()
+
+
+# ── Reusable widget helpers ─────────────────────────────────────────
+
+
+def _make_tree(parent, columns, height=18, show_headings=True):
+    """Create a themed treeview with scrollbar and colour tags."""
+    style = ttk.Style()
+    style.theme_use("clam")
+    style.configure(
+        "Dark.Treeview",
+        background=_CLR_BG_ALT,
+        foreground=_CLR_FG,
+        fieldbackground=_CLR_BG_ALT,
+        font=_FONT_MONO,
+        rowheight=26,
+    )
+    style.configure(
+        "Dark.Treeview.Heading",
+        background=_CLR_BTN,
+        foreground=_CLR_ACCENT,
+        font=_FONT_UI_BOLD,
+    )
+    style.map("Dark.Treeview", background=[("selected", _CLR_BTN_ACTIVE)])
+
+    frame = tk.Frame(parent, bg=_CLR_BG)
+    show: Literal["tree", "headings", "tree headings", ""] = "headings" if show_headings else "tree"
+    tree = ttk.Treeview(frame, columns=columns, show=show, height=height, style="Dark.Treeview")
+    for col in columns:
+        tree.heading(col, text=col)
+        tree.column(col, width=140, minwidth=80)
+
+    scrollbar = ttk.Scrollbar(frame, orient=tk.VERTICAL, command=tree.yview)
+    tree.configure(yscrollcommand=scrollbar.set)
+
+    tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+    scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+    tree.tag_configure("ok", foreground=_CLR_OK)
+    tree.tag_configure("warn", foreground=_CLR_WARN)
+    tree.tag_configure("error", foreground=_CLR_ERR)
+    tree.tag_configure("dim", foreground=_CLR_DIM)
+
+    return frame, tree
+
+
+def _make_output(parent, height=12):
+    """Create a read-only scrolled text area."""
+    frame = tk.Frame(parent, bg=_CLR_BG)
+    text = tk.Text(
+        frame,
+        height=height,
+        bg=_CLR_BG_ALT,
+        fg=_CLR_FG,
+        font=_FONT_MONO,
+        insertbackground=_CLR_FG,
+        relief=tk.FLAT,
+        wrap=tk.WORD,
+        padx=10,
+        pady=8,
+    )
+    scrollbar = ttk.Scrollbar(frame, orient=tk.VERTICAL, command=text.yview)
+    text.configure(yscrollcommand=scrollbar.set, state=tk.DISABLED)
+    text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+    scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+    return frame, text
+
+
+def _output_set(text_widget, content):
+    """Replace content of a read-only text widget. No-ops if widget was destroyed."""
+    try:
+        if not text_widget.winfo_exists():
+            return
+    except tk.TclError:
+        return
+    text_widget.configure(state=tk.NORMAL)
+    text_widget.delete("1.0", tk.END)
+    text_widget.insert("1.0", content)
+    text_widget.configure(state=tk.DISABLED)
+
+
+def _make_toolbar(parent):
+    """Create a horizontal button bar."""
+    bar = tk.Frame(parent, bg=_CLR_BG)
+    return bar
+
+
+def _toolbar_btn(bar, text, command, width=16):
+    """Create a themed button inside a toolbar."""
+    btn = tk.Button(
+        bar,
+        text=text,
+        command=command,
+        bg=_CLR_BTN,
+        fg=_CLR_FG,
+        activebackground=_CLR_BTN_ACTIVE,
+        activeforeground=_CLR_FG,
+        font=_FONT_UI,
+        relief=tk.FLAT,
+        cursor="hand2",
+        width=width,
+        padx=8,
+        pady=4,
+    )
+    btn.pack(side=tk.LEFT, padx=4, pady=4)
+    return btn
+
+
+# ── Help / cheat-sheet content ──────────────────────────────────────
+
+_HELP_TEXTS: dict[str, str] = {
+    "audit": """\
+AUDIT
+
+Run the tool audit against your
+pyproject.toml configuration.
+
+Config format (pyproject.toml):
+  [tool.cli-tools]
+  ruff = {name="ruff",
+          version=">=0.1.0",
+          schema="semver"}
+
+Columns:
+  Tool      - executable name
+  Found     - raw --version output
+  Parsed    - cleaned version
+  Desired   - version spec from config
+  Status    - OK / Not Found / etc.
+  Modified  - last modified date
+
+Filters:
+  Tags      - only check matching tags
+  Only Errors - hide passing tools
+
+Tip: use --fix in CLI to see install
+hints for failing tools.
+""",
+    "freeze": """\
+FREEZE
+
+Capture the current version of tools
+and generate a [tool.cli-tools] config
+snippet.
+
+Three modes:
+  1. Explicit tool list
+     Type tool names separated by spaces.
+
+  2. From Makefile
+     Scans your Makefile for recipe
+     commands and snapshots versions
+     of tools found on PATH.
+
+  3. From PATH by category
+     Categories: python, node, java,
+     rust, go, ruby, docker, cloud,
+     build, git, lint, security
+
+Output is a TOML snippet you can paste
+into pyproject.toml.
+""",
+    "discover": """\
+DISCOVER
+
+Scan your project for CLI tool
+references across:
+
+  - Makefile / GNUmakefile
+  - .github/workflows/*.yml
+  - package.json scripts
+  - pyproject.toml scripts
+  - Dockerfile RUN lines
+  - scripts/*.sh
+  - .pre-commit-config.yaml
+
+Each tool shows which files
+reference it.
+
+Use "Generate Config" to produce
+a freeze config for all discovered
+tools.
+""",
+    "single": """\
+SINGLE TOOL CHECK
+
+Audit one tool without a config file.
+
+Fields:
+  Tool name  - the executable (required)
+  Version    - desired version spec
+  Schema     - semver, snapshot,
+               pep440, or existence
+  Switch     - version flag override
+               (default: --version)
+
+Schemas:
+  semver     - semantic versioning
+               supports >=, ^, ~, *
+  snapshot   - exact full output match
+  pep440     - Python PEP 440 rules
+  existence  - just check it exists
+""",
+    "config": """\
+CONFIGURATION
+
+Manage tool entries in your
+pyproject.toml config file.
+
+Operations:
+  Read   - list all tool configs
+  Create - add a new tool entry
+  Update - modify an existing entry
+  Delete - remove a tool entry
+
+Config lives under [tool.cli-tools]
+in your pyproject.toml file.
+
+Each entry supports:
+  name, version, version_switch,
+  schema, if_os, tags,
+  install_command, install_docs
+""",
+    "welcome": """\
+CLI TOOL AUDIT
+
+Audit CLI tools for existence and
+correct version numbers.
+
+Getting started:
+  1. Click "Audit" to check tools
+     defined in pyproject.toml
+  2. Click "Discover" to find tools
+     referenced in your project
+  3. Click "Freeze" to snapshot
+     current tool versions
+
+Quick CLI equivalents:
+  cli_tool_audit audit
+  cli_tool_audit discover
+  cli_tool_audit freeze python ruff
+  cli_tool_audit single ruff
+  cli_tool_audit read
+  cli_tool_audit create ruff
+              --version ">=0.1.0"
+              --schema semver
+
+Keyboard shortcuts:
+  Ctrl+Q  - Quit
+  F5      - Refresh current panel
+""",
+}
+
+
+# ── Base panel ──────────────────────────────────────────────────────
+
+
+class _BasePanel(tk.Frame):
+    """Base class for all content panels."""
+
+    def __init__(self, parent, runner: _BackgroundRunner, status_var: tk.StringVar):
+        super().__init__(parent, bg=_CLR_BG)
+        self._runner = runner
+        self._status = status_var
+
+    def _alive(self) -> bool:
+        """Return False if this panel has been destroyed (user switched panels)."""
+        try:
+            return bool(self.winfo_exists())
+        except tk.TclError:
+            return False
+
+
+# ── Audit panel ─────────────────────────────────────────────────────
+
+
+class AuditPanel(_BasePanel):
+    """Run audit against pyproject.toml and display results."""
+
+    def __init__(self, parent, runner, status_var):
+        super().__init__(parent, runner, status_var)
+        self._config_path = tk.StringVar(value="pyproject.toml")
+
+        # Toolbar
+        toolbar = _make_toolbar(self)
+        toolbar.pack(fill=tk.X, padx=8, pady=(8, 0))
+
+        _toolbar_btn(toolbar, "Run Audit", self._run_audit)
+        _toolbar_btn(toolbar, "Only Errors", self._run_audit_errors)
+
+        tk.Label(toolbar, text="Config:", bg=_CLR_BG, fg=_CLR_DIM, font=_FONT_UI).pack(side=tk.LEFT, padx=(16, 4))
+        entry = tk.Entry(
+            toolbar,
+            textvariable=self._config_path,
+            bg=_CLR_BG_ALT,
+            fg=_CLR_FG,
+            font=_FONT_MONO,
+            insertbackground=_CLR_FG,
+            relief=tk.FLAT,
+            width=30,
+        )
+        entry.pack(side=tk.LEFT, padx=4)
+        _toolbar_btn(toolbar, "Browse...", self._browse, width=10)
+
+        # Results tree
+        cols = ("Tool", "Found", "Parsed", "Desired", "Status", "Modified")
+        tree_frame, self._tree = _make_tree(self, cols, height=22)
+        tree_frame.pack(fill=tk.BOTH, expand=True, padx=8, pady=8)
+        self._tree.column("Tool", width=160)
+        self._tree.column("Found", width=200)
+        self._tree.column("Parsed", width=120)
+        self._tree.column("Desired", width=120)
+        self._tree.column("Status", width=140)
+        self._tree.column("Modified", width=100)
+
+        # Summary
+        self._summary_var = tk.StringVar(value="")
+        tk.Label(self, textvariable=self._summary_var, bg=_CLR_BG, fg=_CLR_WARN, font=_FONT_UI, anchor=tk.W).pack(
+            fill=tk.X, padx=12, pady=(0, 8)
+        )
+
+    def _browse(self):
+        path = filedialog.askopenfilename(
+            title="Select config file",
+            filetypes=[("TOML files", "*.toml"), ("All files", "*.*")],
+        )
+        if path:
+            self._config_path.set(path)
+
+    def _run_audit(self):
+        self._do_audit(only_errors=False)
+
+    def _run_audit_errors(self):
+        self._do_audit(only_errors=True)
+
+    def _do_audit(self, only_errors=False):
+        self._status.set("Running audit...")
+        self._tree.delete(*self._tree.get_children())
+        self._summary_var.set("")
+        config_path = self._config_path.get()
+        self._runner.run(
+            self._fetch,
+            args=(config_path,),
+            on_success=lambda results: self._display(results, only_errors),
+            on_error=self._on_error,
+        )
+
+    @staticmethod
+    def _fetch(config_path):
+        from cli_tool_audit.views import validate
+
+        return validate(Path(config_path), no_cache=False, disable_progress_bar=True)
+
+    def _display(self, results, only_errors=False):
+        if not self._alive():
+            return
+        self._tree.delete(*self._tree.get_children())
+        if only_errors:
+            results = [r for r in results if r.is_problem()]
+
+        for result in sorted(results, key=lambda r: r.tool.lower()):
+            found = (result.found_version or "")[:40]
+            parsed = result.parsed_version or ""
+            desired = result.desired_version or ""
+            status = result.status() if hasattr(result, "status") else ""
+            try:
+                modified = result.last_modified.strftime("%m/%d/%y") if result.last_modified else ""
+            except ValueError:
+                modified = str(result.last_modified) if result.last_modified else ""
+
+            tag = "error" if result.is_problem() else "ok"
+            self._tree.insert("", tk.END, values=(result.tool, found, parsed, desired, status, modified), tags=(tag,))
+
+        # Summary
+        from cli_tool_audit.views import summarize_failures
+
+        summary = summarize_failures(results)
+        total = len(results)
+        if summary:
+            self._summary_var.set(f"{total} tools checked. {summary}")
+        else:
+            self._summary_var.set(f"{total} tools checked. All passing.")
+        self._status.set(f"Audit complete — {total} tools checked.")
+
+    def _on_error(self, exc):
+        if not self._alive():
+            return
+        self._status.set("Audit failed.")
+        messagebox.showerror("Audit Error", str(exc))
+
+
+# ── Freeze panel ────────────────────────────────────────────────────
+
+
+class FreezePanel(_BasePanel):
+    """Freeze tool versions — manual list, from Makefile, or by PATH category."""
+
+    def __init__(self, parent, runner, status_var):
+        super().__init__(parent, runner, status_var)
+
+        # Mode selector
+        mode_frame = tk.Frame(self, bg=_CLR_BG)
+        mode_frame.pack(fill=tk.X, padx=8, pady=(8, 0))
+        self._mode = tk.StringVar(value="manual")
+        for val, label in [("manual", "Tool List"), ("makefile", "From Makefile"), ("path", "From PATH")]:
+            tk.Radiobutton(
+                mode_frame,
+                text=label,
+                variable=self._mode,
+                value=val,
+                bg=_CLR_BG,
+                fg=_CLR_FG,
+                selectcolor=_CLR_BTN,
+                activebackground=_CLR_BG,
+                activeforeground=_CLR_ACCENT,
+                font=_FONT_UI,
+                command=self._on_mode_change,
+            ).pack(side=tk.LEFT, padx=8)
+
+        # Input area
+        input_frame = tk.Frame(self, bg=_CLR_BG)
+        input_frame.pack(fill=tk.X, padx=8, pady=4)
+
+        tk.Label(input_frame, text="Tools:", bg=_CLR_BG, fg=_CLR_DIM, font=_FONT_UI).pack(side=tk.LEFT, padx=(0, 4))
+        self._tools_entry = tk.Entry(
+            input_frame,
+            bg=_CLR_BG_ALT,
+            fg=_CLR_FG,
+            font=_FONT_MONO,
+            insertbackground=_CLR_FG,
+            relief=tk.FLAT,
+            width=50,
+        )
+        self._tools_entry.pack(side=tk.LEFT, padx=4, fill=tk.X, expand=True)
+        self._tools_entry.insert(0, "python ruff mypy pytest")
+
+        # Category dropdown for PATH mode
+        self._category_frame = tk.Frame(input_frame, bg=_CLR_BG)
+        tk.Label(self._category_frame, text="Category:", bg=_CLR_BG, fg=_CLR_DIM, font=_FONT_UI).pack(
+            side=tk.LEFT, padx=(8, 4)
+        )
+        self._category_var = tk.StringVar(value="(all)")
+        from cli_tool_audit.freeze import list_path_categories
+
+        categories = ["(all)"] + list_path_categories()
+        self._category_menu = ttk.Combobox(
+            self._category_frame,
+            textvariable=self._category_var,
+            values=categories,
+            state="readonly",
+            width=14,
+        )
+        self._category_menu.pack(side=tk.LEFT, padx=4)
+
+        # Toolbar
+        toolbar = _make_toolbar(self)
+        toolbar.pack(fill=tk.X, padx=8, pady=4)
+        _toolbar_btn(toolbar, "Freeze", self._run_freeze)
+
+        # Output
+        output_frame, self._output = _make_output(self, height=22)
+        output_frame.pack(fill=tk.BOTH, expand=True, padx=8, pady=(0, 8))
+
+        self._on_mode_change()
+
+    def _on_mode_change(self):
+        mode = self._mode.get()
+        if mode == "path":
+            self._category_frame.pack(side=tk.LEFT, padx=4)
+            self._tools_entry.configure(state=tk.DISABLED)
+        elif mode == "makefile":
+            self._category_frame.pack_forget()
+            self._tools_entry.configure(state=tk.DISABLED)
+        else:
+            self._category_frame.pack_forget()
+            self._tools_entry.configure(state=tk.NORMAL)
+
+    def _run_freeze(self):
+        mode = self._mode.get()
+        self._status.set("Freezing tool versions...")
+        _output_set(self._output, "")
+        self._runner.run(
+            self._fetch,
+            args=(mode, self._tools_entry.get(), self._category_var.get()),
+            on_success=self._display,
+            on_error=self._on_error,
+        )
+
+    @staticmethod
+    def _fetch(mode, tools_text, category):
+        import contextlib
+        import io
+
+        from cli_tool_audit import freeze, models
+
+        buf = io.StringIO()
+        if mode == "makefile":
+            tool_names = freeze.infer_tools_from_makefile()
+            if not tool_names:
+                return "No tools discovered in Makefile (or none found on PATH)."
+            header = f"# Discovered from Makefile: {', '.join(tool_names)}\n\n"
+        elif mode == "path":
+            cat = category if category != "(all)" else None
+            tool_names = freeze.infer_tools_from_path(cat)
+            if not tool_names:
+                label = f"category '{cat}'" if cat else "any category"
+                return f"No tools found on PATH for {label}."
+            label = f"'{cat}'" if cat else "all categories"
+            header = f"# Discovered on PATH ({label}): {', '.join(tool_names)}\n\n"
+        else:
+            tool_names = tools_text.split()
+            if not tool_names:
+                return "Enter tool names separated by spaces."
+            header = ""
+
+        with contextlib.redirect_stdout(buf):
+            freeze.freeze_to_screen(tool_names, schema=models.SchemaType.SNAPSHOT)
+        return header + buf.getvalue()
+
+    def _display(self, output):
+        if not self._alive():
+            return
+        _output_set(self._output, output)
+        self._status.set("Freeze complete.")
+
+    def _on_error(self, exc):
+        if not self._alive():
+            return
+        self._status.set("Freeze failed.")
+        messagebox.showerror("Freeze Error", str(exc))
+
+
+# ── Discover panel ──────────────────────────────────────────────────
+
+
+class DiscoverPanel(_BasePanel):
+    """Scan project files for CLI tool references."""
+
+    def __init__(self, parent, runner, status_var):
+        super().__init__(parent, runner, status_var)
+
+        toolbar = _make_toolbar(self)
+        toolbar.pack(fill=tk.X, padx=8, pady=(8, 0))
+
+        tk.Label(toolbar, text="Project root:", bg=_CLR_BG, fg=_CLR_DIM, font=_FONT_UI).pack(side=tk.LEFT, padx=(0, 4))
+        self._root_var = tk.StringVar(value=str(Path.cwd()))
+        entry = tk.Entry(
+            toolbar,
+            textvariable=self._root_var,
+            bg=_CLR_BG_ALT,
+            fg=_CLR_FG,
+            font=_FONT_MONO,
+            insertbackground=_CLR_FG,
+            relief=tk.FLAT,
+            width=40,
+        )
+        entry.pack(side=tk.LEFT, padx=4, fill=tk.X, expand=True)
+        _toolbar_btn(toolbar, "Browse...", self._browse, width=10)
+        _toolbar_btn(toolbar, "Scan", self._run_discover)
+        _toolbar_btn(toolbar, "Generate Config", self._run_generate)
+
+        # Results tree
+        cols = ("Tool", "Found In")
+        tree_frame, self._tree = _make_tree(self, cols, height=16)
+        tree_frame.pack(fill=tk.BOTH, expand=True, padx=8, pady=8)
+        self._tree.column("Tool", width=220)
+        self._tree.column("Found In", width=500)
+
+        # Config output (shown when Generate is clicked)
+        output_frame, self._output = _make_output(self, height=10)
+        output_frame.pack(fill=tk.BOTH, padx=8, pady=(0, 8))
+
+        self._last_sources: dict = {}
+
+    def _browse(self):
+        path = filedialog.askdirectory(title="Select project root")
+        if path:
+            self._root_var.set(path)
+
+    def _run_discover(self):
+        self._status.set("Scanning for tool references...")
+        self._tree.delete(*self._tree.get_children())
+        _output_set(self._output, "")
+        self._runner.run(
+            self._fetch_discover,
+            args=(self._root_var.get(),),
+            on_success=self._display_discover,
+            on_error=self._on_error,
+        )
+
+    def _run_generate(self):
+        if not self._last_sources:
+            messagebox.showinfo("Discover First", "Run a scan first, then generate config.")
+            return
+        self._status.set("Generating freeze config...")
+        tool_names = list(self._last_sources.keys())
+        self._runner.run(
+            self._fetch_generate,
+            args=(tool_names,),
+            on_success=self._display_generate,
+            on_error=self._on_error,
+        )
+
+    @staticmethod
+    def _fetch_discover(root_path):
+        from cli_tool_audit.discover import discover_tools
+
+        return discover_tools(Path(root_path))
+
+    @staticmethod
+    def _fetch_generate(tool_names):
+        import contextlib
+        import io
+
+        from cli_tool_audit import freeze, models
+
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            freeze.freeze_to_screen(tool_names, schema=models.SchemaType.SNAPSHOT)
+        return buf.getvalue()
+
+    def _display_discover(self, sources):
+        if not self._alive():
+            return
+        self._tree.delete(*self._tree.get_children())
+        self._last_sources = sources
+        for tool, locs in sources.items():
+            self._tree.insert("", tk.END, values=(tool, ", ".join(locs)), tags=("ok",))
+        count = len(sources)
+        self._status.set(f"Discovered {count} tool(s).")
+
+    def _display_generate(self, output):
+        if not self._alive():
+            return
+        _output_set(self._output, output)
+        self._status.set("Config generated. Copy the TOML snippet above.")
+
+    def _on_error(self, exc):
+        if not self._alive():
+            return
+        self._status.set("Discover failed.")
+        messagebox.showerror("Discover Error", str(exc))
+
+
+# ── Single tool panel ───────────────────────────────────────────────
+
+
+class SinglePanel(_BasePanel):
+    """Audit a single tool without config file."""
+
+    def __init__(self, parent, runner, status_var):
+        super().__init__(parent, runner, status_var)
+
+        # Form
+        form = tk.Frame(self, bg=_CLR_BG)
+        form.pack(fill=tk.X, padx=12, pady=(12, 4))
+
+        row = 0
+        self._entries: dict[str, Any] = {}
+        for label_text, key, default, width in [
+            ("Tool name:", "tool", "", 30),
+            ("Version:", "version", "", 30),
+            ("Switch:", "switch", "--version", 20),
+        ]:
+            tk.Label(form, text=label_text, bg=_CLR_BG, fg=_CLR_FG, font=_FONT_UI, anchor=tk.W).grid(
+                row=row,
+                column=0,
+                sticky=tk.W,
+                padx=(0, 8),
+                pady=6,
+            )
+            var = tk.StringVar(value=default)
+            entry = tk.Entry(
+                form,
+                textvariable=var,
+                bg=_CLR_BG_ALT,
+                fg=_CLR_FG,
+                font=_FONT_MONO,
+                insertbackground=_CLR_FG,
+                relief=tk.FLAT,
+                width=width,
+            )
+            entry.grid(row=row, column=1, sticky=tk.W, pady=6)
+            self._entries[key] = var
+            row += 1
+
+        # Schema
+        tk.Label(form, text="Schema:", bg=_CLR_BG, fg=_CLR_FG, font=_FONT_UI, anchor=tk.W).grid(
+            row=row,
+            column=0,
+            sticky=tk.W,
+            padx=(0, 8),
+            pady=6,
+        )
+        self._schema_var = tk.StringVar(value="semver")
+        schema_combo = ttk.Combobox(
+            form,
+            textvariable=self._schema_var,
+            values=["semver", "snapshot", "pep440", "existence"],
+            state="readonly",
+            width=14,
+        )
+        schema_combo.grid(row=row, column=1, sticky=tk.W, pady=6)
+
+        # Button
+        toolbar = _make_toolbar(self)
+        toolbar.pack(fill=tk.X, padx=8, pady=4)
+        _toolbar_btn(toolbar, "Check Tool", self._run_check)
+
+        # Output
+        output_frame, self._output = _make_output(self, height=16)
+        output_frame.pack(fill=tk.BOTH, expand=True, padx=8, pady=(0, 8))
+
+    def _run_check(self):
+        tool = self._entries["tool"].get().strip()
+        if not tool:
+            messagebox.showinfo("Missing", "Enter a tool name.")
+            return
+        self._status.set(f"Checking {tool}...")
+        _output_set(self._output, "")
+        self._runner.run(
+            self._fetch,
+            args=(tool, self._entries["version"].get(), self._entries["switch"].get(), self._schema_var.get()),
+            on_success=self._display,
+            on_error=self._on_error,
+        )
+
+    @staticmethod
+    def _fetch(tool, version, switch, schema):
+        import contextlib
+        import io
+
+        from cli_tool_audit import models, views
+
+        config = models.CliToolConfig(
+            name=tool,
+            version=version or None,
+            version_switch=switch or None,
+            schema=schema,
+        )
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            views.report_from_pyproject_toml(
+                file_path=None,
+                config_as_dict={tool: config},
+                exit_code_on_failure=False,
+                file_format="table",
+                no_cache=False,
+                tags=None,
+                only_errors=False,
+            )
+        return buf.getvalue()
+
+    def _display(self, output):
+        if not self._alive():
+            return
+        _output_set(self._output, output)
+        self._status.set("Check complete.")
+
+    def _on_error(self, exc):
+        if not self._alive():
+            return
+        self._status.set("Check failed.")
+        messagebox.showerror("Check Error", str(exc))
+
+
+# ── Config panel ────────────────────────────────────────────────────
+
+
+class ConfigPanel(_BasePanel):
+    """Read / Create / Update / Delete tool configurations."""
+
+    def __init__(self, parent, runner, status_var):
+        super().__init__(parent, runner, status_var)
+
+        self._config_path = tk.StringVar(value="pyproject.toml")
+
+        # Top bar
+        top = tk.Frame(self, bg=_CLR_BG)
+        top.pack(fill=tk.X, padx=8, pady=(8, 0))
+        tk.Label(top, text="Config:", bg=_CLR_BG, fg=_CLR_DIM, font=_FONT_UI).pack(side=tk.LEFT, padx=(0, 4))
+        tk.Entry(
+            top,
+            textvariable=self._config_path,
+            bg=_CLR_BG_ALT,
+            fg=_CLR_FG,
+            font=_FONT_MONO,
+            insertbackground=_CLR_FG,
+            relief=tk.FLAT,
+            width=30,
+        ).pack(side=tk.LEFT, padx=4)
+        _toolbar_btn(top, "Browse...", self._browse, width=10)
+        _toolbar_btn(top, "Read Config", self._read_config)
+
+        # Output
+        output_frame, self._output = _make_output(self, height=26)
+        output_frame.pack(fill=tk.BOTH, expand=True, padx=8, pady=8)
+
+    def _browse(self):
+        path = filedialog.askopenfilename(
+            title="Select config file",
+            filetypes=[("TOML files", "*.toml"), ("All files", "*.*")],
+        )
+        if path:
+            self._config_path.set(path)
+
+    def _read_config(self):
+        self._status.set("Reading configuration...")
+        _output_set(self._output, "")
+        self._runner.run(
+            self._fetch,
+            args=(self._config_path.get(),),
+            on_success=self._display,
+            on_error=self._on_error,
+        )
+
+    @staticmethod
+    def _fetch(config_path):
+        import contextlib
+        import io
+
+        from cli_tool_audit import config_manager
+
+        buf = io.StringIO()
+        manager = config_manager.ConfigManager(Path(config_path))
+        manager.read_config()
+        with contextlib.redirect_stdout(buf):
+            for tool, config in manager.tools.items():
+                print(f"{tool}")
+                for key, value in vars(config).items():
+                    if value is not None:
+                        print(f"  {key}: {value}")
+                print()
+        return buf.getvalue()
+
+    def _display(self, output):
+        if not self._alive():
+            return
+        _output_set(self._output, output or "(No tools configured)")
+        self._status.set("Configuration loaded.")
+
+    def _on_error(self, exc):
+        if not self._alive():
+            return
+        self._status.set("Config read failed.")
+        messagebox.showerror("Config Error", str(exc))
+
+
+# ── Welcome panel ───────────────────────────────────────────────────
+
+
+class WelcomePanel(_BasePanel):
+    """Landing page with overview."""
+
+    def __init__(self, parent, runner, status_var):
+        super().__init__(parent, runner, status_var)
+
+        # Title
+        tk.Label(
+            self,
+            text="CLI Tool Audit",
+            bg=_CLR_BG,
+            fg=_CLR_ACCENT,
+            font=("Segoe UI", 24, "bold"),
+        ).pack(pady=(40, 8))
+        tk.Label(
+            self,
+            text="Audit CLI tools for existence and correct version numbers",
+            bg=_CLR_BG,
+            fg=_CLR_DIM,
+            font=("Segoe UI", 13),
+        ).pack(pady=(0, 24))
+
+        # Quick-start cards
+        cards_frame = tk.Frame(self, bg=_CLR_BG)
+        cards_frame.pack(pady=16)
+
+        cards = [
+            ("Audit", "Check tools against\npyproject.toml config", _CLR_OK),
+            ("Discover", "Find tool references\nacross project files", _CLR_ACCENT),
+            ("Freeze", "Snapshot current\ntool versions", _CLR_WARN),
+            ("Single", "Quick-check one\ntool by name", _CLR_DIM),
+        ]
+        for title, desc, color in cards:
+            card = tk.Frame(cards_frame, bg=_CLR_BG_ALT, padx=20, pady=16)
+            card.pack(side=tk.LEFT, padx=12)
+            tk.Label(card, text=title, bg=_CLR_BG_ALT, fg=color, font=_FONT_HEADING).pack(anchor=tk.W)
+            tk.Label(card, text=desc, bg=_CLR_BG_ALT, fg=_CLR_FG, font=_FONT_UI, justify=tk.LEFT).pack(
+                anchor=tk.W,
+                pady=(4, 0),
+            )
+
+        tk.Label(
+            self,
+            text="Select a command from the sidebar to get started.",
+            bg=_CLR_BG,
+            fg=_CLR_DIM,
+            font=_FONT_UI,
+        ).pack(pady=(24, 0))
+
+
+# ── Main application ────────────────────────────────────────────────
+
+
+class CliToolAuditApp:
+    """Main application window."""
+
+    def __init__(self):
+        self._root = tk.Tk()
+        self._root.title("CLI Tool Audit")
+        self._root.configure(bg=_CLR_BG)
+        self._root.minsize(_MIN_WIDTH, _MIN_HEIGHT)
+        self._root.geometry(f"{_MIN_WIDTH}x{_MIN_HEIGHT}")
+
+        self._status_var = tk.StringVar(value="Ready.")
+        self._runner = _BackgroundRunner(self._root)
+        self._current_panel: tk.Frame | None = None
+        self._current_panel_name: str = ""
+        self._sidebar_buttons: dict[str, tk.Button] = {}
+
+        self._build_ui()
+        self._bind_keys()
+        self._show_panel("welcome")
+
+    def _bind_keys(self):
+        self._root.bind("<Control-q>", lambda _: self._root.destroy())
+        self._root.bind("<F5>", lambda _: self._refresh())
+
+    def _refresh(self):
+        """Re-create the current panel to refresh its data."""
+        if self._current_panel_name:
+            self._show_panel(self._current_panel_name)
+
+    def _build_ui(self):
+        # Three-column layout: sidebar | main | help
+        container = tk.Frame(self._root, bg=_CLR_BG)
+        container.pack(fill=tk.BOTH, expand=True)
+
+        # ── Sidebar ──
+        sidebar = tk.Frame(container, bg=_CLR_SIDEBAR, width=180)
+        sidebar.pack(side=tk.LEFT, fill=tk.Y)
+        sidebar.pack_propagate(False)
+
+        tk.Label(
+            sidebar,
+            text="Commands",
+            bg=_CLR_SIDEBAR,
+            fg=_CLR_ACCENT,
+            font=_FONT_HEADING,
+        ).pack(pady=(16, 12), padx=12, anchor=tk.W)
+
+        items = [
+            ("welcome", "Home"),
+            ("audit", "Audit"),
+            ("discover", "Discover"),
+            ("freeze", "Freeze"),
+            ("single", "Single Check"),
+            ("config", "Config"),
+        ]
+        for key, label in items:
+            btn = tk.Button(
+                sidebar,
+                text=f"  {label}",
+                # mypy cannot infer lambda type in loop - this is a known limitation
+                command=lambda k=key: self._show_panel(k),  # type: ignore[misc]
+                bg=_CLR_SIDEBAR,
+                fg=_CLR_FG,
+                activebackground=_CLR_BTN_ACTIVE,
+                activeforeground=_CLR_FG,
+                font=_FONT_UI,
+                relief=tk.FLAT,
+                anchor=tk.W,
+                cursor="hand2",
+                padx=12,
+                pady=8,
+            )
+            btn.pack(fill=tk.X, padx=4, pady=1)
+            self._sidebar_buttons[key] = btn
+
+        # Version at bottom of sidebar
+        from cli_tool_audit.__about__ import __version__
+
+        tk.Label(
+            sidebar,
+            text=f"v{__version__}",
+            bg=_CLR_SIDEBAR,
+            fg=_CLR_DIM,
+            font=_FONT_MONO_SMALL,
+        ).pack(side=tk.BOTTOM, pady=8)
+
+        # ── Main panel area ──
+        self._main_area = tk.Frame(container, bg=_CLR_BG)
+        self._main_area.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+        # ── Help panel (right) ──
+        help_frame = tk.Frame(container, bg=_CLR_HELP_BG, width=260)
+        help_frame.pack(side=tk.RIGHT, fill=tk.Y)
+        help_frame.pack_propagate(False)
+
+        tk.Label(
+            help_frame,
+            text="Help",
+            bg=_CLR_HELP_BG,
+            fg=_CLR_ACCENT,
+            font=_FONT_HELP_HEADING,
+        ).pack(pady=(16, 8), padx=12, anchor=tk.W)
+
+        self._help_text = tk.Text(
+            help_frame,
+            bg=_CLR_HELP_BG,
+            fg=_CLR_FG,
+            font=_FONT_HELP,
+            relief=tk.FLAT,
+            wrap=tk.WORD,
+            padx=12,
+            pady=8,
+            state=tk.DISABLED,
+            cursor="arrow",
+            highlightthickness=0,
+        )
+        self._help_text.pack(fill=tk.BOTH, expand=True, padx=4, pady=(0, 8))
+
+        # ── Status bar ──
+        status_bar = tk.Label(
+            self._root,
+            textvariable=self._status_var,
+            bg=_CLR_SIDEBAR,
+            fg=_CLR_DIM,
+            font=_FONT_MONO_SMALL,
+            anchor=tk.W,
+            padx=12,
+            pady=4,
+        )
+        status_bar.pack(side=tk.BOTTOM, fill=tk.X)
+
+    def _show_panel(self, name: str):
+        """Destroy current panel and show the named one."""
+        if self._current_panel:
+            self._current_panel.destroy()
+
+        self._current_panel_name = name
+
+        # Update sidebar highlight
+        for key, btn in self._sidebar_buttons.items():
+            if key == name:
+                btn.configure(bg=_CLR_BTN, fg=_CLR_ACCENT)
+            else:
+                btn.configure(bg=_CLR_SIDEBAR, fg=_CLR_FG)
+
+        # Build panel
+        builders = {
+            "welcome": WelcomePanel,
+            "audit": AuditPanel,
+            "discover": DiscoverPanel,
+            "freeze": FreezePanel,
+            "single": SinglePanel,
+            "config": ConfigPanel,
+        }
+        panel_cls = builders.get(name, WelcomePanel)
+        self._current_panel = panel_cls(self._main_area, self._runner, self._status_var)
+        self._current_panel.pack(fill=tk.BOTH, expand=True)
+
+        # Update help text
+        help_key = name if name in _HELP_TEXTS else "welcome"
+        _output_set(self._help_text, _HELP_TEXTS[help_key])
+
+    def run(self):
+        """Start the tkinter main loop."""
+        self._root.mainloop()
+
+
+def launch_gui():
+    """Entry point for the GUI."""
+    app = CliToolAuditApp()
+    app.run()
+    return 0
 ```

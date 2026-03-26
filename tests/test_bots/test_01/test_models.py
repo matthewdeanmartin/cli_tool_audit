@@ -42,7 +42,7 @@ from cli_tool_audit.models import CliToolConfig, SchemaType, ToolCheckResult
                 last_modified=datetime.now(),
                 tool_config=CliToolConfig(name="python"),
             ),
-            "Not available",
+            "Not found",
             True,
         ),
         # Test case: Compatible
@@ -190,7 +190,7 @@ def test_tool_check_result_not_available():
         tool_config=config,
     )
 
-    assert result.status() == "Not available"
+    assert result.status() == "Not found"
 
 
 def test_cli_tool_config_cache_hash_error_conditions():

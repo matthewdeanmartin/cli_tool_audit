@@ -39,7 +39,12 @@ def mock_report_for_venv_tools():
 def test_default_behavior(mock_report_from_pyproject_toml):
     argv = []
     app.main(argv)
-    mock_report_from_pyproject_toml.assert_called_once()
+    mock_report_from_pyproject_toml.assert_called_once_with(
+        exit_code_on_failure=True,
+        file_format="table",
+        no_cache=False,
+        quiet=False,
+    )
 
 
 # Test freeze command

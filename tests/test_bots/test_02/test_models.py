@@ -55,7 +55,7 @@ def test_status_not_available():
         tool_config=CliToolConfig(name="test", schema=SchemaType.SNAPSHOT, if_os="linux"),
     )
 
-    assert tool_result.status() == "Not available"
+    assert tool_result.status() == "Not found"
 
 
 def test_status_existence_schema():
@@ -73,7 +73,7 @@ def test_status_existence_schema():
         tool_config=CliToolConfig(name="test", schema=SchemaType.EXISTENCE, if_os="linux"),
     )
 
-    assert tool_result.status() == "Compatible"
+    assert tool_result.status() == "Available"
 
 
 def test_status_broken_tool():
@@ -91,7 +91,7 @@ def test_status_broken_tool():
         tool_config=CliToolConfig(name="test", version="1.0", schema=SchemaType.SNAPSHOT, if_os="linux"),
     )
 
-    assert tool_result.status() == "Can't run"
+    assert tool_result.status() == "Broken (version check failed)"
 
 
 def test_is_problem_true():
@@ -161,6 +161,24 @@ def test_status_compatible():
     )
 
     assert tool_result.status() == "Compatible"
+
+
+def test_status_outdated_message():
+    tool_result = ToolCheckResult(
+        tool="test",
+        desired_version=">=2.0.0",
+        is_needed_for_os=True,
+        is_available=True,
+        is_snapshot=False,
+        found_version="1.0.0",
+        parsed_version="1.0.0",
+        is_compatible=">=2.0.0 != 1.0.0",
+        is_broken=False,
+        last_modified=None,
+        tool_config=CliToolConfig(name="test", version=">=2.0.0", schema=SchemaType.SEMVER, if_os="linux"),
+    )
+
+    assert tool_result.status() == "Outdated (have 1.0.0, need >=2.0.0)"
 
 
 # No more unit tests

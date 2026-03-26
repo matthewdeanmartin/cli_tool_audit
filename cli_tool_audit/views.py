@@ -105,6 +105,19 @@ def process_tools(
     return results
 
 
+def get_default_tools() -> dict[str, models.CliToolConfig]:
+    """Get a default set of tools to check if none are configured."""
+    return {
+        "python": models.CliToolConfig(name="python"),
+        "java": models.CliToolConfig(name="java"),
+        "node": models.CliToolConfig(name="node"),
+        "go": models.CliToolConfig(name="go"),
+        "rustc": models.CliToolConfig(name="rustc"),
+        "make": models.CliToolConfig(name="make"),
+        "git": models.CliToolConfig(name="git"),
+    }
+
+
 def report_from_pyproject_toml(
     file_path: Path | None = Path("pyproject.toml"),
     config_as_dict: dict[str, models.CliToolConfig] | None = None,
@@ -114,6 +127,7 @@ def report_from_pyproject_toml(
     tags: list[str] | None = None,
     only_errors: bool = False,
     quiet: bool = False,
+    show_fix: bool = False,
 ) -> int:
     """
     Report on the compatibility of the tools in the pyproject.toml file.
@@ -127,6 +141,7 @@ def report_from_pyproject_toml(
         tags (Optional[list[str]], optional): Only check tools with these tags. Defaults to None.
         only_errors (bool, optional): Only show errors. Defaults to False.
         quiet (bool, optional): If True, suppress all output. Defaults to False.
+        show_fix (bool, optional): If True, print install hints for failed tools. Defaults to False.
 
     Returns:
         int: The exit code.
@@ -144,7 +159,10 @@ def report_from_pyproject_toml(
             one_up = ".." / file_path
             if one_up.exists():
                 file_path = one_up
-        results = validate(file_path, no_cache=no_cache, tags=tags, disable_progress_bar=file_format != "table")
+        cli_tools = config_reader.read_config(file_path)
+        if not cli_tools and file_format == "pretty":
+            cli_tools = get_default_tools()
+        results = process_tools(cli_tools, no_cache, tags, disable_progress_bar=file_format != "table")
     else:
         raise TypeError("Must provide either file_path or config_as_dict.")
 
@@ -172,6 +190,18 @@ def report_from_pyproject_toml(
     elif file_format == "table":
         table = pretty_print_results(results, truncate_long_versions=True, include_docs=False)
         print(table)
+        if not quiet:
+            summary = summarize_failures(results)
+            if summary:
+                print(summary)
+            if show_fix:
+                install_hints = get_install_hints(results)
+                if install_hints:
+                    print("Install hints:")
+                    for hint in install_hints:
+                        print(f"- {hint}")
+                elif failed:
+                    print("No install hints configured for failed tools.")
     elif file_format == "csv":
         print(
             "tool,desired_version,is_available,is_snapshot,found_version,parsed_version,is_compatible,is_broken,last_modified"
@@ -183,6 +213,24 @@ def report_from_pyproject_toml(
     elif file_format == "html":
         table = pretty_print_results(results, truncate_long_versions=False, include_docs=True)
         print(table.get_html_string())
+    elif file_format == "pretty":
+        pretty_print_results_pretty(results)
+        if not quiet:
+            no_color = bool(os.environ.get("NO_COLOR") or os.environ.get("CI"))
+            red = "" if no_color else colorama.Fore.RED
+            green = "" if no_color else colorama.Fore.GREEN
+            reset = "" if no_color else colorama.Style.RESET_ALL
+            failures = [r for r in results if r.is_problem()]
+            if failures:
+                print(f"{red}{len(failures)} tools failed validation!{reset}")
+            else:
+                print(f"{green}All tools passed validation.{reset}")
+            if show_fix:
+                install_hints = get_install_hints(results)
+                if install_hints:
+                    print("\nInstall hints:")
+                    for hint in install_hints:
+                        print(f"- {hint}")
     else:
         print(
             f"Unknown file format: {file_format}, defaulting to table output. Supported formats: json, json-compact, xml, table, csv."
@@ -262,6 +310,47 @@ def pretty_print_results(
     return table
 
 
+def summarize_failures(results: list[models.ToolCheckResult]) -> str | None:
+    """
+    Build a short, human-readable summary of failed tool checks.
+
+    Args:
+        results (list[models.ToolCheckResult]): The results to summarize.
+
+    Returns:
+        str | None: A summary line, or None when there are no failures.
+    """
+    failures = sorted((result for result in results if result.is_problem()), key=lambda result: result.tool.lower())
+    if not failures:
+        return None
+    tool_label = "tool" if len(failures) == 1 else "tools"
+    details = ", ".join(f"{result.tool} ({result.failure_reason()})" for result in failures)
+    return f"{len(failures)} {tool_label} failed: {details}"
+
+
+def get_install_hints(results: list[models.ToolCheckResult]) -> list[str]:
+    """
+    Collect install hints for failed tools.
+
+    Args:
+        results (list[models.ToolCheckResult]): The results to inspect.
+
+    Returns:
+        list[str]: Human-readable install hints for failed tools that define them.
+    """
+    hints: list[str] = []
+    failures = sorted((result for result in results if result.is_problem()), key=lambda result: result.tool.lower())
+    for result in failures:
+        hint_parts = [result.tool]
+        if result.tool_config.install_command:
+            hint_parts.append(f"run `{result.tool_config.install_command}`")
+        if result.tool_config.install_docs:
+            hint_parts.append(f"see `{result.tool_config.install_docs}`")
+        if len(hint_parts) > 1:
+            hints.append(": ".join([hint_parts[0], "; ".join(hint_parts[1:])]))
+    return hints
+
+
 def should_show_progress_bar(cli_tools) -> bool | None:
     """
     Determine if a progress bar should be shown.
@@ -274,6 +363,147 @@ def should_show_progress_bar(cli_tools) -> bool | None:
     """
     disable = len(cli_tools) < 5 or os.environ.get("CI") or os.environ.get("NO_COLOR")
     return True if disable else None
+
+
+def detect_language() -> str:
+    """Detect the primary language of the project."""
+    cwd = Path.cwd()
+    if (cwd / "pyproject.toml").exists() or (cwd / "requirements.txt").exists() or (cwd / "setup.py").exists():
+        return "python"
+    if (cwd / "pom.xml").exists() or (cwd / "build.gradle").exists() or (cwd / "build.gradle.kts").exists():
+        return "java"
+    if (cwd / "go.mod").exists():
+        return "go"
+    if (cwd / "Cargo.toml").exists():
+        return "rust"
+    if (cwd / "package.json").exists():
+        return "javascript"
+    return "default"
+
+
+def get_logo(lang: str, no_color: bool) -> list[str]:
+    """Get the ANSI logo for the detected language."""
+    cyan = "" if no_color else colorama.Fore.CYAN
+    yellow = "" if no_color else colorama.Fore.YELLOW
+    blue = "" if no_color else colorama.Fore.BLUE
+    red = "" if no_color else colorama.Fore.RED
+    green = "" if no_color else colorama.Fore.GREEN
+    # magenta = "" if no_color else colorama.Fore.MAGENTA
+    reset = "" if no_color else colorama.Style.RESET_ALL
+
+    logos = {
+        "python": [
+            f"{blue}   _____  {reset}",
+            f"{blue}  /  _  \\ {reset}",
+            f"{blue} /  / \\  \\{reset}",
+            f"{yellow}|  |   |  |{reset}",
+            f"{yellow} \\  \\_/  /{reset}",
+            f"{yellow}  \\_____/ {reset}",
+        ],
+        "java": [
+            f"{red}   _     {reset}",
+            f"{red}  (_)    {reset}",
+            f"{red}  | |    {reset}",
+            f"{red}  | |    {reset}",
+            f"{yellow} /___\\   {reset}",
+            f"{yellow}(_____)  {reset}",
+        ],
+        "go": [
+            f"{cyan}  ____   {reset}",
+            f"{cyan} /    \\  {reset}",
+            f"{cyan}|  go  | {reset}",
+            f"{cyan} \\____/  {reset}",
+            f"{cyan}  |  |   {reset}",
+            f"{cyan}  |__|   {reset}",
+        ],
+        "rust": [
+            f"{red}  ____   {reset}",
+            f"{red} /    \\  {reset}",
+            f"{red}| rust | {reset}",
+            f"{red} \\____/  {reset}",
+            f"{red}  |  |   {reset}",
+            f"{red}  |__|   {reset}",
+        ],
+        "javascript": [
+            f"{yellow}  _____  {reset}",
+            f"{yellow} |     | {reset}",
+            f"{yellow} |  JS | {reset}",
+            f"{yellow} |     | {reset}",
+            f"{yellow} |_____| {reset}",
+            f"{yellow}         {reset}",
+        ],
+        "default": [
+            f"{green}  _____  {reset}",
+            f"{green} /     \\ {reset}",
+            f"{green}| AUDIT |{reset}",
+            f"{green} \\_____/ {reset}",
+            f"{green}  |   |  {reset}",
+            f"{green}  |___|  {reset}",
+        ],
+    }
+    return logos.get(lang, logos["default"])
+
+
+def pretty_print_results_pretty(results: list[models.ToolCheckResult]):
+    """Pretty print results in a neofetch-style layout."""
+    no_color = bool(os.environ.get("NO_COLOR") or os.environ.get("CI"))
+    lang = detect_language()
+    logo = get_logo(lang, no_color)
+    logo_width = 12
+
+    bold = "" if no_color else colorama.Style.BRIGHT
+    reset = "" if no_color else colorama.Style.RESET_ALL
+    red = "" if no_color else colorama.Fore.RED
+    green = "" if no_color else colorama.Fore.GREEN
+    yellow = "" if no_color else colorama.Fore.YELLOW
+
+    # System info-like header
+    import platform
+
+    from cli_tool_audit.__about__ import __version__
+
+    node_name = platform.node()
+    header = f"{bold}{yellow}cli_tool_audit{reset} @ {bold}{yellow}{node_name}{reset}"
+    info_lines = [
+        header,
+        f"{'-' * (len(node_name) + 17)}",
+        f"{bold}Version:{reset} {__version__}",
+        f"{bold}OS:{reset}      {platform.system()} {platform.release()}",
+        f"{bold}Language:{reset}{lang.capitalize()}",
+        "",
+    ]
+
+    # Tool results
+    for result in sorted(results, key=lambda x: x.tool):
+        status_char = f"{red}*{reset}" if result.is_problem() else " "
+        found_version = result.found_version or "N/A"
+        # Only take first line of version and strip it
+        found_version = found_version.split("\n")[0].strip()
+        if len(found_version) > 40:
+            found_version = found_version[:37] + "..."
+
+        tool_color = red if result.is_problem() else green
+        info_lines.append(f"{status_char} {tool_color}{result.tool:12}{reset}: {found_version}")
+
+    # Print logo and info side by side
+    max_lines = max(len(logo), len(info_lines))
+    for i in range(max_lines):
+        # We need to handle ANSI codes for width calculation if we wanted to be perfect,
+        # but since we know our logos, we can just use a fixed width.
+        # The logos are about 10-12 chars wide excluding ANSI codes.
+        raw_logo = logo[i] if i < len(logo) else ""
+
+        # Calculate padding: logo is ~10 chars, let's use 15 for space
+        # Since raw_logo has ANSI codes, len(raw_logo) is larger than visible width.
+        # But we can just use a fixed padding for the info part.
+
+        line_info = info_lines[i] if i < len(info_lines) else ""
+
+        if i < len(logo):
+            print(f" {raw_logo}   {line_info}")
+        else:
+            print(f" {' ' * logo_width}   {line_info}")
+    print()
 
 
 if __name__ == "__main__":
