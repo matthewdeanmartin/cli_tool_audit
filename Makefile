@@ -22,7 +22,7 @@ test: uv.lock
 	@echo "Running unit tests"
 	# $(VENV) pytest --doctest-modules cli_tool_audit
 	# $(VENV) python -m unittest discover
-	$(VENV) pytest tests -vv -n 2 --cov=cli_tool_audit --cov-report=html --cov-fail-under 35 --cov-branch --cov-report=xml --junitxml=junit.xml -o junit_family=legacy --timeout=60 --session-timeout=600
+	$(VENV) pytest tests -vv -n 2 --cov=cli_tool_audit --cov-report=html --cov-fail-under 65 --cov-branch --cov-report=xml --junitxml=junit.xml -o junit_family=legacy --timeout=60 --session-timeout=600
 	$(VENV) bash ./scripts/basic_checks.sh
 #	$(VENV) bash basic_test_with_logging.sh
 
