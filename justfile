@@ -18,7 +18,7 @@ test: clean
 	{{VENV}} pytest --doctest-modules cli_tool_audit
 	# {{VENV}} python -m unittest discover
 	{{VENV}} py.test tests -vv -n auto --cov=cli_tool_audit --cov-report=html --cov-fail-under 50
-	{{VENV}} bash basic_test.sh
+	{{VENV}} bash ./scripts/basic_test.sh
 
 [doc("Format import statement with isort")]
 isort:
