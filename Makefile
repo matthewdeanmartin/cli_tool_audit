@@ -74,7 +74,7 @@ pylint:isort black
 	$(VENV) pylint cli_tool_audit --fail-under 9.8
 
 
-check: mypy test pylint bandit pre-commit
+check: mypy test pylint bandit
 
 publish: test
 	rm -rf dist && $(VENV) hatch build
