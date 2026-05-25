@@ -104,6 +104,7 @@ build-backend = "hatchling.build"
 
 [tool.uv]
 package = true
+universal = true
 
 [tool.black]
 line-length = 120
