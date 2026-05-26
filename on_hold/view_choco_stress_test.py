@@ -10,6 +10,7 @@ pandoc 2.7.3: 0.8.1.0
 python 3.10.0: 3.11.1
 shellcheck 0.8.0: 0.8.1.0
 """
+
 import json
 import subprocess  # nosec
 from shutil import which

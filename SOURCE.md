@@ -1,19 +1,7 @@
 ## Tree for cli_tool_audit
 ```
-├── .cli_tool_audit_cache/
-│   ├── .gitignore
-│   ├── black_b780445aca8bc5b17141b30522c5ab07.json
-│   ├── choco_acb3ff132133b4cc638f6fd3018b4c06.json
-│   ├── isort_9e6fb3e24115e8a8f0bb663f57bbb590.json
-│   ├── make_aaf0418d3e8d542791533a3944488d8e.json
-│   ├── mypy_0731164ae5719aacbaf5b9bd18660c49.json
-│   ├── notepad_81c010064e5fa8c52b1d30fc89cf925a.json
-│   ├── pygount_b829506909227e361210dd90697e7ade.json
-│   ├── pylint_195df294ec23295b922c4011d09c6aaa.json
-│   ├── python_0d9f3f4b30033fd9f79a0d9320ba927a.json
-│   ├── ruff_ce4b361277f65c4e5a2085ac37c6d60e.json
-│   ├── rustc_c954c6d8cb8e4f417b8451828a5ba165.json
-│   └── vulture_15cb5fd387564687965ebc69ee51020a.json
+├── __about__.py
+├── __main__.py
 ├── audit_cache.py
 ├── audit_manager.py
 ├── call_and_compatible.py
@@ -34,14 +22,492 @@
 ├── policy.py
 ├── py.typed
 ├── version_parsing.py
-├── views.py
 ├── view_npm_stress_test.py
 ├── view_pipx_stress_test.py
 ├── view_venv_stress_test.py
-├── __about__.py
-└── __main__.py
+└── views.py
 ```
 
+## File: __about__.py
+```python
+"""Metadata for cli_tool_audit."""
+
+__all__ = [
+    "__title__",
+    "__version__",
+    "__description__",
+    "__credits__",
+    "__readme__",
+    "__requires_python__",
+    "__keywords__",
+    "__status__",
+]
+
+__title__ = "cli_tool_audit"
+__version__ = "3.2.0"
+__description__ = "Audit for existence and version number of cli tools."
+__credits__ = [{"name": "Matthew Martin", "email": "matthewdeanmartin@gmail.com"}]
+__readme__ = "README.md"
+__requires_python__ = ">=3.9"
+__keywords__ = ["cli tooling", "version numbers"]
+__status__ = "4 - Beta"
+```
+## File: __main__.py
+```python
+"""
+Argument parsing code.
+"""
+
+import argparse
+import logging
+import logging.config
+import sys
+from collections.abc import Sequence
+from dataclasses import fields
+from pathlib import Path
+from typing import Any
+
+import cli_tool_audit.config_manager as config_manager
+import cli_tool_audit.discover as discover
+import cli_tool_audit.freeze as freeze
+import cli_tool_audit.interactive as interactive
+import cli_tool_audit.logging_config as logging_config
+import cli_tool_audit.models as models
+import cli_tool_audit.view_npm_stress_test as demo_npm
+import cli_tool_audit.view_pipx_stress_test as demo_pipx
+import cli_tool_audit.view_venv_stress_test as demo_venv
+import cli_tool_audit.views as views
+from cli_tool_audit.__about__ import __description__, __version__
+
+logger = logging.getLogger(__name__)
+
+
+def handle_read(args: argparse.Namespace) -> None:
+    """
+    Read and list all tool configurations
+    Args:
+        args: The args from the command line.
+    """
+    manager = config_manager.ConfigManager(Path(args.config))
+    manager.read_config()
+    for tool, config in manager.tools.items():
+        print(f"{tool}")
+        for key, value in vars(config).items():
+            if value is not None:
+                print(f"  {key}: {value}")
+
+
+def handle_create(args: argparse.Namespace) -> None:
+    """
+    Create a new tool configuration.
+    Args:
+        args: The args from the command line.
+    """
+    kwargs = reduce_args_tool_cli_tool_config_args(args)
+
+    manager = config_manager.ConfigManager(Path(args.config))
+    manager.create_tool_config(args.tool, kwargs)
+    print(f"Tool {args.tool} created.")
+
+
+def reduce_args_tool_cli_tool_config_args(args: argparse.Namespace) -> dict[str, Any]:
+    """
+    Reduce the args to only those that are in CliToolConfig.
+    Args:
+        args: The args from the command line.
+
+    Returns:
+        dict: The reduced args.
+    """
+    kwargs = {}
+    args_dict = vars(args)
+    cli_tool_fields = {f.name for f in fields(models.CliToolConfig)}
+    for key, value in args_dict.items():
+        if key in cli_tool_fields:
+            kwargs[key] = value
+    return kwargs
+
+
+def handle_update(args: argparse.Namespace) -> None:
+    kwargs = reduce_args_tool_cli_tool_config_args(args)
+    manager = config_manager.ConfigManager(Path(args.config))
+    manager.update_tool_config(args.tool, {k: v for k, v in kwargs.items() if k != "tool"})
+    print(f"Tool {args.tool} updated.")
+
+
+def handle_delete(args: argparse.Namespace) -> None:
+    """
+    Delete a tool configuration.
+    Args:
+        args: The args from the command line.
+    """
+    manager = config_manager.ConfigManager(Path(args.config))
+    manager.delete_tool_config(args.tool)
+    print(f"Tool {args.tool} deleted.")
+
+
+def handle_interactive(args: argparse.Namespace) -> None:
+    """
+    Interactively edit configuration from terminal.
+    Args:
+        args: The args from the command line.
+    """
+    manager = config_manager.ConfigManager(Path(args.config))
+    interactive.interactive_config_manager(manager)
+
+
+def handle_gui() -> int:
+    """Launch the tkinter GUI. Import is deferred to avoid overhead on CLI path."""
+    from cli_tool_audit.gui.app import launch_gui
+
+    return launch_gui()
+
+
+def add_update_args(parser: argparse.ArgumentParser) -> None:
+    """
+    Add arguments to the add or update parser.
+    Args:
+        parser: The add or update parser.
+    """
+    parser.add_argument("--version", help="Version of the tool")
+    parser.add_argument("--version-switch", "--version_switch", help="Version switch for the tool")
+    add_schema_argument(parser)
+    parser.add_argument("--if-os", help="Check only on this os.")
+
+    # TODO: Add more arguments
+
+
+def handle_discover(args: argparse.Namespace) -> None:
+    """
+    Discover CLI tool references across project files.
+
+    Args:
+        args: The args from the command line.
+    """
+    root = Path(args.root) if args.root else None
+    sources = discover.discover_tools(root)
+    if not sources:
+        print("No tool references found.")
+        return
+    if args.generate:
+        tool_names = list(sources.keys())
+        freeze.freeze_to_screen(tool_names, schema=models.SchemaType.SNAPSHOT)
+    else:
+        print(f"Discovered {len(sources)} tool(s):\n")
+        for tool, locs in sources.items():
+            print(f"  {tool:30s} found in: {', '.join(locs)}")
+        print("\nRun `cli_tool_audit discover --generate` to produce a freeze config for these tools.")
+
+
+def handle_freeze(args: argparse.Namespace) -> None:
+    """
+    Freeze tool versions — either from explicit list, Makefile, or PATH category.
+
+    Args:
+        args: The args from the command line.
+    """
+    if args.from_makefile:
+        makefile_path = Path(args.from_makefile) if isinstance(args.from_makefile, str) else None
+        tool_names = freeze.infer_tools_from_makefile(makefile_path)
+        if not tool_names:
+            print("No tools discovered in Makefile (or none found on PATH).")
+            return
+        print(f"# Discovered from Makefile: {', '.join(tool_names)}\n")
+    elif args.from_path is not None:
+        category = args.from_path if args.from_path else None  # "" -> None (scan all)
+        tool_names = freeze.infer_tools_from_path(category)
+        if not tool_names:
+            label = f"category '{category}'" if category else "any category"
+            print(f"No tools found on PATH for {label}.")
+            return
+        label = f"'{category}'" if category else "all categories"
+        print(f"# Discovered on PATH ({label}): {', '.join(tool_names)}\n")
+    else:
+        if not args.tools:
+            print("Error: specify tool names, --from-makefile, or --from-path.")
+            return
+        tool_names = list(args.tools)
+    freeze.freeze_to_screen(tool_names, args.schema)
+
+
+def handle_audit(args: argparse.Namespace) -> None:
+    """
+    Audit environment with current configuration.
+
+    Args:
+        args: The args from the command line.
+    """
+    views.report_from_pyproject_toml(
+        file_path=Path(args.config),
+        exit_code_on_failure=not args.never_fail,
+        file_format=args.format,
+        no_cache=args.no_cache,
+        tags=args.tags,
+        only_errors=args.only_errors,
+        quiet=args.quiet,
+        show_fix=args.fix,
+    )
+
+
+def handle_single(args):
+    """
+    Audit environment with current configuration.
+
+    Args:
+        args: The args from the command line.
+    """
+    config = models.CliToolConfig(
+        name=args.tool, version=args.version, version_switch=args.version_switch, schema=args.schema, if_os=args.if_os
+    )
+    views.report_from_pyproject_toml(
+        file_path=None,
+        config_as_dict={args.tool: config},
+        exit_code_on_failure=True,
+        file_format=args.format,
+        no_cache=False,
+        tags=None,
+        only_errors=False,
+    )
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    """Parse arguments and run the CLI tool.
+    Args:
+        argv: The arguments to parse.
+
+    Returns:
+        int: The exit code.
+    """
+    # Create the parser
+    program = "cli_tool_audit"
+    parser = argparse.ArgumentParser(
+        prog=program,
+        allow_abbrev=False,
+        description=__description__,
+        epilog=f"""
+    Examples:
+
+        # Audit and report using pyproject.toml
+        {program} audit
+        
+        # Generate config for snapshots
+        {program} freeze python java make rustc
+""",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument(
+        "-V",
+        "--version",
+        action="version",
+        version=f"%(prog)s {__version__}",
+        help="Show program's version number and exit.",
+    )
+
+    parser.add_argument("--verbose", action="store_true", help="verbose output")
+
+    parser.add_argument("--quiet", action="store_true", help="suppress output")
+
+    parser.add_argument("--gui", action="store_true", help="Launch the graphical interface")
+
+    parser.add_argument(
+        "--demo",
+        type=str,
+        choices=("pipx", "venv", "npm"),
+        help="Demo for values of npm, pipx or venv",
+    )
+
+    subparsers = parser.add_subparsers(help="Subcommands.")
+
+    # GUI command
+    gui_parser = subparsers.add_parser("gui", help="Launch the graphical interface")
+    gui_parser.set_defaults(func=lambda _args: handle_gui())
+
+    # Interactive command
+    interactive_parser = subparsers.add_parser("interactive", help="Interactively edit configuration")
+    add_config_to_subparser(interactive_parser)
+    interactive_parser.set_defaults(func=handle_interactive)
+
+    # Add 'discover' sub-command
+    discover_parser = subparsers.add_parser("discover", help="Scan project files for CLI tool references")
+    discover_parser.add_argument(
+        "--root",
+        default=None,
+        help="Project root directory to scan (default: current directory)",
+    )
+    discover_parser.add_argument(
+        "--generate",
+        action="store_true",
+        help="Output a freeze config snippet for all discovered tools",
+    )
+    discover_parser.set_defaults(func=handle_discover)
+
+    # Add 'freeze' sub-command
+    freeze_parser = subparsers.add_parser("freeze", help="Freeze the versions of specified tools")
+    freeze_parser.add_argument("tools", nargs="*", help="List of tool names to freeze")
+    freeze_parser.add_argument(
+        "--from-makefile",
+        "--from_makefile",
+        nargs="?",
+        const=True,
+        metavar="MAKEFILE_PATH",
+        help="Discover tools from Makefile (optionally specify path, default: ./Makefile)",
+    )
+    freeze_parser.add_argument(
+        "--from-path",
+        "--from_path",
+        nargs="?",
+        const="",
+        metavar="CATEGORY",
+        help=(
+            "Discover tools present on PATH, optionally filtered by category. "
+            f"Known categories: {', '.join(freeze.list_path_categories())}"
+        ),
+    )
+    add_schema_argument(freeze_parser)
+    add_config_to_subparser(freeze_parser)
+    freeze_parser.set_defaults(func=handle_freeze)
+
+    # Add 'audit' sub-command
+    audit_parser = subparsers.add_parser("audit", help="Audit environment with current configuration")
+    add_formats(audit_parser)
+    add_config_to_subparser(audit_parser)
+    audit_parser.add_argument("-nf", "--never-fail", action="store_true", help="Never return a non-zero exit code")
+    audit_parser.add_argument(
+        "-nc",
+        "--no-cache",
+        action="store_true",
+        help="Disable caching of results.",
+    )
+    audit_parser.add_argument(
+        "-oe",
+        "--only-errors",
+        action="store_true",
+        help="Show only tools in error.",
+    )
+
+    audit_parser.add_argument(
+        "--tags",
+        # action='append',
+        nargs="+",
+        help="Tag for filtering tools.",
+    )
+    audit_parser.add_argument(
+        "--fix",
+        action="store_true",
+        help="Print install commands and documentation for failed tools.",
+    )
+    audit_parser.set_defaults(func=handle_audit)
+
+    # Single audit
+    single_parser = subparsers.add_parser("single", help="Audit one tool without configuration file")
+    single_parser.add_argument("tool", help="Name of the tool")
+    single_parser.add_argument("--version", help="Version of the tool")
+    single_parser.add_argument("--version-switch", "--version_switch", help="Version switch for the tool")
+    add_schema_argument(single_parser)
+    add_formats(single_parser)
+    single_parser.add_argument("--if-os", help="Check only on this os.")
+    single_parser.set_defaults(func=handle_single)
+
+    # Read command
+    read_parser = subparsers.add_parser("read", help="Read and list all tool configurations")
+    add_config_to_subparser(read_parser)
+    read_parser.set_defaults(func=handle_read)
+
+    # Create command
+    create_parser = subparsers.add_parser("create", help="Create a new tool configuration")
+    create_parser.add_argument("tool", help="Name of the tool")
+    add_update_args(create_parser)
+    add_config_to_subparser(create_parser)
+    create_parser.set_defaults(func=handle_create)
+
+    # Update command
+    update_parser = subparsers.add_parser("update", help="Update an existing tool configuration")
+    update_parser.add_argument("tool", help="Name of the tool")
+    add_config_to_subparser(update_parser)
+    add_update_args(update_parser)
+
+    update_parser.set_defaults(func=handle_update)
+
+    # Delete command
+    delete_parser = subparsers.add_parser("delete", help="Delete a tool configuration")
+    delete_parser.add_argument("tool", help="Name of the tool")
+    add_config_to_subparser(delete_parser)
+    delete_parser.set_defaults(func=handle_delete)
+
+    # --------------------------------------------------------------------------
+
+    # Parse the arguments
+    args = parser.parse_args(argv)
+
+    if args.verbose:
+        config = logging_config.generate_config(level="DEBUG")
+        logging.config.dictConfig(config)
+    else:
+        # Essentially, quiet mode
+        logging.basicConfig(level=logging.FATAL)
+
+    logger.debug(f"command line args: {args}")
+
+    # GUI — deferred import to avoid tkinter overhead on normal CLI use
+    if getattr(args, "gui", False):
+        return handle_gui()
+
+    # Demos
+    if args.demo and args.demo == "pipx":
+        demo_pipx.report_for_pipx_tools()
+        return 0
+    if args.demo and args.demo == "venv":
+        demo_venv.report_for_venv_tools()
+        return 0
+    if args.demo and args.demo == "npm":
+        demo_npm.report_for_npm_tools()
+        return 0
+
+    if hasattr(args, "func"):
+        args.func(args)
+        return 0
+
+    # Audit
+
+    # Default behavior
+    if not args.quiet:
+        print("No command specified. Auditing environment with pyproject.toml configuration.")
+    file_format = "quiet" if args.quiet else "table"
+    return views.report_from_pyproject_toml(
+        exit_code_on_failure=True, file_format=file_format, no_cache=False, quiet=args.quiet
+    )
+
+
+def add_formats(audit_parser):
+    audit_parser.add_argument(
+        "-f",
+        "--format",
+        default="table",
+        type=str,
+        choices=("json", "json-compact", "xml", "table", "csv", "html", "pretty"),
+        help="Output results in the specified format. (default is %(default)s)",
+    )
+
+
+def add_schema_argument(parser):
+    parser.add_argument(
+        "--schema", choices=("semver", "snapshot", "pep440", "existence"), default="snapshot", help="version schema"
+    )
+
+
+def add_config_to_subparser(interactive_parser):
+    interactive_parser.add_argument(
+        "-c",
+        "--config",
+        default="pyproject.toml",
+        type=str,
+        help="Path to the configuration file in TOML format. (default is %(default)s)",
+    )
+
+
+if __name__ == "__main__":
+    sys.exit(main())
+```
 ## File: audit_cache.py
 ```python
 """
@@ -2356,6 +2822,333 @@ if __name__ == "__main__":
 
     convert2semver(packaging.version.Version("1.2.3"))
 ```
+## File: view_npm_stress_test.py
+```python
+"""
+This module contains a stress test for the cli_tool_audit module.
+
+It fetches all globally installed npm tools and runs them through the audit process.
+"""
+
+import concurrent
+import logging
+import os
+import subprocess  # nosec
+from concurrent.futures import ThreadPoolExecutor
+from threading import Lock
+
+from tqdm import tqdm
+
+import cli_tool_audit.call_and_compatible as call_and_compatible
+import cli_tool_audit.models as models
+import cli_tool_audit.views as views
+
+logger = logging.getLogger(__name__)
+
+
+def list_global_npm_executables() -> list[str]:
+    """
+    List the executables in the global node_modules path.
+
+    Returns:
+        list[str]: A list of the executables in the global node_modules path.
+    """
+    # Get the global node_modules path
+    env = os.environ.copy()
+    if os.name == "nt":
+        cmd = "npm.cmd"
+    else:
+        cmd = "npm"
+    try:
+        out = subprocess.run(
+            [cmd, "root", "-g"], env=env, shell=True, capture_output=True, text=True, check=True
+        )  # nosec
+        node_modules_path = out.stdout.strip()
+
+        # List the executables in the bin directory
+        executables = os.listdir(node_modules_path)
+        return executables
+    except FileExistsError:
+        logger.error("npm not found on path")
+        return []
+
+
+def report_for_npm_tools(max_count: int = -1) -> None:
+    """
+    Report on the compatibility of the tools installed with pipx.
+    Args:
+        max_count (int, optional): The maximum number of tools to report on. Defaults to -1.
+    """
+    apps = list_global_npm_executables()
+
+    cli_tools = {}
+    count = 0
+    for app in apps:
+        if os.name == "nt":
+            # I think this is a windows only thing?
+            app_cmd = app + ".cmd"
+        else:
+            app_cmd = app
+        config = models.CliToolConfig(app_cmd)
+        config.version_switch = "--version"
+        config.version = ">=0.0.0"
+        cli_tools[app_cmd] = config
+        count += 1
+        if 0 < count >= max_count:
+            break
+
+    # Determine the number of available CPUs
+    num_cpus = os.cpu_count()
+
+    enable_cache = len(cli_tools) >= 5
+    # Create a ThreadPoolExecutor with one thread per CPU
+    with ThreadPoolExecutor(max_workers=num_cpus) as executor:
+        # with ProcessPoolExecutor(max_workers=num_cpus) as executor:
+        # Submit tasks to the executor
+        lock = Lock()
+        # lock = Dummy()
+        disable = views.should_show_progress_bar(cli_tools)
+        with tqdm(total=len(cli_tools), disable=disable) as progress_bar:
+            futures = [
+                executor.submit(call_and_compatible.check_tool_wrapper, (tool, config, lock, enable_cache))
+                for tool, config in cli_tools.items()
+            ]
+
+            results = []
+            # Process the results as they are completed
+            for future in concurrent.futures.as_completed(futures):
+                result = future.result()
+                tqdm.update(progress_bar, 1)
+                results.append(result)
+
+        print(views.pretty_print_results(results, truncate_long_versions=True, include_docs=False))
+
+
+if __name__ == "__main__":
+    report_for_npm_tools()
+```
+## File: view_pipx_stress_test.py
+```python
+"""
+Stress test for the cli_tool_audit package using pipx installed tools as source data.
+"""
+
+import concurrent
+import json
+import os
+import subprocess  # nosec
+from concurrent.futures import ThreadPoolExecutor
+from threading import Lock
+from typing import Any
+
+from tqdm import tqdm
+
+import cli_tool_audit.call_and_compatible as call_and_compatible
+import cli_tool_audit.models as models
+import cli_tool_audit.views as views
+
+
+#  Dummy lock for switch to ProcessPoolExecutor
+class DummyLock:
+    """For testing"""
+
+    def __enter__(self) -> None:
+        """For testing"""
+
+    def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
+        """For testing
+        Args:
+            exc_type (Any): For testing
+            exc_value (Any): For testing
+            traceback (Any): For testing
+        """
+
+
+def get_pipx_list() -> Any:
+    """
+    Get the output of 'pipx list --json' as a dict.
+
+    Returns:
+        Any: The output of 'pipx list --json' as a dict or None if it fails.
+    """
+    try:
+        result = subprocess.run(
+            ["pipx", "list", "--json"], shell=True, capture_output=True, text=True, check=True
+        )  # nosec
+        return json.loads(result.stdout)
+    except subprocess.CalledProcessError as e:
+        print(f"Error executing 'pipx list --json': {e}")
+        return None
+
+
+def extract_apps(pipx_data: dict[str, Any]) -> dict[str, Any]:
+    """
+    Extract the apps from the output of 'pipx list --json'.
+    Args:
+        pipx_data (dict[str,Any]): The output of 'pipx list --json'.
+
+    Returns:
+        dict[str,Any]: A dictionary with the apps and their versions.
+    """
+    apps_dict = {}
+    if pipx_data and "venvs" in pipx_data:
+        for _package, data in pipx_data["venvs"].items():
+            package_version = data["metadata"]["main_package"]["package_version"]
+            apps = data["metadata"]["main_package"]["apps"]
+            for app in apps:
+                apps_dict[app] = package_version
+    return apps_dict
+
+
+def report_for_pipx_tools(max_count: int = -1) -> None:
+    """
+    Report on the compatibility of the tools installed with pipx.
+    Args:
+        max_count (int, optional): The maximum number of tools to report on. Defaults to -1.
+    """
+    pipx_data = get_pipx_list()
+    apps_dict = extract_apps(pipx_data)
+
+    # for app, version in apps_dict.items():
+    #     print(f"{app}: {version}")
+    count = 0
+    cli_tools = {}
+    for app, expected_version in apps_dict.items():
+        if app in ("yated.exe", "calcure.exe", "yated", "calcure", "dedlin.exe", "dedlin"):
+            # These launch interactive process & then time out.
+            continue
+        config = models.CliToolConfig(app)
+        config.version_switch = "--version"
+        config.version = f">={expected_version}"
+        cli_tools[app] = config
+        count += 1
+        if count >= max_count > 0:
+            break
+
+    # Determine the number of available CPUs
+    num_cpus = os.cpu_count()
+
+    enable_cache = len(cli_tools) >= 5
+    # Create a ThreadPoolExecutor with one thread per CPU
+    lock = Lock()
+    with ThreadPoolExecutor(max_workers=num_cpus) as executor:
+        # threaded is faster
+        # lock = Dummy()
+        # with ProcessPoolExecutor(max_workers=num_cpus) as executor:
+        # Submit tasks to the executor
+        disable = views.should_show_progress_bar(cli_tools)
+        with tqdm(total=len(cli_tools), disable=disable) as progress_bar:
+            futures = [
+                executor.submit(call_and_compatible.check_tool_wrapper, (tool, config, lock, enable_cache))
+                for tool, config in cli_tools.items()
+            ]
+
+            results = []
+            # Process the results as they are completed
+            for future in concurrent.futures.as_completed(futures):
+                result = future.result()
+                tqdm.update(progress_bar, 1)
+                results.append(result)
+        print(views.pretty_print_results(results, truncate_long_versions=True, include_docs=False))
+
+
+if __name__ == "__main__":
+    report_for_pipx_tools()
+```
+## File: view_venv_stress_test.py
+```python
+"""
+Stress test for the cli_tool_audit package using venv as source data.
+"""
+
+import concurrent
+import glob
+import os
+import pathlib
+import sys
+from concurrent.futures import ThreadPoolExecutor
+from threading import Lock
+
+from tqdm import tqdm
+
+# pylint: disable=no-name-in-module
+from whichcraft import which
+
+import cli_tool_audit.call_and_compatible as call_and_compatible
+import cli_tool_audit.models as models
+import cli_tool_audit.views as views
+
+
+def get_executables_in_venv(venv_path: str) -> list[str]:
+    """
+    Get a list of executable commands in a Python virtual environment.
+
+    Args:
+        venv_path (str): The path to the virtual environment.
+
+    Returns:
+        list[str]: A list of executable commands in the virtual environment.
+    """
+    # Determine the correct directory for executables based on the OS
+    if sys.platform == "win32":
+        exec_dir = os.path.join(venv_path, "Scripts")
+        exec_pattern = "*.exe"  # Executable pattern for Windows
+    else:
+        exec_dir = os.path.join(venv_path, "bin")
+        exec_pattern = "*"  # In Unix-like systems, any file in bin can be an executable
+    # List all executables in the directory
+    executables = [os.path.basename(executable) for executable in glob.glob(os.path.join(exec_dir, exec_pattern))]
+
+    return executables
+
+
+def report_for_venv_tools(max_count: int = -1) -> None:
+    """
+    Report on the compatibility of the tools installed in the virtual environment.
+    Args:
+        max_count (int, optional): The maximum number of tools to report on. Defaults to -1.
+    """
+    python_path = which("python")
+    venv_dir = pathlib.Path(python_path).parent.parent
+    cli_tools = {}
+    count = 0
+    for executable in get_executables_in_venv(str(venv_dir)):
+        config = models.CliToolConfig(executable)
+        config.version_switch = "--version"
+        config.version = ">=0.0.0"
+        cli_tools[executable] = config
+        count += 1
+        if count >= max_count > 0:
+            break
+    # Determine the number of available CPUs
+    num_cpus = os.cpu_count()
+
+    enable_cache = len(cli_tools) >= 5
+    # Create a ThreadPoolExecutor with one thread per CPU
+    with ThreadPoolExecutor(max_workers=num_cpus) as executor:
+        # threaded is faster so far
+        # with ProcessPoolExecutor(max_workers=num_cpus) as executor:
+        # Submit tasks to the executor
+        lock = Lock()
+        # lock = Dummy()
+        disable = views.should_show_progress_bar(cli_tools)
+        with tqdm(total=len(cli_tools), disable=disable) as progress_bar:
+            futures = [
+                executor.submit(call_and_compatible.check_tool_wrapper, (tool, config, lock, enable_cache))
+                for tool, config in cli_tools.items()
+            ]
+            results = []
+            # Process the results as they are completed
+            for future in concurrent.futures.as_completed(futures):
+                result = future.result()
+                tqdm.update(progress_bar, 1)
+                results.append(result)
+        print(views.pretty_print_results(results, truncate_long_versions=True, include_docs=False))
+
+
+if __name__ == "__main__":
+    report_for_venv_tools()
+```
 ## File: views.py
 ```python
 """
@@ -2869,1130 +3662,7 @@ def pretty_print_results_pretty(results: list[models.ToolCheckResult]):
 if __name__ == "__main__":
     report_from_pyproject_toml()
 ```
-## File: view_npm_stress_test.py
-```python
-"""
-This module contains a stress test for the cli_tool_audit module.
-
-It fetches all globally installed npm tools and runs them through the audit process.
-"""
-
-import concurrent
-import logging
-import os
-import subprocess  # nosec
-from concurrent.futures import ThreadPoolExecutor
-from threading import Lock
-
-from tqdm import tqdm
-
-import cli_tool_audit.call_and_compatible as call_and_compatible
-import cli_tool_audit.models as models
-import cli_tool_audit.views as views
-
-logger = logging.getLogger(__name__)
-
-
-def list_global_npm_executables() -> list[str]:
-    """
-    List the executables in the global node_modules path.
-
-    Returns:
-        list[str]: A list of the executables in the global node_modules path.
-    """
-    # Get the global node_modules path
-    env = os.environ.copy()
-    if os.name == "nt":
-        cmd = "npm.cmd"
-    else:
-        cmd = "npm"
-    try:
-        out = subprocess.run(
-            [cmd, "root", "-g"], env=env, shell=True, capture_output=True, text=True, check=True
-        )  # nosec
-        node_modules_path = out.stdout.strip()
-
-        # List the executables in the bin directory
-        executables = os.listdir(node_modules_path)
-        return executables
-    except FileExistsError:
-        logger.error("npm not found on path")
-        return []
-
-
-def report_for_npm_tools(max_count: int = -1) -> None:
-    """
-    Report on the compatibility of the tools installed with pipx.
-    Args:
-        max_count (int, optional): The maximum number of tools to report on. Defaults to -1.
-    """
-    apps = list_global_npm_executables()
-
-    cli_tools = {}
-    count = 0
-    for app in apps:
-        if os.name == "nt":
-            # I think this is a windows only thing?
-            app_cmd = app + ".cmd"
-        else:
-            app_cmd = app
-        config = models.CliToolConfig(app_cmd)
-        config.version_switch = "--version"
-        config.version = ">=0.0.0"
-        cli_tools[app_cmd] = config
-        count += 1
-        if 0 < count >= max_count:
-            break
-
-    # Determine the number of available CPUs
-    num_cpus = os.cpu_count()
-
-    enable_cache = len(cli_tools) >= 5
-    # Create a ThreadPoolExecutor with one thread per CPU
-    with ThreadPoolExecutor(max_workers=num_cpus) as executor:
-        # with ProcessPoolExecutor(max_workers=num_cpus) as executor:
-        # Submit tasks to the executor
-        lock = Lock()
-        # lock = Dummy()
-        disable = views.should_show_progress_bar(cli_tools)
-        with tqdm(total=len(cli_tools), disable=disable) as progress_bar:
-            futures = [
-                executor.submit(call_and_compatible.check_tool_wrapper, (tool, config, lock, enable_cache))
-                for tool, config in cli_tools.items()
-            ]
-
-            results = []
-            # Process the results as they are completed
-            for future in concurrent.futures.as_completed(futures):
-                result = future.result()
-                tqdm.update(progress_bar, 1)
-                results.append(result)
-
-        print(views.pretty_print_results(results, truncate_long_versions=True, include_docs=False))
-
-
-if __name__ == "__main__":
-    report_for_npm_tools()
-```
-## File: view_pipx_stress_test.py
-```python
-"""
-Stress test for the cli_tool_audit package using pipx installed tools as source data.
-"""
-
-import concurrent
-import json
-import os
-import subprocess  # nosec
-from concurrent.futures import ThreadPoolExecutor
-from threading import Lock
-from typing import Any
-
-from tqdm import tqdm
-
-import cli_tool_audit.call_and_compatible as call_and_compatible
-import cli_tool_audit.models as models
-import cli_tool_audit.views as views
-
-
-#  Dummy lock for switch to ProcessPoolExecutor
-class DummyLock:
-    """For testing"""
-
-    def __enter__(self) -> None:
-        """For testing"""
-
-    def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
-        """For testing
-        Args:
-            exc_type (Any): For testing
-            exc_value (Any): For testing
-            traceback (Any): For testing
-        """
-
-
-def get_pipx_list() -> Any:
-    """
-    Get the output of 'pipx list --json' as a dict.
-
-    Returns:
-        Any: The output of 'pipx list --json' as a dict or None if it fails.
-    """
-    try:
-        result = subprocess.run(
-            ["pipx", "list", "--json"], shell=True, capture_output=True, text=True, check=True
-        )  # nosec
-        return json.loads(result.stdout)
-    except subprocess.CalledProcessError as e:
-        print(f"Error executing 'pipx list --json': {e}")
-        return None
-
-
-def extract_apps(pipx_data: dict[str, Any]) -> dict[str, Any]:
-    """
-    Extract the apps from the output of 'pipx list --json'.
-    Args:
-        pipx_data (dict[str,Any]): The output of 'pipx list --json'.
-
-    Returns:
-        dict[str,Any]: A dictionary with the apps and their versions.
-    """
-    apps_dict = {}
-    if pipx_data and "venvs" in pipx_data:
-        for _package, data in pipx_data["venvs"].items():
-            package_version = data["metadata"]["main_package"]["package_version"]
-            apps = data["metadata"]["main_package"]["apps"]
-            for app in apps:
-                apps_dict[app] = package_version
-    return apps_dict
-
-
-def report_for_pipx_tools(max_count: int = -1) -> None:
-    """
-    Report on the compatibility of the tools installed with pipx.
-    Args:
-        max_count (int, optional): The maximum number of tools to report on. Defaults to -1.
-    """
-    pipx_data = get_pipx_list()
-    apps_dict = extract_apps(pipx_data)
-
-    # for app, version in apps_dict.items():
-    #     print(f"{app}: {version}")
-    count = 0
-    cli_tools = {}
-    for app, expected_version in apps_dict.items():
-        if app in ("yated.exe", "calcure.exe", "yated", "calcure", "dedlin.exe", "dedlin"):
-            # These launch interactive process & then time out.
-            continue
-        config = models.CliToolConfig(app)
-        config.version_switch = "--version"
-        config.version = f">={expected_version}"
-        cli_tools[app] = config
-        count += 1
-        if count >= max_count > 0:
-            break
-
-    # Determine the number of available CPUs
-    num_cpus = os.cpu_count()
-
-    enable_cache = len(cli_tools) >= 5
-    # Create a ThreadPoolExecutor with one thread per CPU
-    lock = Lock()
-    with ThreadPoolExecutor(max_workers=num_cpus) as executor:
-        # threaded is faster
-        # lock = Dummy()
-        # with ProcessPoolExecutor(max_workers=num_cpus) as executor:
-        # Submit tasks to the executor
-        disable = views.should_show_progress_bar(cli_tools)
-        with tqdm(total=len(cli_tools), disable=disable) as progress_bar:
-            futures = [
-                executor.submit(call_and_compatible.check_tool_wrapper, (tool, config, lock, enable_cache))
-                for tool, config in cli_tools.items()
-            ]
-
-            results = []
-            # Process the results as they are completed
-            for future in concurrent.futures.as_completed(futures):
-                result = future.result()
-                tqdm.update(progress_bar, 1)
-                results.append(result)
-        print(views.pretty_print_results(results, truncate_long_versions=True, include_docs=False))
-
-
-if __name__ == "__main__":
-    report_for_pipx_tools()
-```
-## File: view_venv_stress_test.py
-```python
-"""
-Stress test for the cli_tool_audit package using venv as source data.
-"""
-
-import concurrent
-import glob
-import os
-import pathlib
-import sys
-from concurrent.futures import ThreadPoolExecutor
-from threading import Lock
-
-from tqdm import tqdm
-
-# pylint: disable=no-name-in-module
-from whichcraft import which
-
-import cli_tool_audit.call_and_compatible as call_and_compatible
-import cli_tool_audit.models as models
-import cli_tool_audit.views as views
-
-
-def get_executables_in_venv(venv_path: str) -> list[str]:
-    """
-    Get a list of executable commands in a Python virtual environment.
-
-    Args:
-        venv_path (str): The path to the virtual environment.
-
-    Returns:
-        list[str]: A list of executable commands in the virtual environment.
-    """
-    # Determine the correct directory for executables based on the OS
-    if sys.platform == "win32":
-        exec_dir = os.path.join(venv_path, "Scripts")
-        exec_pattern = "*.exe"  # Executable pattern for Windows
-    else:
-        exec_dir = os.path.join(venv_path, "bin")
-        exec_pattern = "*"  # In Unix-like systems, any file in bin can be an executable
-    # List all executables in the directory
-    executables = [os.path.basename(executable) for executable in glob.glob(os.path.join(exec_dir, exec_pattern))]
-
-    return executables
-
-
-def report_for_venv_tools(max_count: int = -1) -> None:
-    """
-    Report on the compatibility of the tools installed in the virtual environment.
-    Args:
-        max_count (int, optional): The maximum number of tools to report on. Defaults to -1.
-    """
-    python_path = which("python")
-    venv_dir = pathlib.Path(python_path).parent.parent
-    cli_tools = {}
-    count = 0
-    for executable in get_executables_in_venv(str(venv_dir)):
-        config = models.CliToolConfig(executable)
-        config.version_switch = "--version"
-        config.version = ">=0.0.0"
-        cli_tools[executable] = config
-        count += 1
-        if count >= max_count > 0:
-            break
-    # Determine the number of available CPUs
-    num_cpus = os.cpu_count()
-
-    enable_cache = len(cli_tools) >= 5
-    # Create a ThreadPoolExecutor with one thread per CPU
-    with ThreadPoolExecutor(max_workers=num_cpus) as executor:
-        # threaded is faster so far
-        # with ProcessPoolExecutor(max_workers=num_cpus) as executor:
-        # Submit tasks to the executor
-        lock = Lock()
-        # lock = Dummy()
-        disable = views.should_show_progress_bar(cli_tools)
-        with tqdm(total=len(cli_tools), disable=disable) as progress_bar:
-            futures = [
-                executor.submit(call_and_compatible.check_tool_wrapper, (tool, config, lock, enable_cache))
-                for tool, config in cli_tools.items()
-            ]
-            results = []
-            # Process the results as they are completed
-            for future in concurrent.futures.as_completed(futures):
-                result = future.result()
-                tqdm.update(progress_bar, 1)
-                results.append(result)
-        print(views.pretty_print_results(results, truncate_long_versions=True, include_docs=False))
-
-
-if __name__ == "__main__":
-    report_for_venv_tools()
-```
-## File: __about__.py
-```python
-"""Metadata for cli_tool_audit."""
-
-__all__ = [
-    "__title__",
-    "__version__",
-    "__description__",
-    "__credits__",
-    "__readme__",
-    "__requires_python__",
-    "__keywords__",
-    "__status__",
-]
-
-__title__ = "cli_tool_audit"
-__version__ = "3.2.0"
-__description__ = "Audit for existence and version number of cli tools."
-__credits__ = [{"name": "Matthew Martin", "email": "matthewdeanmartin@gmail.com"}]
-__readme__ = "README.md"
-__requires_python__ = ">=3.9"
-__keywords__ = ["cli tooling", "version numbers"]
-__status__ = "4 - Beta"
-```
-## File: __main__.py
-```python
-"""
-Argument parsing code.
-"""
-
-import argparse
-import logging
-import logging.config
-import sys
-from collections.abc import Sequence
-from dataclasses import fields
-from pathlib import Path
-from typing import Any
-
-import cli_tool_audit.config_manager as config_manager
-import cli_tool_audit.discover as discover
-import cli_tool_audit.freeze as freeze
-import cli_tool_audit.interactive as interactive
-import cli_tool_audit.logging_config as logging_config
-import cli_tool_audit.models as models
-import cli_tool_audit.view_npm_stress_test as demo_npm
-import cli_tool_audit.view_pipx_stress_test as demo_pipx
-import cli_tool_audit.view_venv_stress_test as demo_venv
-import cli_tool_audit.views as views
-from cli_tool_audit.__about__ import __description__, __version__
-
-logger = logging.getLogger(__name__)
-
-
-def handle_read(args: argparse.Namespace) -> None:
-    """
-    Read and list all tool configurations
-    Args:
-        args: The args from the command line.
-    """
-    manager = config_manager.ConfigManager(Path(args.config))
-    manager.read_config()
-    for tool, config in manager.tools.items():
-        print(f"{tool}")
-        for key, value in vars(config).items():
-            if value is not None:
-                print(f"  {key}: {value}")
-
-
-def handle_create(args: argparse.Namespace) -> None:
-    """
-    Create a new tool configuration.
-    Args:
-        args: The args from the command line.
-    """
-    kwargs = reduce_args_tool_cli_tool_config_args(args)
-
-    manager = config_manager.ConfigManager(Path(args.config))
-    manager.create_tool_config(args.tool, kwargs)
-    print(f"Tool {args.tool} created.")
-
-
-def reduce_args_tool_cli_tool_config_args(args: argparse.Namespace) -> dict[str, Any]:
-    """
-    Reduce the args to only those that are in CliToolConfig.
-    Args:
-        args: The args from the command line.
-
-    Returns:
-        dict: The reduced args.
-    """
-    kwargs = {}
-    args_dict = vars(args)
-    cli_tool_fields = {f.name for f in fields(models.CliToolConfig)}
-    for key, value in args_dict.items():
-        if key in cli_tool_fields:
-            kwargs[key] = value
-    return kwargs
-
-
-def handle_update(args: argparse.Namespace) -> None:
-    kwargs = reduce_args_tool_cli_tool_config_args(args)
-    manager = config_manager.ConfigManager(Path(args.config))
-    manager.update_tool_config(args.tool, {k: v for k, v in kwargs.items() if k != "tool"})
-    print(f"Tool {args.tool} updated.")
-
-
-def handle_delete(args: argparse.Namespace) -> None:
-    """
-    Delete a tool configuration.
-    Args:
-        args: The args from the command line.
-    """
-    manager = config_manager.ConfigManager(Path(args.config))
-    manager.delete_tool_config(args.tool)
-    print(f"Tool {args.tool} deleted.")
-
-
-def handle_interactive(args: argparse.Namespace) -> None:
-    """
-    Interactively edit configuration from terminal.
-    Args:
-        args: The args from the command line.
-    """
-    manager = config_manager.ConfigManager(Path(args.config))
-    interactive.interactive_config_manager(manager)
-
-
-def handle_gui() -> int:
-    """Launch the tkinter GUI. Import is deferred to avoid overhead on CLI path."""
-    from cli_tool_audit.gui.app import launch_gui
-
-    return launch_gui()
-
-
-def add_update_args(parser: argparse.ArgumentParser) -> None:
-    """
-    Add arguments to the add or update parser.
-    Args:
-        parser: The add or update parser.
-    """
-    parser.add_argument("--version", help="Version of the tool")
-    parser.add_argument("--version-switch", "--version_switch", help="Version switch for the tool")
-    add_schema_argument(parser)
-    parser.add_argument("--if-os", help="Check only on this os.")
-
-    # TODO: Add more arguments
-
-
-def handle_discover(args: argparse.Namespace) -> None:
-    """
-    Discover CLI tool references across project files.
-
-    Args:
-        args: The args from the command line.
-    """
-    root = Path(args.root) if args.root else None
-    sources = discover.discover_tools(root)
-    if not sources:
-        print("No tool references found.")
-        return
-    if args.generate:
-        tool_names = list(sources.keys())
-        freeze.freeze_to_screen(tool_names, schema=models.SchemaType.SNAPSHOT)
-    else:
-        print(f"Discovered {len(sources)} tool(s):\n")
-        for tool, locs in sources.items():
-            print(f"  {tool:30s} found in: {', '.join(locs)}")
-        print("\nRun `cli_tool_audit discover --generate` to produce a freeze config for these tools.")
-
-
-def handle_freeze(args: argparse.Namespace) -> None:
-    """
-    Freeze tool versions — either from explicit list, Makefile, or PATH category.
-
-    Args:
-        args: The args from the command line.
-    """
-    if args.from_makefile:
-        makefile_path = Path(args.from_makefile) if isinstance(args.from_makefile, str) else None
-        tool_names = freeze.infer_tools_from_makefile(makefile_path)
-        if not tool_names:
-            print("No tools discovered in Makefile (or none found on PATH).")
-            return
-        print(f"# Discovered from Makefile: {', '.join(tool_names)}\n")
-    elif args.from_path is not None:
-        category = args.from_path if args.from_path else None  # "" -> None (scan all)
-        tool_names = freeze.infer_tools_from_path(category)
-        if not tool_names:
-            label = f"category '{category}'" if category else "any category"
-            print(f"No tools found on PATH for {label}.")
-            return
-        label = f"'{category}'" if category else "all categories"
-        print(f"# Discovered on PATH ({label}): {', '.join(tool_names)}\n")
-    else:
-        if not args.tools:
-            print("Error: specify tool names, --from-makefile, or --from-path.")
-            return
-        tool_names = list(args.tools)
-    freeze.freeze_to_screen(tool_names, args.schema)
-
-
-def handle_audit(args: argparse.Namespace) -> None:
-    """
-    Audit environment with current configuration.
-
-    Args:
-        args: The args from the command line.
-    """
-    views.report_from_pyproject_toml(
-        file_path=Path(args.config),
-        exit_code_on_failure=not args.never_fail,
-        file_format=args.format,
-        no_cache=args.no_cache,
-        tags=args.tags,
-        only_errors=args.only_errors,
-        quiet=args.quiet,
-        show_fix=args.fix,
-    )
-
-
-def handle_single(args):
-    """
-    Audit environment with current configuration.
-
-    Args:
-        args: The args from the command line.
-    """
-    config = models.CliToolConfig(
-        name=args.tool, version=args.version, version_switch=args.version_switch, schema=args.schema, if_os=args.if_os
-    )
-    views.report_from_pyproject_toml(
-        file_path=None,
-        config_as_dict={args.tool: config},
-        exit_code_on_failure=True,
-        file_format=args.format,
-        no_cache=False,
-        tags=None,
-        only_errors=False,
-    )
-
-
-def main(argv: Sequence[str] | None = None) -> int:
-    """Parse arguments and run the CLI tool.
-    Args:
-        argv: The arguments to parse.
-
-    Returns:
-        int: The exit code.
-    """
-    # Create the parser
-    program = "cli_tool_audit"
-    parser = argparse.ArgumentParser(
-        prog=program,
-        allow_abbrev=False,
-        description=__description__,
-        epilog=f"""
-    Examples:
-
-        # Audit and report using pyproject.toml
-        {program} audit
-        
-        # Generate config for snapshots
-        {program} freeze python java make rustc
-""",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-    )
-    parser.add_argument(
-        "-V",
-        "--version",
-        action="version",
-        version=f"%(prog)s {__version__}",
-        help="Show program's version number and exit.",
-    )
-
-    parser.add_argument("--verbose", action="store_true", help="verbose output")
-
-    parser.add_argument("--quiet", action="store_true", help="suppress output")
-
-    parser.add_argument("--gui", action="store_true", help="Launch the graphical interface")
-
-    parser.add_argument(
-        "--demo",
-        type=str,
-        choices=("pipx", "venv", "npm"),
-        help="Demo for values of npm, pipx or venv",
-    )
-
-    subparsers = parser.add_subparsers(help="Subcommands.")
-
-    # GUI command
-    gui_parser = subparsers.add_parser("gui", help="Launch the graphical interface")
-    gui_parser.set_defaults(func=lambda _args: handle_gui())
-
-    # Interactive command
-    interactive_parser = subparsers.add_parser("interactive", help="Interactively edit configuration")
-    add_config_to_subparser(interactive_parser)
-    interactive_parser.set_defaults(func=handle_interactive)
-
-    # Add 'discover' sub-command
-    discover_parser = subparsers.add_parser("discover", help="Scan project files for CLI tool references")
-    discover_parser.add_argument(
-        "--root",
-        default=None,
-        help="Project root directory to scan (default: current directory)",
-    )
-    discover_parser.add_argument(
-        "--generate",
-        action="store_true",
-        help="Output a freeze config snippet for all discovered tools",
-    )
-    discover_parser.set_defaults(func=handle_discover)
-
-    # Add 'freeze' sub-command
-    freeze_parser = subparsers.add_parser("freeze", help="Freeze the versions of specified tools")
-    freeze_parser.add_argument("tools", nargs="*", help="List of tool names to freeze")
-    freeze_parser.add_argument(
-        "--from-makefile",
-        "--from_makefile",
-        nargs="?",
-        const=True,
-        metavar="MAKEFILE_PATH",
-        help="Discover tools from Makefile (optionally specify path, default: ./Makefile)",
-    )
-    freeze_parser.add_argument(
-        "--from-path",
-        "--from_path",
-        nargs="?",
-        const="",
-        metavar="CATEGORY",
-        help=(
-            "Discover tools present on PATH, optionally filtered by category. "
-            f"Known categories: {', '.join(freeze.list_path_categories())}"
-        ),
-    )
-    add_schema_argument(freeze_parser)
-    add_config_to_subparser(freeze_parser)
-    freeze_parser.set_defaults(func=handle_freeze)
-
-    # Add 'audit' sub-command
-    audit_parser = subparsers.add_parser("audit", help="Audit environment with current configuration")
-    add_formats(audit_parser)
-    add_config_to_subparser(audit_parser)
-    audit_parser.add_argument("-nf", "--never-fail", action="store_true", help="Never return a non-zero exit code")
-    audit_parser.add_argument(
-        "-nc",
-        "--no-cache",
-        action="store_true",
-        help="Disable caching of results.",
-    )
-    audit_parser.add_argument(
-        "-oe",
-        "--only-errors",
-        action="store_true",
-        help="Show only tools in error.",
-    )
-
-    audit_parser.add_argument(
-        "--tags",
-        # action='append',
-        nargs="+",
-        help="Tag for filtering tools.",
-    )
-    audit_parser.add_argument(
-        "--fix",
-        action="store_true",
-        help="Print install commands and documentation for failed tools.",
-    )
-    audit_parser.set_defaults(func=handle_audit)
-
-    # Single audit
-    single_parser = subparsers.add_parser("single", help="Audit one tool without configuration file")
-    single_parser.add_argument("tool", help="Name of the tool")
-    single_parser.add_argument("--version", help="Version of the tool")
-    single_parser.add_argument("--version-switch", "--version_switch", help="Version switch for the tool")
-    add_schema_argument(single_parser)
-    add_formats(single_parser)
-    single_parser.add_argument("--if-os", help="Check only on this os.")
-    single_parser.set_defaults(func=handle_single)
-
-    # Read command
-    read_parser = subparsers.add_parser("read", help="Read and list all tool configurations")
-    add_config_to_subparser(read_parser)
-    read_parser.set_defaults(func=handle_read)
-
-    # Create command
-    create_parser = subparsers.add_parser("create", help="Create a new tool configuration")
-    create_parser.add_argument("tool", help="Name of the tool")
-    add_update_args(create_parser)
-    add_config_to_subparser(create_parser)
-    create_parser.set_defaults(func=handle_create)
-
-    # Update command
-    update_parser = subparsers.add_parser("update", help="Update an existing tool configuration")
-    update_parser.add_argument("tool", help="Name of the tool")
-    add_config_to_subparser(update_parser)
-    add_update_args(update_parser)
-
-    update_parser.set_defaults(func=handle_update)
-
-    # Delete command
-    delete_parser = subparsers.add_parser("delete", help="Delete a tool configuration")
-    delete_parser.add_argument("tool", help="Name of the tool")
-    add_config_to_subparser(delete_parser)
-    delete_parser.set_defaults(func=handle_delete)
-
-    # --------------------------------------------------------------------------
-
-    # Parse the arguments
-    args = parser.parse_args(argv)
-
-    if args.verbose:
-        config = logging_config.generate_config(level="DEBUG")
-        logging.config.dictConfig(config)
-    else:
-        # Essentially, quiet mode
-        logging.basicConfig(level=logging.FATAL)
-
-    logger.debug(f"command line args: {args}")
-
-    # GUI — deferred import to avoid tkinter overhead on normal CLI use
-    if getattr(args, "gui", False):
-        return handle_gui()
-
-    # Demos
-    if args.demo and args.demo == "pipx":
-        demo_pipx.report_for_pipx_tools()
-        return 0
-    if args.demo and args.demo == "venv":
-        demo_venv.report_for_venv_tools()
-        return 0
-    if args.demo and args.demo == "npm":
-        demo_npm.report_for_npm_tools()
-        return 0
-
-    if hasattr(args, "func"):
-        args.func(args)
-        return 0
-
-    # Audit
-
-    # Default behavior
-    if not args.quiet:
-        print("No command specified. Auditing environment with pyproject.toml configuration.")
-    file_format = "quiet" if args.quiet else "table"
-    return views.report_from_pyproject_toml(
-        exit_code_on_failure=True, file_format=file_format, no_cache=False, quiet=args.quiet
-    )
-
-
-def add_formats(audit_parser):
-    audit_parser.add_argument(
-        "-f",
-        "--format",
-        default="table",
-        type=str,
-        choices=("json", "json-compact", "xml", "table", "csv", "html", "pretty"),
-        help="Output results in the specified format. (default is %(default)s)",
-    )
-
-
-def add_schema_argument(parser):
-    parser.add_argument(
-        "--schema", choices=("semver", "snapshot", "pep440", "existence"), default="snapshot", help="version schema"
-    )
-
-
-def add_config_to_subparser(interactive_parser):
-    interactive_parser.add_argument(
-        "-c",
-        "--config",
-        default="pyproject.toml",
-        type=str,
-        help="Path to the configuration file in TOML format. (default is %(default)s)",
-    )
-
-
-if __name__ == "__main__":
-    sys.exit(main())
-```
-## File: .cli_tool_audit_cache\.gitignore
-```
-*
-!.gitignore
-```
-## File: .cli_tool_audit_cache\black_b780445aca8bc5b17141b30522c5ab07.json
-```json
-{
-    "tool": "black",
-    "desired_version": ">=1.0.0",
-    "is_needed_for_os": true,
-    "is_available": true,
-    "is_snapshot": false,
-    "found_version": "black, 24.4.2 (compiled: yes)\nPython (CPython) 3.12.0",
-    "parsed_version": "24.4.2",
-    "is_compatible": "Compatible",
-    "is_broken": false,
-    "last_modified": "2024-05-26T13:32:41.433711",
-    "tool_config": {
-        "name": "black",
-        "version": ">=1.0.0",
-        "version_switch": "--version",
-        "schema": "semver",
-        "if_os": null,
-        "tags": null,
-        "install_command": null,
-        "install_docs": null
-    }
-}
-```
-## File: .cli_tool_audit_cache\choco_acb3ff132133b4cc638f6fd3018b4c06.json
-```json
-{
-    "tool": "choco",
-    "desired_version": ">=0.10.13",
-    "is_needed_for_os": true,
-    "is_available": true,
-    "is_snapshot": false,
-    "found_version": "2.3.0",
-    "parsed_version": "2.3.0",
-    "is_compatible": "Compatible",
-    "is_broken": false,
-    "last_modified": "2024-06-05T12:09:28",
-    "tool_config": {
-        "name": "choco",
-        "version": ">=0.10.13",
-        "version_switch": "--version",
-        "schema": "semver",
-        "if_os": null,
-        "tags": null,
-        "install_command": null,
-        "install_docs": null
-    }
-}
-```
-## File: .cli_tool_audit_cache\isort_9e6fb3e24115e8a8f0bb663f57bbb590.json
-```json
-{
-    "tool": "isort",
-    "desired_version": ">=5.0.0",
-    "is_needed_for_os": true,
-    "is_available": true,
-    "is_snapshot": false,
-    "found_version": "_                 _\n                (_) ___  ___  _ __| |_\n                | |/ _/ / _ \\/ '__  _/\n                | |\\__ \\/\\_\\/| |  | |_\n                |_|\\___/\\___/\\_/   \\_/\n\n      isort your imports, so you don't have to.\n\n                    VERSION 5.13.2",
-    "parsed_version": "5.13.2",
-    "is_compatible": "Compatible",
-    "is_broken": false,
-    "last_modified": "2024-05-26T13:32:39.746123",
-    "tool_config": {
-        "name": "isort",
-        "version": ">=5.0.0",
-        "version_switch": "--version",
-        "schema": "semver",
-        "if_os": null,
-        "tags": null,
-        "install_command": null,
-        "install_docs": null
-    }
-}
-```
-## File: .cli_tool_audit_cache\make_aaf0418d3e8d542791533a3944488d8e.json
-```json
-{
-    "tool": "make",
-    "desired_version": ">=3.81",
-    "is_needed_for_os": true,
-    "is_available": true,
-    "is_snapshot": false,
-    "found_version": "GNU Make 3.81\nCopyright (C) 2006  Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.\nThere is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A\nPARTICULAR PURPOSE.\n\nThis program built for i386-pc-mingw32",
-    "parsed_version": "3.81.0",
-    "is_compatible": "Compatible",
-    "is_broken": false,
-    "last_modified": "2006-11-24T20:28:04",
-    "tool_config": {
-        "name": "make",
-        "version": ">=3.81",
-        "version_switch": "--version",
-        "schema": "semver",
-        "if_os": null,
-        "tags": [
-            "build"
-        ],
-        "install_command": null,
-        "install_docs": null
-    }
-}
-```
-## File: .cli_tool_audit_cache\mypy_0731164ae5719aacbaf5b9bd18660c49.json
-```json
-{
-    "tool": "mypy",
-    "desired_version": ">=1.0.0",
-    "is_needed_for_os": true,
-    "is_available": true,
-    "is_snapshot": false,
-    "found_version": "mypy 1.11.0 (compiled: yes)",
-    "parsed_version": "1.11.0",
-    "is_compatible": "Compatible",
-    "is_broken": false,
-    "last_modified": "2024-07-27T13:31:36.840533",
-    "tool_config": {
-        "name": "mypy",
-        "version": ">=1.0.0",
-        "version_switch": "--version",
-        "schema": "semver",
-        "if_os": null,
-        "tags": [
-            "build",
-            "work"
-        ],
-        "install_command": "pipx install mypy",
-        "install_docs": "https://mypy.readthedocs.io/en/stable/getting_started.html"
-    }
-}
-```
-## File: .cli_tool_audit_cache\notepad_81c010064e5fa8c52b1d30fc89cf925a.json
-```json
-{
-    "tool": "notepad",
-    "desired_version": "*",
-    "is_needed_for_os": true,
-    "is_available": true,
-    "is_snapshot": false,
-    "found_version": null,
-    "parsed_version": "Found",
-    "is_compatible": "Compatible",
-    "is_broken": false,
-    "last_modified": "2024-06-16T22:12:43.577645",
-    "tool_config": {
-        "name": "notepad",
-        "version": null,
-        "version_switch": "--version",
-        "schema": "existence",
-        "if_os": null,
-        "tags": null,
-        "install_command": null,
-        "install_docs": null
-    }
-}
-```
-## File: .cli_tool_audit_cache\pygount_b829506909227e361210dd90697e7ade.json
-```json
-{
-    "tool": "pygount",
-    "desired_version": ">=1.6.0",
-    "is_needed_for_os": true,
-    "is_available": true,
-    "is_snapshot": false,
-    "found_version": "pygount 1.8.0",
-    "parsed_version": "1.8.0",
-    "is_compatible": "Compatible",
-    "is_broken": false,
-    "last_modified": "2024-08-02T17:03:47.755191",
-    "tool_config": {
-        "name": "pygount",
-        "version": ">=1.6.0",
-        "version_switch": "--version",
-        "schema": "semver",
-        "if_os": null,
-        "tags": null,
-        "install_command": null,
-        "install_docs": null
-    }
-}
-```
-## File: .cli_tool_audit_cache\pylint_195df294ec23295b922c4011d09c6aaa.json
-```json
-{
-    "tool": "pylint",
-    "desired_version": ">=1.0.0",
-    "is_needed_for_os": true,
-    "is_available": true,
-    "is_snapshot": false,
-    "found_version": "pylint 3.2.6\nastroid 3.2.4\nPython 3.12.0 (tags/v3.12.0:0fb18b0, Oct  2 2023, 13:03:39) [MSC v.1935 64 bit (AMD64)]",
-    "parsed_version": "3.2.6",
-    "is_compatible": "Compatible",
-    "is_broken": false,
-    "last_modified": "2024-07-27T13:31:36.456282",
-    "tool_config": {
-        "name": "pylint",
-        "version": ">=1.0.0",
-        "version_switch": "--version",
-        "schema": "semver",
-        "if_os": null,
-        "tags": [
-            "build",
-            "work",
-            "user"
-        ],
-        "install_command": null,
-        "install_docs": null
-    }
-}
-```
-## File: .cli_tool_audit_cache\python_0d9f3f4b30033fd9f79a0d9320ba927a.json
-```json
-{
-    "tool": "python",
-    "desired_version": ">=3.11.1",
-    "is_needed_for_os": true,
-    "is_available": true,
-    "is_snapshot": false,
-    "found_version": "Python 3.12.0",
-    "parsed_version": "3.12.0",
-    "is_compatible": "Compatible",
-    "is_broken": false,
-    "last_modified": "2024-05-26T13:32:10.918127",
-    "tool_config": {
-        "name": "python",
-        "version": ">=3.11.1",
-        "version_switch": "--version",
-        "schema": "semver",
-        "if_os": null,
-        "tags": [
-            "build"
-        ],
-        "install_command": null,
-        "install_docs": null
-    }
-}
-```
-## File: .cli_tool_audit_cache\ruff_ce4b361277f65c4e5a2085ac37c6d60e.json
-```json
-{
-    "tool": "ruff",
-    "desired_version": "0.*",
-    "is_needed_for_os": true,
-    "is_available": true,
-    "is_snapshot": false,
-    "found_version": "ruff 0.5.5",
-    "parsed_version": "0.5.5",
-    "is_compatible": "Compatible",
-    "is_broken": false,
-    "last_modified": "2024-07-27T13:31:36.628630",
-    "tool_config": {
-        "name": "ruff",
-        "version": "0.*",
-        "version_switch": "--version",
-        "schema": "semver",
-        "if_os": null,
-        "tags": null,
-        "install_command": null,
-        "install_docs": null
-    }
-}
-```
-## File: .cli_tool_audit_cache\rustc_c954c6d8cb8e4f417b8451828a5ba165.json
-```json
-{
-    "tool": "rustc",
-    "desired_version": ">=1.67.0",
-    "is_needed_for_os": true,
-    "is_available": true,
-    "is_snapshot": false,
-    "found_version": "rustc 1.78.0 (9b00956e5 2024-04-29)",
-    "parsed_version": "1.78.0",
-    "is_compatible": "Compatible",
-    "is_broken": false,
-    "last_modified": "2024-05-26T13:24:30.281327",
-    "tool_config": {
-        "name": "rustc",
-        "version": ">=1.67.0",
-        "version_switch": "--version",
-        "schema": "semver",
-        "if_os": null,
-        "tags": null,
-        "install_command": null,
-        "install_docs": null
-    }
-}
-```
-## File: .cli_tool_audit_cache\vulture_15cb5fd387564687965ebc69ee51020a.json
-```json
-{
-    "tool": "vulture",
-    "desired_version": "*",
-    "is_needed_for_os": true,
-    "is_available": true,
-    "is_snapshot": false,
-    "found_version": "vulture 2.11",
-    "parsed_version": "2.11.0",
-    "is_compatible": "Compatible",
-    "is_broken": false,
-    "last_modified": "2024-05-27T10:20:03.093483",
-    "tool_config": {
-        "name": "vulture",
-        "version": "*",
-        "version_switch": "--version",
-        "schema": "semver",
-        "if_os": null,
-        "tags": null,
-        "install_command": null,
-        "install_docs": null
-    }
-}
-```
-## File: gui\app.py
+## File: gui/app.py
 ```python
 """
 cli_tool_audit GUI — tkinter application.

@@ -10,8 +10,8 @@ def count_test_functions(test_dir: str) -> None:
     Args:
         test_dir: The directory containing the test files.
     """
-    test_files = Path(test_dir).glob('test_*.py')
-    test_function_pattern = re.compile(r'def (test_[a-zA-Z0-9_]*\()')
+    test_files = Path(test_dir).glob("test_*.py")
+    test_function_pattern = re.compile(r"def (test_[a-zA-Z0-9_]*\()")
 
     function_counts = Counter()
 
@@ -28,6 +28,6 @@ def count_test_functions(test_dir: str) -> None:
             print(f"{function_name}: {count} times")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # Example usage:
-    count_test_functions('tests/test_hypothesis')
+    count_test_functions("tests/test_hypothesis")

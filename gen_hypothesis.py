@@ -28,22 +28,22 @@ def generate_hypothesis_tests(module: Any) -> None:
         module: The module to generate tests for.
     """
     submodules = get_submodules(module)
-    base_command = ['hypothesis', 'write', '--style', 'pytest', '--annotate']
-    output_dir = Path('tests/test_hypothesis/')
+    base_command = ["hypothesis", "write", "--style", "pytest", "--annotate"]
+    output_dir = Path("tests/test_hypothesis/")
     output_dir.mkdir(parents=True, exist_ok=True)
 
     for submodule in submodules:
-        module_name = f'{module.__name__}.{submodule}'
-        test_file_name = f'test_{submodule}.py'
+        module_name = f"{module.__name__}.{submodule}"
+        test_file_name = f"test_{submodule}.py"
         output_path = output_dir / test_file_name
         command = base_command + [module_name]
 
-        with open(output_path, 'w') as file:
+        with open(output_path, "w") as file:
             print(command)
             subprocess.run(command, stdout=file, text=True, check=True)
 
 
 # Example usage:
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     generate_hypothesis_tests(cli_tool_audit)
