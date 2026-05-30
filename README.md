@@ -208,3 +208,10 @@ vein are out of scope.
 
 - [tool-audit](https://github.com/jstutters/toolaudit)
 - [dotnet-tool-list](https://learn.microsoft.com/en-us/dotnet/core/tools/dotnet-tool-list)
+
+## Project Links
+
+- [GitHub](https://github.com/matthewdeanmartin/cli_tool_audit)
+- [PyPI](https://pypi.org/project/cli-tool-audit/)
+- [Bug Tracker](https://github.com/matthewdeanmartin/cli_tool_audit/issues)
+- [Change Log](https://github.com/matthewdeanmartin/cli_tool_audit/blob/main/CHANGELOG.md)
