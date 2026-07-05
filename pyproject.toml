@@ -51,7 +51,7 @@ dev = [
     "troml-dev-status>=0.6.0",
     "dont-be-lazy>=0.1.2; python_version >= '3.10'",
     "pydoc-fork>=3.0.0; python_version >= '3.10'",
-    "keepachangelog-manager-fork[all]>=6.5.0",
+    "keepachangelog-manager-fork[all]>=6.6.0",
 
     "git2md; python_version >= '3.10'",
     "pyclean; python_version >= '3.12'",
