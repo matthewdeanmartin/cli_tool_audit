@@ -23,7 +23,8 @@ def audit_facade(tmp_path):
 
 
 @pytest.mark.parametrize(
-    "cache_content, expected_result, expected_hit", [(None, None, False)]  # Test for non-existent file
+    "cache_content, expected_result, expected_hit",
+    [(None, None, False)],  # Test for non-existent file
 )
 def test_read_from_cache(audit_facade, fake_tool_config, cache_content, expected_result, expected_hit, mocker):
     cache_file = audit_facade.get_cache_filename(fake_tool_config)

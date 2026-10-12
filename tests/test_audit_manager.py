@@ -281,10 +281,13 @@ def test_version_timeout_marks_tool_broken_without_aborting_audit() -> None:
     modified = datetime.datetime(2026, 10, 4)
     with (
         patch.object(manager, "get_command_last_modified_date", return_value=modified),
-        patch("cli_tool_audit.audit_manager.subprocess.run", side_effect=[
-            subprocess.TimeoutExpired(["slow-tool", "--version"], 15),
-            subprocess.CompletedProcess(["working-tool", "--version"], 0, "1.2.3", ""),
-        ]),
+        patch(
+            "cli_tool_audit.audit_manager.subprocess.run",
+            side_effect=[
+                subprocess.TimeoutExpired(["slow-tool", "--version"], 15),
+                subprocess.CompletedProcess(["working-tool", "--version"], 0, "1.2.3", ""),
+            ],
+        ),
     ):
         timed_out = manager.call_tool("slow-tool", SchemaType.SEMVER)
         healthy = manager.call_tool("working-tool", SchemaType.SEMVER)

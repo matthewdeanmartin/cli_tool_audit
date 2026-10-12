@@ -52,7 +52,6 @@ def test_read_config_happy_path(tmp_path, mock_toml_load):
         patch.object(Path, "exists", return_value=True),
         patch("cli_tool_audit.config_manager.toml.load", return_value=mock_toml_load),
     ):
-
         result = config_manager.read_config()
 
     # Assert that the method returns True and tools are populated correctly

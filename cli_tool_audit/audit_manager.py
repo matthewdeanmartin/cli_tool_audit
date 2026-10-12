@@ -390,8 +390,7 @@ class AuditManager:
             use_shell = bool(os.environ.get("CLI_TOOL_AUDIT_USE_SHELL", False))
             if not use_shell:
                 logger.debug(
-                    "Some tools like pipx, may not be found on the path unless you export "
-                    "CLI_TOOL_AUDIT_USE_SHELL=1. By default tools are checked without a shell for security."
+                    "Some tools like pipx, may not be found on the path unless you export CLI_TOOL_AUDIT_USE_SHELL=1. By default tools are checked without a shell for security."
                 )
             result = subprocess.run(
                 command, capture_output=True, text=True, timeout=timeout, shell=use_shell, check=True

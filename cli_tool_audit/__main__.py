@@ -303,8 +303,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         const="",
         metavar="CATEGORY",
         help=(
-            "Discover tools present on PATH, optionally filtered by category. "
-            f"Known categories: {', '.join(freeze.list_path_categories())}"
+            f"Discover tools present on PATH, optionally filtered by category. Known categories: {', '.join(freeze.list_path_categories())}"
         ),
     )
     add_schema_argument(freeze_parser)

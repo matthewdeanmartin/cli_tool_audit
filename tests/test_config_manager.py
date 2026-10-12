@@ -17,7 +17,7 @@ def config_file(tmp_path):
         # Write initial configuration for testing
         f.write("[tool.cli-tools]\n")
         for tool, settings in SAMPLE_TOOL_CONFIG.items():
-            f.write(f"{tool} = {str(settings).replace(':','=')}\n")
+            f.write(f"{tool} = {str(settings).replace(':', '=')}\n")
     return config
 
 

@@ -104,8 +104,7 @@ def check_tool_availability(
         use_shell = bool(os.environ.get("CLI_TOOL_AUDIT_USE_SHELL", False))
         if not use_shell:
             logger.debug(
-                "Some tools like pipx, may not be found on the path unless you export "
-                "CLI_TOOL_AUDIT_USE_SHELL=1. By default tools are checked without a shell for security."
+                "Some tools like pipx, may not be found on the path unless you export CLI_TOOL_AUDIT_USE_SHELL=1. By default tools are checked without a shell for security."
             )
         logger.info(f"Checking {tool_name} with {' '.join(command)}")
         result = subprocess.run(
