@@ -410,6 +410,9 @@ class AuditManager:
                 logger.error(f"{tool_name} stdout: {exception.stdout}")
             else:
                 logger.warning(f"{tool_name} returned a non-zero exit code but still produced version output.")
+        except subprocess.TimeoutExpired:
+            logger.error(f"{tool_name} did not return a version before the timeout.")
+            return models.ToolAvailabilityResult(True, True, None, last_modified)
         except FileNotFoundError:
             logger.error(f"{tool_name} is not on path, file not found.")
             return models.ToolAvailabilityResult(False, True, None, last_modified)

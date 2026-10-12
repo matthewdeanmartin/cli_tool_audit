@@ -265,6 +265,30 @@ class TestAuditManagerCallTool:
     def test_timeout_exception(self, mock_run, _mock_modified):
         mock_run.side_effect = subprocess.TimeoutExpired(["tool", "--version"], 15)
         manager = AuditManager()
-        # TimeoutExpired is not caught — it will propagate
-        with pytest.raises(subprocess.TimeoutExpired):
-            manager.call_tool("tool", SchemaType.SEMVER)
+        result = manager.call_tool("tool", SchemaType.SEMVER)
+        assert result.is_available is True
+        assert result.is_broken is True
+        assert result.version is None
+
+
+def test_version_timeout_marks_tool_broken_without_aborting_audit() -> None:
+    """A hanging version probe must not stop checking the remaining tools."""
+    import datetime
+    import subprocess
+    from unittest.mock import patch
+
+    manager = AuditManager()
+    modified = datetime.datetime(2026, 10, 4)
+    with (
+        patch.object(manager, "get_command_last_modified_date", return_value=modified),
+        patch("cli_tool_audit.audit_manager.subprocess.run", side_effect=[
+            subprocess.TimeoutExpired(["slow-tool", "--version"], 15),
+            subprocess.CompletedProcess(["working-tool", "--version"], 0, "1.2.3", ""),
+        ]),
+    ):
+        timed_out = manager.call_tool("slow-tool", SchemaType.SEMVER)
+        healthy = manager.call_tool("working-tool", SchemaType.SEMVER)
+    assert timed_out.is_available and timed_out.is_broken
+    assert timed_out.version is None
+    assert healthy.is_available and not healthy.is_broken
+    assert healthy.version == "1.2.3"

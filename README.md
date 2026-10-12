@@ -215,3 +215,12 @@ vein are out of scope.
 - [PyPI](https://pypi.org/project/cli-tool-audit/)
 - [Bug Tracker](https://github.com/matthewdeanmartin/cli_tool_audit/issues)
 - [Change Log](https://github.com/matthewdeanmartin/cli_tool_audit/blob/main/CHANGELOG.md)
+
+
+## Python 3.15 RC3 verification (2026-10-04)
+
+Refreshed dependencies with `uv lock --upgrade`; lock check passes. 492 tests pass / 1 skip with stable and prerelease-allowed dependencies on Python 3.15.0rc3 and on 3.14.7, using published wheels only. The experimental environments selected no dependency prereleases. Full development setup remains wheel-blocked by pytest-network; broad quality gates requiring it were not run.
+
+Fixed timed-out version probes aborting the audit: mark the hanging tool broken and continue. Regression tests verify the next tool still gets checked. See CHANGELOG Unreleased / Fixed. Isolated tests omit the unavailable pytest-network plugin.
+
+No dependency source builds or GitHub jobs. Changes local; human operators decide releases and upstream reporting.
