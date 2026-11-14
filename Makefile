@@ -101,7 +101,7 @@ docs-deploy:
 	$(VENV) mkdocs gh-deploy
 
 check_md:
-	$(VENV) linkcheckMarkdown README.md
+	$(VENV) python -X utf8 scripts/check_local_links.py README.md docs
 	$(VENV) markdownlint README.md --config .markdownlintrc
 	$(VENV) mdformat README.md docs/*.md
 

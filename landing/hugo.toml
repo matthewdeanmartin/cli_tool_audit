@@ -1,0 +1,10 @@
+baseURL = "https://matthewdeanmartin.github.io/cli_tool_audit/"
+locale = "en-us"
+title = "cli_tool_audit"
+disableKinds = ["taxonomy", "term", "RSS"]
+
+[params]
+  description = "Check whether CLI tools are available and whether their reported versions meet your project requirements."
+  docs = "https://cli-tool-audit.readthedocs.io/en/latest/"
+  github = "https://github.com/matthewdeanmartin/cli_tool_audit"
+  pypi = "https://pypi.org/project/cli-tool-audit/"

@@ -25,8 +25,8 @@ pytest tests/
 uv run pytest --override-ini="addopts=" tests/
 ```
 
-The `pytest.ini` has `addopts = --disable-network` which requires a plugin not always installed.
-Override it as shown above when running tests directly.
+The `pytest.ini` has `addopts = --disable-socket` to block network access during tests.
+The override above is for isolated environments without the development plugin.
 
 ### Installing dependencies
 
